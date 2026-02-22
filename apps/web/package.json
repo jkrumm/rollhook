@@ -11,6 +11,8 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@elysiajs/eden": "latest",
+    "@stackcommander/server": "workspace:*",
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/react-devtools": "^0.7.0",
     "@tanstack/react-router": "^1.132.0",

@@ -12,6 +12,9 @@ __unconfig*
 # Bun
 bun.lock
 
+# Data store (file-based DB, excluded from version control)
+data/
+
 # OS
 .DS_Store
 *.pem

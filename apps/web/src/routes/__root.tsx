@@ -7,6 +7,7 @@ import Header from '../components/Header'
 import appCss from '../styles.css?url'
 
 export const Route = createRootRoute({
+  notFoundComponent: () => <p>Not Found</p>,
   head: () => ({
     meta: [
       {
@@ -17,7 +18,10 @@ export const Route = createRootRoute({
         content: 'width=device-width, initial-scale=1',
       },
       {
-        title: 'TanStack Start Starter',
+        name: 'darkreader-lock',
+      },
+      {
+        title: 'StackCommander',
       },
     ],
     links: [
