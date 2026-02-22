@@ -61,11 +61,20 @@ bun add <pkg> --cwd packages/stackcommander
 
 | Command | Action |
 |-|-|
-| `bun run dev` | Start all dev servers in parallel |
+| `bun run dev` | Start all dev servers (run server & web in separate terminals) |
 | `bun run build` | Build all packages |
 | `bun run typecheck` | Type-check all workspaces |
 | `bun run lint` | Lint entire monorepo |
 | `bun run lint:fix` | Auto-fix lint + formatting |
+
+**Note:** TanStack Start's internal Nitro server uses port 42069. Run server and web in separate terminals to avoid port conflicts:
+```bash
+# Terminal 1
+bun --cwd apps/server run dev
+
+# Terminal 2
+bun --cwd apps/web run dev
+```
 
 ### Per-workspace
 
