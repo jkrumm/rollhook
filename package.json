@@ -1,10 +1,13 @@
 {
   "name": "stackcommander",
   "private": true,
-  "workspaces": ["apps/*", "packages/*"],
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
-    "dev": "bun run --filter '*' dev",
-    "build": "bun run --filter '*' build",
+    "dev": "NODE_ENV=development bun --watch apps/server/server.ts",
+    "build": "bun --cwd apps/web run build",
     "typecheck": "bun run --filter '*' typecheck",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"

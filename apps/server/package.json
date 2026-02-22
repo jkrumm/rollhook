@@ -4,12 +4,16 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "bun run --watch src/index.ts",
-    "build": "bun build src/index.ts --outdir dist --target bun --minify",
-    "start": "bun run dist/index.js",
+    "dev": "NODE_ENV=development bun --watch server.ts",
+    "start": "NODE_ENV=production bun server.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "elysia": "latest"
+    "@elysiajs/static": "latest",
+    "elysia": "latest",
+    "elysia-connect-middleware": "latest"
+  },
+  "devDependencies": {
+    "vite": "latest"
   }
 }

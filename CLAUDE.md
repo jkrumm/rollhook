@@ -14,8 +14,8 @@ North Star Stack: `~/Obsidian/Vault/04_Areas/Engineering/north-star-stack.md`
 ```
 stackcommander/
   apps/
-    server/          # @stackcommander/server — Elysia API server (port 3001)
-    web/             # @stackcommander/web — TanStack Start frontend (port 3000)
+    server/          # @stackcommander/server — Elysia unified server (port 7700)
+    web/             # @stackcommander/web — TanStack Start frontend (build only)
   packages/
     stackcommander/  # stackcommander — Core shared package
   package.json       # Bun workspace root
@@ -32,8 +32,8 @@ stackcommander/
 | Runtime | Bun 1.3.9 |
 | Monorepo | Bun workspaces (native) |
 | Language | TypeScript 6.0.0-beta |
-| Backend | Elysia (Bun-native, auto-typed routes) |
-| Frontend | TanStack Start v1 (SSR React, file-based routing) |
+| Backend | Elysia (Bun-native, auto-typed routes, hosts frontend) |
+| Frontend | TanStack Start v1 (SSR React, file-based routing, served by Elysia) |
 | Styling | Tailwind CSS v4 |
 | Linting/Formatting | @antfu/eslint-config (ESLint flat config, no Prettier) |
 
@@ -61,32 +61,38 @@ bun add <pkg> --cwd packages/stackcommander
 
 | Command | Action |
 |-|-|
-| `bun run dev` | Start all dev servers (run server & web in separate terminals) |
-| `bun run build` | Build all packages |
+| `bun run dev` | Start single dev server (Elysia + Vite middleware on port 7700) |
+| `bun run build` | Build TanStack Start frontend to `apps/web/dist/` |
 | `bun run typecheck` | Type-check all workspaces |
 | `bun run lint` | Lint entire monorepo |
 | `bun run lint:fix` | Auto-fix lint + formatting |
 
-**Note:** TanStack Start's internal Nitro server uses port 42069. Run server and web in separate terminals to avoid port conflicts:
-```bash
-# Terminal 1
-bun --cwd apps/server run dev
+### Dev (single process)
 
-# Terminal 2
-bun --cwd apps/web run dev
+```bash
+bun run dev
+# → http://localhost:7700          TanStack Start SSR (via Vite middleware)
+# → http://localhost:7700/api/*    Elysia API routes
+```
+
+### Prod build + start
+
+```bash
+bun run build                                   # builds apps/web/dist/
+NODE_ENV=production bun --cwd apps/server run start
+# → http://localhost:7700  (static + TanStack Start handler)
 ```
 
 ### Per-workspace
 
 ```bash
 # Server (apps/server)
-bun --cwd apps/server run dev        # Watch mode on port 3001
-bun --cwd apps/server run build      # Bundle to dist/
+bun --cwd apps/server run dev        # Single dev server on port 7700
+bun --cwd apps/server run start      # Prod (NODE_ENV=production required)
 bun --cwd apps/server run typecheck
 
 # Web (apps/web)
-bun --cwd apps/web run dev           # Vite dev on port 3000
-bun --cwd apps/web run build
+bun --cwd apps/web run build         # Build to dist/ for prod serving
 bun --cwd apps/web run typecheck
 ```
 
@@ -126,16 +132,30 @@ Config: `eslint.config.mjs` at root — TypeScript + React enabled.
 
 ## Elysia Server
 
-- Entry: `apps/server/src/index.ts`
-- Runs on port `3001`
+- Entry: `apps/server/server.ts` (unified server entry)
+- API plugin: `apps/server/src/api.ts` (prefix `/api`)
+- Runs on port `7700` (dev + prod)
+- Dev: wraps Vite in middleware mode + TanStack Start SSR
+- Prod: serves `apps/web/dist/client/` static + TanStack Start handler
 - Export `App` type for Eden Treaty integration
 
 ## TanStack Start Frontend
 
 - Entry: `apps/web/src/router.tsx`
+- Server entry: `apps/web/src/server.ts` (SSR handler, loaded by Elysia)
 - Routes in `apps/web/src/routes/`
-- Vite config: `apps/web/vite.config.ts`
+- Vite config: `apps/web/vite.config.ts` (middleware mode only, no standalone server)
 - Styles: `apps/web/src/styles.css` (Tailwind v4)
+
+## Eden Treaty (client-side API calls)
+
+```ts
+// apps/web/src/client.ts
+import { treaty } from '@elysiajs/eden'
+import type { App } from '@stackcommander/server'
+
+export const api = treaty<App>('localhost:7700')
+```
 
 ---
 

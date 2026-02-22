@@ -6,9 +6,7 @@
     "#/*": "./src/*"
   },
   "scripts": {
-    "dev": "bun --bun vite dev --port 3000",
     "build": "bun --bun vite build",
-    "preview": "bun --bun vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
