@@ -24,22 +24,15 @@ async function executeJob(job: { jobId: string, app: string, imageTag: string })
   log(`[executor] Starting deployment: ${app} @ ${imageTag}`)
   updateJobStatus(jobId, 'running')
 
-  const config = loadConfig()
-  const appConfig = config.apps.find(a => a.name === app)
-  if (!appConfig) {
-    const msg = `App "${app}" not found in rollhook.config.yaml`
-    log(`[executor] ERROR: ${msg}`)
-    updateJobStatus(jobId, 'failed', msg)
-    const jobRecord = getJob(jobId)
-    if (jobRecord)
-      await notify(jobRecord, logPath)
-    return
-  }
-
   let finalStatus: JobStatus = 'success'
   let finalError: string | undefined
 
   try {
+    const config = loadConfig()
+    const appConfig = config.apps.find(a => a.name === app)
+    if (!appConfig)
+      throw new Error(`App "${app}" not found in rollhook.config.yaml`)
+
     const parsedAppConfig = await validateApp(appConfig.clone_path, logPath)
     await pullImage(imageTag, logPath)
     await rolloutApp(appConfig.clone_path, logPath, parsedAppConfig)

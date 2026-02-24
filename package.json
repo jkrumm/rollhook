@@ -13,6 +13,7 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "test": "bun test --preload ./apps/server/src/__tests__/preload.ts ./apps/server/src/__tests__",
+    "test:coverage": "bun test --coverage --preload ./apps/server/src/__tests__/preload.ts ./apps/server/src/__tests__",
     "test:e2e": "bun --filter @rollhook/e2e test",
     "validate": "bun run lint:fix && bun run typecheck && bun run test && bun run test:e2e",
     "e2e:up": "docker compose -f e2e/compose.e2e.yml up -d",

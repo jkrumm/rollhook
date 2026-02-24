@@ -175,7 +175,7 @@ apps:
   - name: my-api
     clone_path: /srv/apps/my-api
 notifications:
-  webhook: ''  # optional — POST job result JSON here on completion
+  webhook: '' # optional — POST job result JSON here on completion
 ```
 
 Pushover credentials are **not** in the config file — they come from environment variables: `PUSHOVER_USER_KEY` and `PUSHOVER_APP_TOKEN`.
@@ -205,9 +205,9 @@ All config files are YAML validated by TypeBox schemas. TypeBox produces valid J
 ```yaml
 # yaml-language-server: $schema=https://cdn.jsdelivr.net/npm/rollhook/schema/app.json
 name: my-api
-compose_file: compose.yml  # optional, defaults to compose.yml
+compose_file: compose.yml # optional, defaults to compose.yml
 steps:
-  - service: backend   # steps run sequentially
+  - service: backend # steps run sequentially
   - service: frontend
 ```
 
