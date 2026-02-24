@@ -21,6 +21,11 @@ describe('registry API', () => {
   })
 
   it('patching clone_path returns updated value', async () => {
+    // Save original path so we can restore after the test
+    const listRes = await fetch(`${BASE_URL}/registry`, { headers: adminHeaders() })
+    const apps = await listRes.json() as Array<{ name: string, clone_path: string }>
+    const originalPath = apps.find(a => a.name === 'hello-world')!.clone_path
+
     const res = await fetch(`${BASE_URL}/registry/hello-world`, {
       method: 'PATCH',
       headers: adminHeaders(),
@@ -29,6 +34,13 @@ describe('registry API', () => {
     expect(res.status).toBe(200)
     const body = await res.json() as { name: string, clone_path: string }
     expect(body.clone_path).toBe('/tmp/test-path')
+
+    // Restore original path to avoid breaking subsequent deploy tests
+    await fetch(`${BASE_URL}/registry/hello-world`, {
+      method: 'PATCH',
+      headers: adminHeaders(),
+      body: JSON.stringify({ clone_path: originalPath }),
+    })
   })
 
   it('patching nonexistent app returns 404', async () => {

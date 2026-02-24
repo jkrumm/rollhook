@@ -10,8 +10,6 @@ export async function rolloutApp(clonePath: string, logPath: string, appConfig: 
     log(`[rollout] Rolling out service: ${step.service}`)
 
     const args = ['rollout', step.service, '-f', composeFile]
-    if (step.wait_for_healthy)
-      args.push('--wait')
 
     const proc = Bun.spawn(['docker', ...args], {
       cwd: clonePath,
