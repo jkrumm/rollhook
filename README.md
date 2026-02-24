@@ -83,31 +83,23 @@ services:
 # yaml-language-server: $schema=https://cdn.jsdelivr.net/npm/rollhook/schema/config.json
 apps:
   - name: my-api
-    clone_path: /srv/apps/my-api
+    compose_path: /srv/stacks/my-api/compose.yml
+    steps:
+      - service: backend
   - name: my-frontend
-    clone_path: /srv/apps/my-frontend
+    compose_path: /srv/stacks/my-frontend/compose.yml
+    steps:
+      - service: frontend
 
 notifications:
   webhook: https://hooks.example.com/deployments # optional
 ```
 
-### 3. Add `rollhook.yaml` to each app repo
-
-```yaml
-# rollhook.yaml
-# yaml-language-server: $schema=https://cdn.jsdelivr.net/npm/rollhook/schema/app.json
-name: my-api
-compose_file: compose.yml # optional, defaults to compose.yml
-steps:
-  - service: backend
-  - service: frontend
-```
-
-### 4. Configure your `compose.yml` for zero-downtime deployments
+### 3. Configure your `compose.yml` for zero-downtime deployments
 
 See the [compose.yml requirements](#composeyml-requirements) section below.
 
-### 5. Trigger a deploy
+### 4. Trigger a deploy
 
 ```bash
 curl -X POST https://your-vps:7700/deploy/my-api \
@@ -127,27 +119,6 @@ curl -N https://your-vps:7700/jobs/<job_id>/logs \
 
 ---
 
-## `rollhook.yaml` Reference
-
-Per-app config committed to each app repo. RollHook reads this from `clone_path` at deploy time.
-
-```yaml
-# yaml-language-server: $schema=https://cdn.jsdelivr.net/npm/rollhook/schema/app.json
-name: my-api # required — must match the name in rollhook.config.yaml
-compose_file: compose.yml # optional, defaults to compose.yml
-
-steps:
-  - service: backend # Docker Compose service name to roll out
-  - service: frontend # steps run sequentially
-```
-
-**Pre-deploy validation** runs before any deployment:
-
-- `rollhook.yaml` validates against JSON Schema
-- Compose file referenced by `compose_file` exists at `clone_path`
-
----
-
 ## `compose.yml` requirements
 
 For zero-downtime deployments to work correctly, each service must satisfy:
@@ -162,7 +133,7 @@ Minimal example:
 ```yaml
 services:
   backend:
-    image: ${REGISTRY:-registry.example.com}/my-api:${IMAGE_TAG:-latest}
+    image: ${IMAGE_TAG:-registry.example.com/my-api:latest}
     healthcheck:
       test: [CMD, curl, -f, http://localhost:3000/health]
       interval: 5s
@@ -186,7 +157,7 @@ networks:
     external: true
 ```
 
-**Image tag pattern:** use `${IMAGE_TAG:-latest}` in `compose.yml` and update a `.env` file before each deploy. RollHook writes the new tag to `.env` as part of the rollout.
+**Image tag pattern:** use `${IMAGE_TAG:-registry.example.com/my-api:latest}` in `compose.yml`. RollHook writes `IMAGE_TAG=<full-uri>` to a `.env` file co-located with `compose_path` before each rollout. The `.env` is managed exclusively by RollHook — do not store other compose variables there.
 
 ---
 
@@ -320,15 +291,14 @@ The `rollhook` npm package is primarily a schema delivery mechanism — schemas 
 
 | Schema                 | URL                                                        |
 | ---------------------- | ---------------------------------------------------------- |
-| `rollhook.yaml`        | `https://cdn.jsdelivr.net/npm/rollhook/schema/app.json`    |
 | `rollhook.config.yaml` | `https://cdn.jsdelivr.net/npm/rollhook/schema/config.json` |
 
-Add the `# yaml-language-server: $schema=...` comment at the top of each YAML file for IDE validation.
+Add the `# yaml-language-server: $schema=...` comment at the top of your config file for IDE validation.
 
 ```ts
 // Optional: programmatic validation in your tooling
-import type { AppConfig } from 'rollhook'
-import { AppConfigSchema } from 'rollhook'
+import type { ServerConfig } from 'rollhook'
+import { ServerConfigSchema } from 'rollhook'
 ```
 
 ---
@@ -387,7 +357,7 @@ The following scenarios are not covered by the current test suite. They are trac
 - [x] `GET /jobs/:id` — status + metadata
 - [x] `GET /jobs/:id/logs` — SSE stream from `data/logs/<id>.log`
 - [x] `GET /jobs` — paginated job history with app/status filters
-- [x] Pre-deploy validation (`rollhook.yaml` schema + compose file existence)
+- [x] Pre-deploy validation (`compose_path` existence check)
 - [x] Zero-downtime rolling deployment (scale → health-gate → remove old)
 - [x] Pushover + configurable webhook notifications
 - [x] `rollhook` npm package (TypeBox schemas + TS types, JSON Schema via jsDelivr CDN)
@@ -395,7 +365,6 @@ The following scenarios are not covered by the current test suite. They are trac
 - [x] Example app with correct compose, healthcheck, and graceful shutdown
 - [ ] Public Docker image: `ghcr.io/jkrumm/rollhook`
 - [ ] `examples/infra/` — reference `compose.infra.yml` (Traefik + Alloy + RollHook)
-- [ ] SchemaStore.org submission for `rollhook.yaml` IDE auto-detection
 
 ### Post-MVP
 

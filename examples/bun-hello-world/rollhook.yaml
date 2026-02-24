@@ -1,5 +1,0 @@
-# yaml-language-server: $schema=https://cdn.jsdelivr.net/npm/rollhook/schema/app.json
-name: hello-world
-compose_file: compose.yml
-steps:
-  - service: hello-world

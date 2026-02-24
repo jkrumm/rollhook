@@ -42,10 +42,10 @@ export async function setup(): Promise<void> {
   execSync(`docker tag rollhook-e2e-hello:v2 ${REGISTRY_HOST}/rollhook-e2e-hello:v2`)
   execSync(`docker push ${REGISTRY_HOST}/rollhook-e2e-hello:v2`, { stdio: 'inherit' })
 
-  // Write .env for docker-compose image tag resolution
+  // Write .env for initial docker-compose image tag resolution
   writeFileSync(
     join(HELLO_WORLD_DIR, '.env'),
-    `IMAGE_TAG=v1\nREGISTRY=${REGISTRY_HOST}\n`,
+    `IMAGE_TAG=${REGISTRY_HOST}/rollhook-e2e-hello:v1\n`,
   )
 
   // Start hello-world app at v1
@@ -53,9 +53,12 @@ export async function setup(): Promise<void> {
     stdio: 'inherit',
   })
 
-  // Generate rollhook.config.yaml with machine-absolute clone_path
+  // Generate rollhook.config.yaml with machine-absolute compose_path
   const configPath = join(E2E_DIR, 'rollhook.config.yaml')
-  writeFileSync(configPath, `apps:\n  - name: hello-world\n    clone_path: ${HELLO_WORLD_DIR}\n`)
+  writeFileSync(
+    configPath,
+    `apps:\n  - name: hello-world\n    compose_path: ${HELLO_WORLD_DIR}/compose.yml\n    steps:\n      - service: hello-world\n`,
+  )
 
   // Spawn rollhook server natively
   serverProcess = spawn('bun', ['run', 'apps/server/server.ts'], {

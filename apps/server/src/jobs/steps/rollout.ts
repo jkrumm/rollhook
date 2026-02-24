@@ -1,18 +1,22 @@
-import type { AppConfig } from 'rollhook'
 import { appendFileSync } from 'node:fs'
+import { dirname } from 'node:path'
 
-// Note: step.after is defined in the schema but steps always run sequentially (post-MVP: dependency graph)
-export async function rolloutApp(clonePath: string, logPath: string, appConfig: AppConfig): Promise<void> {
+// Note: steps always run sequentially (post-MVP: dependency graph)
+export async function rolloutApp(
+  composePath: string,
+  steps: Array<{ service: string }>,
+  logPath: string,
+): Promise<void> {
   const log = (line: string) => appendFileSync(logPath, `${line}\n`)
-  const composeFile = appConfig.compose_file ?? 'compose.yml'
+  const cwd = dirname(composePath)
 
-  for (const step of appConfig.steps) {
+  for (const step of steps) {
     log(`[rollout] Rolling out service: ${step.service}`)
 
-    const args = ['rollout', step.service, '-f', composeFile]
+    const args = ['rollout', step.service, '-f', composePath]
 
     const proc = Bun.spawn(['docker', ...args], {
-      cwd: clonePath,
+      cwd,
       stdout: 'pipe',
       stderr: 'pipe',
     })

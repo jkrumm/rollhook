@@ -25,9 +25,10 @@ rollhook/
         middleware/
           auth.ts                  # Bearer token plugin (role: admin | webhook)
         jobs/
-          executor.ts              # Main orchestrator: validate → pull → rollout → notify
+          executor.ts              # Main orchestrator: validate → pull → env → rollout → notify
           steps/pull.ts            # docker pull <image>
-          steps/validate.ts        # Pre-deploy: manifest schema + compose assertions
+          steps/validate.ts        # Pre-deploy: check compose_path is absolute + exists
+          steps/env.ts             # Write IMAGE_TAG=<uri> to .env next to compose file
           steps/rollout.ts         # docker rollout (ordered, healthcheck-gated)
           notifier.ts              # Pushover + configurable webhook
           queue.ts                 # In-memory job queue (Bun-native)
@@ -43,12 +44,10 @@ rollhook/
     rollhook/                # rollhook — public NPM package
       src/
         schema/
-          app.ts                   # TypeBox schema for rollhook.yaml
           config.ts                # TypeBox schema for rollhook.config.yaml
-        types.ts                   # Derived TS types: AppConfig, ServerConfig, JobResult
+        types.ts                   # Derived TS types: ServerConfig, JobResult
         index.ts                   # Re-exports
       schema/
-        app.json                   # Generated JSON Schema (from TypeBox)
         config.json                # Generated JSON Schema (from TypeBox)
   data/                            # gitignored
     rollhook.db              # SQLite — job metadata
@@ -57,7 +56,7 @@ rollhook/
     infra/
       compose.infra.yml            # Traefik + Alloy + RollHook reference stack
       config.alloy                 # Alloy reference config for log/metrics collection
-    bun-hello-world/               # Reference app: rollhook.yaml + healthcheck
+    bun-hello-world/               # Reference app: compose.yml + healthcheck
   package.json                     # Bun workspace root
   tsconfig.json                    # Root TypeScript 6.0 config (inherited by all packages)
   eslint.config.mjs                # @antfu/eslint-config (flat config, handles formatting too)
@@ -173,7 +172,9 @@ Two bearer token roles, set via environment variables (never in config files):
 # yaml-language-server: $schema=https://cdn.jsdelivr.net/npm/rollhook/schema/config.json
 apps:
   - name: my-api
-    clone_path: /srv/apps/my-api
+    compose_path: /srv/stacks/my-api/compose.yml
+    steps:
+      - service: backend
 notifications:
   webhook: '' # optional — POST job result JSON here on completion
 ```
@@ -198,22 +199,7 @@ An example file lives at `apps/server/rollhook.config.example.yaml`.
 
 ## YAML Schema Conventions
 
-All config files are YAML validated by TypeBox schemas. TypeBox produces valid JSON Schema natively — no conversion library needed. Schemas are published in the `rollhook` npm package and served via jsDelivr CDN.
-
-### `rollhook.yaml` (per app repo)
-
-```yaml
-# yaml-language-server: $schema=https://cdn.jsdelivr.net/npm/rollhook/schema/app.json
-name: my-api
-compose_file: compose.yml # optional, defaults to compose.yml
-steps:
-  - service: backend # steps run sequentially
-  - service: frontend
-```
-
-- TypeBox schema: `packages/rollhook/src/schema/app.ts`
-- JSON Schema: `packages/rollhook/schema/app.json`
-- CDN: `https://cdn.jsdelivr.net/npm/rollhook/schema/app.json`
+Config files are YAML validated by TypeBox schemas. TypeBox produces valid JSON Schema natively — no conversion library needed. Schemas are published in the `rollhook` npm package and served via jsDelivr CDN.
 
 ### `rollhook.config.yaml` (server config)
 
@@ -230,8 +216,8 @@ Primarily a schema delivery mechanism — published to npm so JSON Schemas are s
 **Exports:**
 
 ```ts
-export { AppConfigSchema, ServerConfigSchema } // TypeBox schemas (= JSON Schema objects)
-export type { AppConfig, JobResult, ServerConfig } // Static<typeof Schema> derived types
+export { ServerConfigSchema } // TypeBox schemas (= JSON Schema objects)
+export type { JobResult, ServerConfig } // Static<typeof Schema> derived types
 ```
 
 **`package.json` exports:**
@@ -240,7 +226,6 @@ export type { AppConfig, JobResult, ServerConfig } // Static<typeof Schema> deri
 {
   "exports": {
     ".": "./dist/index.js",
-    "./schema/app": "./schema/app.json",
     "./schema/config": "./schema/config.json"
   }
 }

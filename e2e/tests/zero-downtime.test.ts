@@ -1,19 +1,12 @@
 import { execSync } from 'node:child_process'
-import { writeFileSync } from 'node:fs'
-import { join } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { adminHeaders, BASE_URL, pollJobUntilDone, REGISTRY_HOST, TRAEFIK_URL, webhookHeaders } from '../setup/fixtures.ts'
-
-const DIR = fileURLToPath(new URL('.', import.meta.url))
-const HELLO_WORLD_DIR = join(DIR, '../../examples/bun-hello-world')
 
 const IMAGE_V1 = `${REGISTRY_HOST}/rollhook-e2e-hello:v1`
 const IMAGE_V2 = `${REGISTRY_HOST}/rollhook-e2e-hello:v2`
 
 beforeAll(async () => {
-  // Ensure we're starting from a clean v1 state
-  writeEnv('v1')
+  // Ensure we're starting from a clean v1 state — RollHook writes .env automatically
   const res = await fetch(`${BASE_URL}/deploy/hello-world`, {
     method: 'POST',
     headers: adminHeaders(),
@@ -22,11 +15,10 @@ beforeAll(async () => {
   const { job_id } = await res.json() as { job_id: string }
   const job = await pollJobUntilDone(job_id)
   expect(job.status).toBe('success')
-})
+}, 120_000)
 
 afterAll(() => {
-  // Reset .env back to v1 after test
-  writeEnv('v1')
+  // Nothing to clean up — RollHook manages .env
 })
 
 describe('zero-downtime rolling deployment', () => {
@@ -38,10 +30,7 @@ describe('zero-downtime rolling deployment', () => {
   })
 
   it('deploys v2 without dropping requests', async () => {
-    // Update .env so the rolling deployment picks up v2 from compose.yml
-    writeEnv('v2')
-
-    // Trigger v2 deployment
+    // Trigger v2 deployment — RollHook writes IMAGE_TAG to .env before rollout
     const deployRes = await fetch(`${BASE_URL}/deploy/hello-world`, {
       method: 'POST',
       headers: webhookHeaders(),
@@ -108,10 +97,3 @@ describe('zero-downtime rolling deployment', () => {
     expect(body.version).toBe('v2')
   })
 })
-
-function writeEnv(imageTag: string): void {
-  writeFileSync(
-    join(HELLO_WORLD_DIR, '.env'),
-    `IMAGE_TAG=${imageTag}\nREGISTRY=${REGISTRY_HOST}\n`,
-  )
-}

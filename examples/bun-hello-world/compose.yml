@@ -1,7 +1,7 @@
 services:
   hello-world:
-    # Image tag controlled via .env (IMAGE_TAG=v1) for docker-rollout version switching
-    image: ${REGISTRY:-localhost:5001}/rollhook-e2e-hello:${IMAGE_TAG:-v1}
+    # IMAGE_TAG is the full image URI — written by RollHook before each deploy
+    image: ${IMAGE_TAG:-localhost:5001/rollhook-e2e-hello:v1}
     environment:
       PORT: '3000'
     healthcheck:

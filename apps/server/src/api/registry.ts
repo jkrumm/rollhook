@@ -11,7 +11,8 @@ export const registryApi = new Elysia({ prefix: '/registry' })
       const [lastDeploy] = listJobs({ app: appConfig.name, limit: 1 })
       return {
         name: appConfig.name,
-        clone_path: appConfig.clone_path,
+        compose_path: appConfig.compose_path,
+        steps: appConfig.steps,
         last_deploy: lastDeploy ?? null,
       }
     })
@@ -27,14 +28,14 @@ export const registryApi = new Elysia({ prefix: '/registry' })
       return { message: `App "${params.app}" not found` }
     }
 
-    if (body.clone_path)
-      appConfig.clone_path = body.clone_path
+    if (body.compose_path)
+      appConfig.compose_path = body.compose_path
 
-    return { name: appConfig.name, clone_path: appConfig.clone_path }
+    return { name: appConfig.name, compose_path: appConfig.compose_path }
   }, {
     params: t.Object({ app: t.String() }),
     body: t.Object({
-      clone_path: t.Optional(t.String()),
+      compose_path: t.Optional(t.String()),
     }),
     detail: { tags: ['Registry'], summary: 'Update app config (in-memory only until restart)' },
   })

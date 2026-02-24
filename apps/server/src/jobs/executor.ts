@@ -6,9 +6,10 @@ import { loadConfig } from '@/config/loader'
 import { getJob, insertJob, updateJobStatus } from '@/db/jobs'
 import { notify } from '@/jobs/notifier'
 import { enqueue, setProcessor } from '@/jobs/queue'
+import { writeEnvFile } from '@/jobs/steps/env'
 import { pullImage } from '@/jobs/steps/pull'
 import { rolloutApp } from '@/jobs/steps/rollout'
-import { validateApp } from '@/jobs/steps/validate'
+import { validateCompose } from '@/jobs/steps/validate'
 
 const LOGS_DIR = join(process.cwd(), 'data', 'logs')
 
@@ -33,9 +34,10 @@ async function executeJob(job: { jobId: string, app: string, imageTag: string })
     if (!appConfig)
       throw new Error(`App "${app}" not found in rollhook.config.yaml`)
 
-    const parsedAppConfig = await validateApp(appConfig.clone_path, logPath)
+    validateCompose(appConfig.compose_path, logPath)
     await pullImage(imageTag, logPath)
-    await rolloutApp(appConfig.clone_path, logPath, parsedAppConfig)
+    writeEnvFile(appConfig.compose_path, imageTag, logPath)
+    await rolloutApp(appConfig.compose_path, appConfig.steps, logPath)
     log(`[executor] Deployment successful: ${app}`)
   }
   catch (err) {

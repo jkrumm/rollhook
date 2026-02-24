@@ -4,7 +4,13 @@ export const ServerConfigSchema = Type.Object({
   apps: Type.Array(
     Type.Object({
       name: Type.String({ description: 'Unique app name, matches the deploy/:app route param' }),
-      clone_path: Type.String({ description: 'Absolute path to the cloned repo on the VPS' }),
+      compose_path: Type.String({ description: 'Absolute path to the compose file on the VPS' }),
+      steps: Type.Array(
+        Type.Object({
+          service: Type.String({ description: 'Docker Compose service name to roll out' }),
+        }),
+        { description: 'Ordered rollout steps — executed sequentially' },
+      ),
     }),
     { description: 'Registered apps' },
   ),

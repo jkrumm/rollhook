@@ -2,13 +2,15 @@ import { describe, expect, it } from 'vitest'
 import { adminHeaders, BASE_URL } from '../setup/fixtures.ts'
 
 describe('registry API', () => {
-  it('lists hello-world with clone_path', async () => {
+  it('lists hello-world with compose_path and steps', async () => {
     const res = await fetch(`${BASE_URL}/registry`, { headers: adminHeaders() })
     expect(res.status).toBe(200)
-    const apps = await res.json() as Array<{ name: string, clone_path: string }>
+    const apps = await res.json() as Array<{ name: string, compose_path: string, steps: Array<{ service: string }> }>
     const helloWorld = apps.find(a => a.name === 'hello-world')
     expect(helloWorld).toBeDefined()
-    expect(helloWorld!.clone_path).toContain('bun-hello-world')
+    expect(helloWorld!.compose_path).toContain('bun-hello-world')
+    expect(helloWorld!.steps).toHaveLength(1)
+    expect(helloWorld!.steps[0]!.service).toBe('hello-world')
   })
 
   it('includes last_deploy field', async () => {
@@ -20,26 +22,26 @@ describe('registry API', () => {
     expect(helloWorld).toHaveProperty('last_deploy')
   })
 
-  it('patching clone_path returns updated value', async () => {
+  it('patching compose_path returns updated value', async () => {
     // Save original path so we can restore after the test
     const listRes = await fetch(`${BASE_URL}/registry`, { headers: adminHeaders() })
-    const apps = await listRes.json() as Array<{ name: string, clone_path: string }>
-    const originalPath = apps.find(a => a.name === 'hello-world')!.clone_path
+    const apps = await listRes.json() as Array<{ name: string, compose_path: string }>
+    const originalPath = apps.find(a => a.name === 'hello-world')!.compose_path
 
     const res = await fetch(`${BASE_URL}/registry/hello-world`, {
       method: 'PATCH',
       headers: adminHeaders(),
-      body: JSON.stringify({ clone_path: '/tmp/test-path' }),
+      body: JSON.stringify({ compose_path: '/tmp/test-path/compose.yml' }),
     })
     expect(res.status).toBe(200)
-    const body = await res.json() as { name: string, clone_path: string }
-    expect(body.clone_path).toBe('/tmp/test-path')
+    const body = await res.json() as { name: string, compose_path: string }
+    expect(body.compose_path).toBe('/tmp/test-path/compose.yml')
 
     // Restore original path to avoid breaking subsequent deploy tests
     await fetch(`${BASE_URL}/registry/hello-world`, {
       method: 'PATCH',
       headers: adminHeaders(),
-      body: JSON.stringify({ clone_path: originalPath }),
+      body: JSON.stringify({ compose_path: originalPath }),
     })
   })
 
@@ -47,7 +49,7 @@ describe('registry API', () => {
     const res = await fetch(`${BASE_URL}/registry/nonexistent-app`, {
       method: 'PATCH',
       headers: adminHeaders(),
-      body: JSON.stringify({ clone_path: '/tmp/test' }),
+      body: JSON.stringify({ compose_path: '/tmp/test/compose.yml' }),
     })
     expect(res.status).toBe(404)
   })

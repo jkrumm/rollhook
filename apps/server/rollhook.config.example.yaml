@@ -1,6 +1,10 @@
 # yaml-language-server: $schema=https://cdn.jsdelivr.net/npm/rollhook/schema/config.json
 apps:
   - name: my-api
-    clone_path: /srv/apps/my-api
+    compose_path: /srv/stacks/my-api/compose.yml
+    steps:
+      - service: backend
   - name: my-frontend
-    clone_path: /srv/apps/my-frontend
+    compose_path: /srv/stacks/my-frontend/compose.yml
+    steps:
+      - service: frontend
