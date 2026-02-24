@@ -1,5 +1,5 @@
-import process from 'node:process'
 import type { JobResult } from 'rollhook'
+import process from 'node:process'
 import { loadConfig } from '@/config/loader'
 
 export async function notify(job: JobResult): Promise<void> {

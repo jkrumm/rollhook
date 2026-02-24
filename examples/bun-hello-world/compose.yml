@@ -1,0 +1,24 @@
+services:
+  hello-world:
+    # Image tag controlled via .env (IMAGE_TAG=v1) for docker-rollout version switching
+    image: ${REGISTRY:-localhost:5001}/rollhook-e2e-hello:${IMAGE_TAG:-v1}
+    environment:
+      PORT: '3000'
+    healthcheck:
+      test: [CMD, bun, -e, "fetch('http://localhost:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      start_period: 10s
+      retries: 5
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.hello.rule=PathPrefix(`/`)
+      - traefik.http.routers.hello.entrypoints=web
+      - traefik.http.services.hello.loadbalancer.server.port=3000
+    networks:
+      - traefik
+
+networks:
+  traefik:
+    external: true
+    name: e2e_traefik

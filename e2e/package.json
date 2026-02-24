@@ -1,0 +1,13 @@
+{
+  "name": "@rollhook/e2e",
+  "type": "module",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "vitest": "^2.0.0"
+  }
+}

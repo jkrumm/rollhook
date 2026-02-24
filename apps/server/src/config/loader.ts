@@ -6,7 +6,7 @@ import { Value } from '@sinclair/typebox/value'
 import yaml from 'js-yaml'
 import { ServerConfigSchema } from 'rollhook'
 
-const CONFIG_PATH = join(process.cwd(), 'rollhook.config.yaml')
+const CONFIG_PATH = process.env.ROLLHOOK_CONFIG_PATH ?? join(process.cwd(), 'rollhook.config.yaml')
 
 let cached: ServerConfig | null = null
 

@@ -36,15 +36,6 @@
           "type": "string"
         }
       }
-    },
-    "notifications": {
-      "type": "object",
-      "properties": {
-        "webhook": {
-          "description": "URL to POST job result JSON to",
-          "type": "string"
-        }
-      }
     }
   }
 }
