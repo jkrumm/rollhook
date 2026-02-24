@@ -175,11 +175,10 @@ apps:
   - name: my-api
     clone_path: /srv/apps/my-api
 notifications:
-  pushover:
-    user_key: ''
-    app_token: ''
-  webhook: ''
+  webhook: ''  # optional — POST job result JSON here on completion
 ```
+
+Pushover credentials are **not** in the config file — they come from environment variables: `PUSHOVER_USER_KEY` and `PUSHOVER_APP_TOKEN`.
 
 Parsed and validated at startup via `apps/server/src/config/loader.ts` using `ServerConfigSchema` from `packages/rollhook/src/schema/config.ts`.
 
@@ -206,19 +205,10 @@ All config files are YAML validated by TypeBox schemas. TypeBox produces valid J
 ```yaml
 # yaml-language-server: $schema=https://cdn.jsdelivr.net/npm/rollhook/schema/app.json
 name: my-api
-compose_file: compose.yml
+compose_file: compose.yml  # optional, defaults to compose.yml
 steps:
-  - service: backend
-    wait_for_healthy: true
+  - service: backend   # steps run sequentially
   - service: frontend
-    wait_for_healthy: true
-    after: backend
-notifications:
-  on_failure: true
-  on_success: false
-secrets:
-  doppler_project: my-api
-  doppler_config: production
 ```
 
 - TypeBox schema: `packages/rollhook/src/schema/app.ts`

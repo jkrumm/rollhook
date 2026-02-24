@@ -49,6 +49,9 @@ describe('Job queue', () => {
 
   it('continues processing after a job throws', async () => {
     const processed: string[] = []
+    // Suppress the expected [queue] error log — this output is intentional, not a test failure
+    const originalError = console.error
+    console.error = () => {}
 
     setProcessor(async (job) => {
       if (job.jobId === 'err-bad')
@@ -61,6 +64,7 @@ describe('Job queue', () => {
     enqueue({ jobId: 'err-good-2', app: 'app', imageTag: 'img:3' })
 
     await drain(400)
+    console.error = originalError
 
     expect(processed).toContain('err-good-1')
     expect(processed).toContain('err-good-2')

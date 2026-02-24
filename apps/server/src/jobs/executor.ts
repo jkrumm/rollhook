@@ -32,7 +32,7 @@ async function executeJob(job: { jobId: string, app: string, imageTag: string })
     updateJobStatus(jobId, 'failed', msg)
     const jobRecord = getJob(jobId)
     if (jobRecord)
-      await notify(jobRecord)
+      await notify(jobRecord, logPath)
     return
   }
 
@@ -55,7 +55,7 @@ async function executeJob(job: { jobId: string, app: string, imageTag: string })
 
   const jobRecord = getJob(jobId)
   if (jobRecord)
-    await notify(jobRecord)
+    await notify(jobRecord, logPath)
 }
 
 setProcessor(executeJob)

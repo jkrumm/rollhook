@@ -31,7 +31,7 @@ function makeAppDir(name: string, files: Record<string, string>): string {
 describe('validateApp', () => {
   it('accepts valid rollhook.yaml', async () => {
     const dir = makeAppDir('valid-app', {
-      'rollhook.yaml': `name: my-app\nsteps:\n  - service: backend\n    wait_for_healthy: true\n`,
+      'rollhook.yaml': `name: my-app\nsteps:\n  - service: backend\n`,
       'compose.yml': `services:\n  backend:\n    image: nginx\n`,
     })
     const result = await validateApp(dir, makeLogPath('valid-app'))

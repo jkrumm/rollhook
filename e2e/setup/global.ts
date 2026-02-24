@@ -14,6 +14,10 @@ const HELLO_WORLD_DIR = join(ROOT, 'examples/bun-hello-world')
 let serverProcess: ChildProcess | null = null
 
 export async function setup(): Promise<void> {
+  // Tear down any stale state from a previous crashed run before starting fresh
+  execSync(`docker compose --project-directory ${HELLO_WORLD_DIR} down -v 2>/dev/null || true`)
+  execSync(`docker compose -f ${E2E_DIR}/compose.e2e.yml --project-name rollhook-e2e down -v 2>/dev/null || true`)
+
   // Start infrastructure (Traefik + local registry)
   execSync(`docker compose -f ${E2E_DIR}/compose.e2e.yml --project-name rollhook-e2e up -d`, {
     stdio: 'inherit',

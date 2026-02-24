@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { ADMIN_TOKEN, adminHeaders, BASE_URL, WEBHOOK_TOKEN, webhookHeaders } from '../setup/fixtures.ts'
+import { ADMIN_TOKEN, adminHeaders, BASE_URL, REGISTRY_HOST, WEBHOOK_TOKEN, webhookHeaders } from '../setup/fixtures.ts'
+
+// Use a non-existent tag so the deploy job fails at the pull step — no rollout runs,
+// no new container is created, and the queue clears in seconds instead of ~16s per rollout.
+const NONEXISTENT_IMAGE = `${REGISTRY_HOST}/rollhook-e2e-hello:nonexistent`
 
 describe('authentication', () => {
   it('no Authorization header → 401', async () => {
@@ -23,7 +27,7 @@ describe('authentication', () => {
     const res = await fetch(`${BASE_URL}/deploy/hello-world`, {
       method: 'POST',
       headers: webhookHeaders(),
-      body: JSON.stringify({ image_tag: 'localhost:5001/rollhook-e2e-hello:v1' }),
+      body: JSON.stringify({ image_tag: NONEXISTENT_IMAGE }),
     })
     expect(res.status).toBe(200)
   })
@@ -32,7 +36,7 @@ describe('authentication', () => {
     const res = await fetch(`${BASE_URL}/deploy/hello-world`, {
       method: 'POST',
       headers: adminHeaders(),
-      body: JSON.stringify({ image_tag: 'localhost:5001/rollhook-e2e-hello:v1' }),
+      body: JSON.stringify({ image_tag: NONEXISTENT_IMAGE }),
     })
     expect(res.status).toBe(200)
   })

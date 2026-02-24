@@ -1,3 +1,4 @@
+import { execSync } from 'node:child_process'
 import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -37,7 +38,7 @@ describe('zero-downtime rolling deployment', () => {
   })
 
   it('deploys v2 without dropping requests', async () => {
-    // Update .env so docker-rollout picks up v2 from compose.yml
+    // Update .env so the rolling deployment picks up v2 from compose.yml
     writeEnv('v2')
 
     // Trigger v2 deployment
@@ -52,8 +53,10 @@ describe('zero-downtime rolling deployment', () => {
     // Hammer the version endpoint every 200ms while deployment runs
     const errors: string[] = []
     const versions: string[] = []
+    let maxContainerCount = 0
 
-    const hammer = setInterval(async () => {
+    // Version poller — checks for HTTP errors (zero-downtime assertion)
+    const versionPoller = setInterval(async () => {
       try {
         const res = await fetch(`${TRAEFIK_URL}/version`)
         if (!res.ok) {
@@ -68,8 +71,24 @@ describe('zero-downtime rolling deployment', () => {
       }
     }, 200)
 
+    // Container count poller — verifies at most 2 instances run simultaneously during rollout
+    const containerPoller = setInterval(() => {
+      try {
+        const output = execSync(
+          'docker ps --filter name=bun-hello-world-hello-world --format "{{.Names}}"',
+          { encoding: 'utf-8' },
+        ).trim()
+        const count = output ? output.split('\n').filter(Boolean).length : 0
+        maxContainerCount = Math.max(maxContainerCount, count)
+      }
+      catch {
+        // ignore transient docker ps errors
+      }
+    }, 500)
+
     const job = await pollJobUntilDone(job_id, 90_000)
-    clearInterval(hammer)
+    clearInterval(versionPoller)
+    clearInterval(containerPoller)
 
     // Wait a tick to collect any in-flight responses
     await new Promise(resolve => setTimeout(resolve, 300))
@@ -78,6 +97,8 @@ describe('zero-downtime rolling deployment', () => {
     expect(errors).toHaveLength(0)
     expect(versions.includes('v1')).toBe(true)
     expect(versions.includes('v2')).toBe(true)
+    // Rolling deployment: at most old + new container running simultaneously
+    expect(maxContainerCount).toBeLessThanOrEqual(2)
   })
 
   it('v2 is serving after deployment', async () => {

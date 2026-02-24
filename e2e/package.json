@@ -6,6 +6,9 @@
   "scripts": {
     "test": "vitest run"
   },
+  "dependencies": {
+    "rollhook": "workspace:*"
+  },
   "devDependencies": {
     "@types/bun": "latest",
     "vitest": "^2.0.0"

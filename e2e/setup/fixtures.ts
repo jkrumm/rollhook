@@ -1,3 +1,5 @@
+import type { JobResult } from 'rollhook'
+
 export const BASE_URL = 'http://localhost:7700'
 export const TRAEFIK_URL = 'http://localhost:9080'
 export const REGISTRY_HOST = 'localhost:5001'
@@ -13,16 +15,10 @@ export function webhookHeaders(): HeadersInit {
   return { 'Authorization': `Bearer ${WEBHOOK_TOKEN}`, 'Content-Type': 'application/json' }
 }
 
-export interface JobResult {
-  id: string
-  app: string
-  image_tag: string
-  status: string
-  error?: string
-  created_at: string
-  updated_at: string
-}
+export type { JobResult }
 
+// Poll /jobs/:id every second until status is success or failed.
+// Timeout accounts for queue depth: each rollout takes ~16s, up to 4 queued = ~64s worst case.
 export async function pollJobUntilDone(jobId: string, timeoutMs = 90_000): Promise<JobResult> {
   const deadline = Date.now() + timeoutMs
   while (Date.now() < deadline) {

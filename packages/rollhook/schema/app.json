@@ -3,66 +3,28 @@
   "title": "RollHook App Config",
   "description": "Per-app rollhook.yaml configuration",
   "type": "object",
-  "required": [
-    "name",
-    "steps"
-  ],
+  "required": ["name", "steps"],
   "properties": {
     "name": {
       "description": "Unique app name, matches the deploy/:app route param",
       "type": "string"
     },
     "compose_file": {
-      "description": "Path to docker-compose file relative to clone_path",
+      "description": "Path to docker-compose file relative to clone_path, defaults to compose.yml",
       "default": "compose.yml",
       "type": "string"
     },
     "steps": {
-      "description": "Ordered rollout steps",
+      "description": "Ordered rollout steps — executed sequentially",
       "type": "array",
       "items": {
         "type": "object",
-        "required": [
-          "service"
-        ],
+        "required": ["service"],
         "properties": {
           "service": {
-            "description": "Docker Compose service name",
-            "type": "string"
-          },
-          "wait_for_healthy": {
-            "description": "Wait for health check to pass before proceeding",
-            "default": false,
-            "type": "boolean"
-          },
-          "after": {
-            "description": "Service name that must complete before this step starts",
+            "description": "Docker Compose service name to roll out",
             "type": "string"
           }
-        }
-      }
-    },
-    "notifications": {
-      "type": "object",
-      "properties": {
-        "on_failure": {
-          "default": true,
-          "type": "boolean"
-        },
-        "on_success": {
-          "default": false,
-          "type": "boolean"
-        }
-      }
-    },
-    "secrets": {
-      "type": "object",
-      "properties": {
-        "doppler_project": {
-          "type": "string"
-        },
-        "doppler_config": {
-          "type": "string"
         }
       }
     }

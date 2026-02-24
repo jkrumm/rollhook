@@ -3,7 +3,3 @@ name: hello-world
 compose_file: compose.yml
 steps:
   - service: hello-world
-    wait_for_healthy: true
-notifications:
-  on_failure: true
-  on_success: false
