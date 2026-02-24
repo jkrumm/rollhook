@@ -36,5 +36,5 @@ else {
 }
 
 app.listen(Number(process.env.PORT ?? 7700), () =>
-  console.log(`StackCommander running on http://localhost:${process.env.PORT ?? 7700}`),
+  console.log(`RollHook running on http://localhost:${process.env.PORT ?? 7700}`),
 )

@@ -21,7 +21,7 @@ export const Route = createRootRoute({
         name: 'darkreader-lock',
       },
       {
-        title: 'StackCommander',
+        title: 'RollHook',
       },
     ],
     links: [

@@ -1,16 +1,16 @@
-# StackCommander
+# RollHook
 
 **The opinionated, TypeScript-native rolling deployment server for Docker Compose on VPS.**
 
-[![npm](https://img.shields.io/npm/v/stackcommander)](https://www.npmjs.com/package/stackcommander)
-[![Docker](https://img.shields.io/badge/docker-ghcr.io%2Fjkrumm%2Fstackcommander-blue)](https://ghcr.io/jkrumm/stackcommander)
+[![npm](https://img.shields.io/npm/v/rollhook)](https://www.npmjs.com/package/rollhook)
+[![Docker](https://img.shields.io/badge/docker-ghcr.io%2Fjkrumm%2Frollhook-blue)](https://ghcr.io/jkrumm/rollhook)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ---
 
 ## What it is
 
-StackCommander is a self-hosted HTTP server that receives webhook calls from GitHub Actions, runs zero-downtime rolling deployments via `docker-rollout`, and streams logs back to CI.
+RollHook is a self-hosted HTTP server that receives webhook calls from GitHub Actions, runs zero-downtime rolling deployments via `docker-rollout`, and streams logs back to CI.
 
 It is **not** a PaaS, has no GUI, and does not manage clusters. It does one thing: take an image tag, roll it out across a Docker Compose service, and tell you if it worked.
 
@@ -27,7 +27,7 @@ It is **not** a PaaS, has no GUI, and does not manage clusters. It does one thin
 ```mermaid
 flowchart LR
     GH[GitHub Actions]
-    SC[StackCommander\nport 7700]
+    SC[RollHook\nport 7700]
     DR[docker-rollout]
     TR[Traefik\nreverse proxy]
     APP[App containers]
@@ -39,36 +39,36 @@ flowchart LR
     SC -->|SSE log stream| GH
 ```
 
-Traefik handles ingress and zero-downtime traffic shifting during rollouts. StackCommander orchestrates the deployment sequence and reports results.
+Traefik handles ingress and zero-downtime traffic shifting during rollouts. RollHook orchestrates the deployment sequence and reports results.
 
 ---
 
 ## Infra Prerequisites
 
-StackCommander requires Traefik and optionally Alloy running on the same host. These are **not** bundled — they belong in a separate infra stack.
+RollHook requires Traefik and optionally Alloy running on the same host. These are **not** bundled — they belong in a separate infra stack.
 
 Reference configurations are provided in [`examples/infra/`](examples/infra/):
 
 | File | Purpose |
 |-|-|
-| `compose.infra.yml` | Traefik + Alloy + StackCommander reference stack |
+| `compose.infra.yml` | Traefik + Alloy + RollHook reference stack |
 | `config.alloy` | Alloy reference config for log/metrics collection |
 
 ---
 
 ## Quick Start
 
-### 1. Run StackCommander
+### 1. Run RollHook
 
 ```yaml
 # docker-compose.yml (on your VPS)
 services:
-  stackcommander:
-    image: ghcr.io/jkrumm/stackcommander:latest
+  rollhook:
+    image: ghcr.io/jkrumm/rollhook:latest
     ports:
       - "7700:7700"
     volumes:
-      - ./stackcommander.config.yaml:/app/stackcommander.config.yaml:ro
+      - ./rollhook.config.yaml:/app/rollhook.config.yaml:ro
       - ./data:/app/data
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
@@ -79,8 +79,8 @@ services:
 ### 2. Configure apps
 
 ```yaml
-# stackcommander.config.yaml (on your VPS, gitignored)
-# yaml-language-server: $schema=https://cdn.jsdelivr.net/npm/stackcommander/schema/config.json
+# rollhook.config.yaml (on your VPS, gitignored)
+# yaml-language-server: $schema=https://cdn.jsdelivr.net/npm/rollhook/schema/config.json
 apps:
   - name: my-api
     clone_path: /srv/apps/my-api
@@ -92,11 +92,11 @@ notifications:
     app_token: ""
 ```
 
-### 3. Add `stackcommander.yaml` to each app repo
+### 3. Add `rollhook.yaml` to each app repo
 
 ```yaml
-# stackcommander.yaml (in your app repo)
-# yaml-language-server: $schema=https://cdn.jsdelivr.net/npm/stackcommander/schema/app.json
+# rollhook.yaml (in your app repo)
+# yaml-language-server: $schema=https://cdn.jsdelivr.net/npm/rollhook/schema/app.json
 name: my-api
 compose_file: compose.yml
 steps:
@@ -131,12 +131,12 @@ curl -N https://your-vps:7700/jobs/job_01JXYZ.../logs \
 
 ---
 
-## `stackcommander.yaml` Reference
+## `rollhook.yaml` Reference
 
-Per-app config file committed to each app repo. StackCommander reads this from `clone_path` at deploy time.
+Per-app config file committed to each app repo. RollHook reads this from `clone_path` at deploy time.
 
 ```yaml
-# yaml-language-server: $schema=https://cdn.jsdelivr.net/npm/stackcommander/schema/app.json
+# yaml-language-server: $schema=https://cdn.jsdelivr.net/npm/rollhook/schema/app.json
 name: my-api                       # required — must match registry key
 compose_file: compose.yml          # default: compose.yml
 
@@ -159,7 +159,7 @@ secrets:
 ```
 
 **Pre-deploy validation** checks before any deployment runs:
-- `stackcommander.yaml` validates against JSON Schema
+- `rollhook.yaml` validates against JSON Schema
 - Each service listed in `steps` has a `healthcheck` in `compose.yml`
 - No `container_name` overrides (blocks rolling replacement)
 
@@ -186,7 +186,7 @@ Interactive docs at `/openapi` (Scalar UI). Key routes:
 
 ---
 
-## `stackcommander` npm Package
+## `rollhook` npm Package
 
 Primarily a schema delivery mechanism — published to npm so JSON Schemas are served via jsDelivr CDN. Schemas are defined in TypeBox (already in the stack via Elysia), which produces valid JSON Schema natively. The server imports the same schemas directly for route validation — no conversion library, no duplication.
 
@@ -194,15 +194,15 @@ JSON Schema files are served via jsDelivr CDN:
 
 | Schema | URL |
 |-|-|
-| `stackcommander.yaml` | `https://cdn.jsdelivr.net/npm/stackcommander/schema/app.json` |
-| `stackcommander.config.yaml` | `https://cdn.jsdelivr.net/npm/stackcommander/schema/config.json` |
+| `rollhook.yaml` | `https://cdn.jsdelivr.net/npm/rollhook/schema/app.json` |
+| `rollhook.config.yaml` | `https://cdn.jsdelivr.net/npm/rollhook/schema/config.json` |
 
 Add the `# yaml-language-server: $schema=...` comment at the top of each YAML file for IDE validation without any plugin config.
 
 ```ts
 // Optional: programmatic validation in app tooling (TypeBox schemas = standard JSON Schema objects)
-import { AppConfigSchema } from 'stackcommander'
-import type { AppConfig } from 'stackcommander'
+import { AppConfigSchema } from 'rollhook'
+import type { AppConfig } from 'rollhook'
 ```
 
 ---
@@ -210,7 +210,7 @@ import type { AppConfig } from 'stackcommander'
 ## Self-Hosting
 
 ```bash
-docker pull ghcr.io/jkrumm/stackcommander:latest
+docker pull ghcr.io/jkrumm/rollhook:latest
 ```
 
 ### Environment Variables
@@ -225,14 +225,14 @@ docker pull ghcr.io/jkrumm/stackcommander:latest
 
 | Path | Purpose |
 |-|-|
-| `/app/stackcommander.config.yaml` | Server config (mount as read-only) |
+| `/app/rollhook.config.yaml` | Server config (mount as read-only) |
 | `/app/data` | SQLite DB + job logs (persist across restarts) |
 | `/var/run/docker.sock` | Docker socket (required for `docker rollout`) |
 
-### Minimal `stackcommander.config.yaml`
+### Minimal `rollhook.config.yaml`
 
 ```yaml
-# yaml-language-server: $schema=https://cdn.jsdelivr.net/npm/stackcommander/schema/config.json
+# yaml-language-server: $schema=https://cdn.jsdelivr.net/npm/rollhook/schema/config.json
 apps:
   - name: my-app
     clone_path: /srv/apps/my-app
@@ -248,20 +248,20 @@ apps:
 - [ ] `POST /deploy/:app` — accepts `image_tag`, returns `job_id`
 - [ ] `GET /jobs/:id` — status + metadata
 - [ ] `GET /jobs/:id/logs` — SSE stream from `data/logs/<id>.log`
-- [ ] Pre-deploy validation (`stackcommander.yaml` schema + compose healthcheck + no `container_name`)
+- [ ] Pre-deploy validation (`rollhook.yaml` schema + compose healthcheck + no `container_name`)
 - [ ] Job executor: `docker pull` → `doppler run -- docker rollout` (sequential, healthcheck-gated)
 - [ ] Ordered multi-service steps with `after:` dependency
 - [ ] Pushover notifications (`on_failure: true` by default)
-- [ ] `stackcommander.yaml` JSON Schema + SchemaStore submission
-- [ ] `stackcommander` npm package (Zod schemas + TS types, JSON Schema via jsDelivr)
-- [ ] `stackcommander.config.yaml` loading + validation
-- [ ] Example app: Bun hello-world with `stackcommander.yaml` and healthcheck
-- [ ] Public Docker image: `ghcr.io/jkrumm/stackcommander`
-- [ ] `examples/infra/` — reference `compose.infra.yml` (Traefik + Alloy + StackCommander) + `config.alloy`
+- [ ] `rollhook.yaml` JSON Schema + SchemaStore submission
+- [ ] `rollhook` npm package (Zod schemas + TS types, JSON Schema via jsDelivr)
+- [ ] `rollhook.config.yaml` loading + validation
+- [ ] Example app: Bun hello-world with `rollhook.yaml` and healthcheck
+- [ ] Public Docker image: `ghcr.io/jkrumm/rollhook`
+- [ ] `examples/infra/` — reference `compose.infra.yml` (Traefik + Alloy + RollHook) + `config.alloy`
 
 ### Post-MVP
 
-- [ ] Multi-VPS support via Docker contexts (`docker_context` in `stackcommander.yaml`)
+- [ ] Multi-VPS support via Docker contexts (`docker_context` in `rollhook.yaml`)
 - [ ] `GET /jobs` — paginated job history with app/status filters
 - [ ] `PATCH /registry/:app` — update app config at runtime
 - [ ] Rollback: `POST /deploy/:app/rollback` (redeploy last successful job's image)
@@ -277,4 +277,4 @@ apps:
 - [ ] E2E test: deploy sample app, simulate healthcheck failure, assert no container swap
 - [ ] Single executable (`bun --compile`, minimal Docker footprint)
 - [ ] Secrets rotation trigger: `POST /deploy/:app/refresh-secrets`
-- [ ] Multi-tenant: multiple teams/orgs per StackCommander instance
+- [ ] Multi-tenant: multiple teams/orgs per RollHook instance

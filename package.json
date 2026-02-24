@@ -1,5 +1,5 @@
 {
-  "name": "stackcommander",
+  "name": "rollhook",
   "private": true,
   "workspaces": [
     "apps/*",

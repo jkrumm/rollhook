@@ -10,7 +10,7 @@ const getCounter = createIsomorphicFn()
   .server(async () => {
     const [{ treaty }, { app }] = await Promise.all([
       import('@elysiajs/eden'),
-      import('@stackcommander/server/app'),
+      import('@rollhook/server/app'),
     ])
     const { data } = await treaty(app).api.counter.get()
     return data ?? { count: 0 }

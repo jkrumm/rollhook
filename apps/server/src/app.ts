@@ -6,7 +6,7 @@ export const app = new Elysia()
   .use(openapi({
     path: '/openapi',
     documentation: {
-      info: { title: 'StackCommander API', version: '0.0.0' },
+      info: { title: 'RollHook API', version: '0.0.0' },
       tags: [{ name: 'Counter', description: 'Counter endpoints' }],
     },
   }))

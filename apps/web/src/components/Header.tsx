@@ -1,7 +1,7 @@
 export default function Header() {
   return (
     <header>
-      <nav>StackCommander</nav>
+      <nav>RollHook</nav>
     </header>
   )
 }

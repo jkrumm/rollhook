@@ -1,10 +1,10 @@
-# StackCommander — Project Configuration
+# RollHook — Project Configuration
 
 ## Project Overview
 
 Webhook-driven rolling deployment orchestrator for Docker Compose stacks on self-hosted VPS. Receives GitHub Actions webhook calls, runs zero-downtime rolling deployments via `docker-rollout`, and streams job logs back to CI.
 
-See: `~/Obsidian/Vault/03_Projects/stackcommander.md`
+See: `~/Obsidian/Vault/03_Projects/rollhook.md`
 North Star Stack: `~/Obsidian/Vault/04_Areas/Engineering/north-star-stack.md`
 
 ---
@@ -12,9 +12,9 @@ North Star Stack: `~/Obsidian/Vault/04_Areas/Engineering/north-star-stack.md`
 ## Monorepo Structure
 
 ```
-stackcommander/
+rollhook/
   apps/
-    server/                        # @stackcommander/server — Elysia API (port 7700)
+    server/                        # @rollhook/server — Elysia API (port 7700)
       src/
         app.ts                     # Bare Elysia app (no .listen()), plugin composition
         api/
@@ -35,29 +35,29 @@ stackcommander/
           client.ts                # bun:sqlite instance + auto-migrations
           jobs.ts                  # Job CRUD (insert, get, updateStatus)
         config/
-          loader.ts                # Parse + validate stackcommander.config.yaml
+          loader.ts                # Parse + validate rollhook.config.yaml
           schema.ts                # TypeBox schema for server config
       server.ts                    # Entry — .listen(7700)
-      stackcommander.config.example.yaml
+      rollhook.config.example.yaml
   packages/
-    stackcommander/                # stackcommander — public NPM package
+    rollhook/                # rollhook — public NPM package
       src/
         schema/
-          app.ts                   # TypeBox schema for stackcommander.yaml
-          config.ts                # TypeBox schema for stackcommander.config.yaml
+          app.ts                   # TypeBox schema for rollhook.yaml
+          config.ts                # TypeBox schema for rollhook.config.yaml
         types.ts                   # Derived TS types: AppConfig, ServerConfig, JobResult
         index.ts                   # Re-exports
       schema/
         app.json                   # Generated JSON Schema (from Zod, via zod-to-json-schema)
         config.json                # Generated JSON Schema (from Zod)
   data/                            # gitignored
-    stackcommander.db              # SQLite — job metadata
+    rollhook.db              # SQLite — job metadata
     logs/                          # data/logs/<job-id>.log — raw job output
   examples/
     infra/
-      compose.infra.yml            # Traefik + Alloy + StackCommander reference stack
+      compose.infra.yml            # Traefik + Alloy + RollHook reference stack
       config.alloy                 # Alloy reference config for log/metrics collection
-    bun-hello-world/               # Reference app: stackcommander.yaml + healthcheck
+    bun-hello-world/               # Reference app: rollhook.yaml + healthcheck
   package.json                     # Bun workspace root
   tsconfig.json                    # Root TypeScript 6.0 config (inherited by all packages)
   eslint.config.mjs                # @antfu/eslint-config (flat config, handles formatting too)
@@ -74,8 +74,8 @@ stackcommander/
 | Language | TypeScript 6.0.0-beta |
 | Backend | Elysia (Bun-native, OpenAPI, bearer auth plugin) |
 | API Docs | Scalar via `@elysiajs/openapi` at `/openapi` |
-| Database | `bun:sqlite` — `data/stackcommander.db`, job metadata |
-| Config | YAML (`stackcommander.config.yaml`) + Zod validation |
+| Database | `bun:sqlite` — `data/rollhook.db`, job metadata |
+| Config | YAML (`rollhook.config.yaml`) + Zod validation |
 | Schema | TypeBox (`@sinclair/typebox`) — schemas are valid JSON Schema natively, no conversion step |
 | Deployment | `docker-rollout` — zero-downtime rolling updates |
 | Linting/Formatting | @antfu/eslint-config (ESLint flat config, no Prettier) |
@@ -92,7 +92,7 @@ bun install
 
 # Add dep to a specific workspace
 bun add <pkg> --cwd apps/server
-bun add <pkg> --cwd packages/stackcommander
+bun add <pkg> --cwd packages/rollhook
 ```
 
 ---
@@ -132,8 +132,8 @@ bun run lint:fix    # Fix + format
 
 | Directory | Package Name |
 |-|-|
-| `apps/server` | `@stackcommander/server` |
-| `packages/stackcommander` | `stackcommander` |
+| `apps/server` | `@rollhook/server` |
+| `packages/rollhook` | `rollhook` |
 
 ---
 
@@ -148,7 +148,7 @@ bun run lint:fix    # Fix + format
 | `apps/server/src/api/registry.ts` | `GET /registry`, `PATCH /registry/:app` |
 | `apps/server/src/middleware/auth.ts` | Bearer token plugin — two roles: `admin`, `webhook` |
 | `apps/server/src/db/client.ts` | `bun:sqlite` instance, auto-migrations |
-| `apps/server/src/config/loader.ts` | Parse + validate `stackcommander.config.yaml` |
+| `apps/server/src/config/loader.ts` | Parse + validate `rollhook.config.yaml` |
 
 OpenAPI (Scalar UI): `@elysiajs/openapi` — served at `/openapi`, JSON spec at `/openapi/json`.
 
@@ -167,10 +167,10 @@ Two bearer token roles, set via environment variables (never in config files):
 
 ## Config
 
-`stackcommander.config.yaml` — server config on the VPS, gitignored real file.
+`rollhook.config.yaml` — server config on the VPS, gitignored real file.
 
 ```yaml
-# yaml-language-server: $schema=https://cdn.jsdelivr.net/npm/stackcommander/schema/config.json
+# yaml-language-server: $schema=https://cdn.jsdelivr.net/npm/rollhook/schema/config.json
 apps:
   - name: my-api
     clone_path: /srv/apps/my-api
@@ -181,15 +181,15 @@ notifications:
   webhook: ""
 ```
 
-Parsed and validated at startup via `apps/server/src/config/loader.ts` using `ServerConfigSchema` from `packages/stackcommander/src/schema/config.ts`.
+Parsed and validated at startup via `apps/server/src/config/loader.ts` using `ServerConfigSchema` from `packages/rollhook/src/schema/config.ts`.
 
-An example file lives at `apps/server/stackcommander.config.example.yaml`.
+An example file lives at `apps/server/rollhook.config.example.yaml`.
 
 ---
 
 ## SQLite
 
-`bun:sqlite` — `data/stackcommander.db`, zero external dependencies.
+`bun:sqlite` — `data/rollhook.db`, zero external dependencies.
 
 - Job metadata: id, app, status, image_tag, created_at, updated_at
 - Job logs: `data/logs/<job-id>.log` (flat files, SSE-streamed via `GET /jobs/:id/logs`)
@@ -199,12 +199,12 @@ An example file lives at `apps/server/stackcommander.config.example.yaml`.
 
 ## YAML Schema Conventions
 
-All config files are YAML validated by TypeBox schemas. TypeBox produces valid JSON Schema natively — no conversion library needed. Schemas are published in the `stackcommander` npm package and served via jsDelivr CDN.
+All config files are YAML validated by TypeBox schemas. TypeBox produces valid JSON Schema natively — no conversion library needed. Schemas are published in the `rollhook` npm package and served via jsDelivr CDN.
 
-### `stackcommander.yaml` (per app repo)
+### `rollhook.yaml` (per app repo)
 
 ```yaml
-# yaml-language-server: $schema=https://cdn.jsdelivr.net/npm/stackcommander/schema/app.json
+# yaml-language-server: $schema=https://cdn.jsdelivr.net/npm/rollhook/schema/app.json
 name: my-api
 compose_file: compose.yml
 steps:
@@ -221,19 +221,19 @@ secrets:
   doppler_config: production
 ```
 
-- TypeBox schema: `packages/stackcommander/src/schema/app.ts`
-- JSON Schema: `packages/stackcommander/schema/app.json`
-- CDN: `https://cdn.jsdelivr.net/npm/stackcommander/schema/app.json`
+- TypeBox schema: `packages/rollhook/src/schema/app.ts`
+- JSON Schema: `packages/rollhook/schema/app.json`
+- CDN: `https://cdn.jsdelivr.net/npm/rollhook/schema/app.json`
 
-### `stackcommander.config.yaml` (server config)
+### `rollhook.config.yaml` (server config)
 
-- TypeBox schema: `packages/stackcommander/src/schema/config.ts`
-- JSON Schema: `packages/stackcommander/schema/config.json`
-- CDN: `https://cdn.jsdelivr.net/npm/stackcommander/schema/config.json`
+- TypeBox schema: `packages/rollhook/src/schema/config.ts`
+- JSON Schema: `packages/rollhook/schema/config.json`
+- CDN: `https://cdn.jsdelivr.net/npm/rollhook/schema/config.json`
 
 ---
 
-## npm Package `stackcommander`
+## npm Package `rollhook`
 
 Primarily a schema delivery mechanism — published to npm so JSON Schemas are served via jsDelivr CDN. Schemas are defined in TypeBox (already in the stack via Elysia) which produces valid JSON Schema natively — no conversion library needed. The server imports the same TypeBox schemas directly for Elysia route validation. Published via `/release` skill.
 
