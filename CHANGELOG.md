@@ -1,3 +1,10 @@
+## [1.0.1](https://github.com/jkrumm/rollhook/compare/v1.0.0...v1.0.1) (2026-02-25)
+
+
+### Bug Fixes
+
+* **docker:** copy all workspace package.json files to satisfy bun workspace resolution ([7435509](https://github.com/jkrumm/rollhook/commit/7435509a14d55d456632cf31554f3e25f415d988))
+
 # 1.0.0 (2026-02-25)
 
 
