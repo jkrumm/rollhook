@@ -1,3 +1,10 @@
+## [1.0.6](https://github.com/jkrumm/rollhook/compare/v1.0.5...v1.0.6) (2026-02-25)
+
+
+### Bug Fixes
+
+* **ci:** use old cosign bundle format for Zot compatibility ([ab80efb](https://github.com/jkrumm/rollhook/commit/ab80efbf27e5cb8d4af3573c7c4a08a49ef4d332))
+
 ## [1.0.5](https://github.com/jkrumm/rollhook/compare/v1.0.4...v1.0.5) (2026-02-25)
 
 
