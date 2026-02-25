@@ -1,3 +1,10 @@
+## [1.0.2](https://github.com/jkrumm/rollhook/compare/v1.0.1...v1.0.2) (2026-02-25)
+
+
+### Bug Fixes
+
+* **docker:** exclude e2e dir but keep e2e/package.json for bun workspace ([baa4b4a](https://github.com/jkrumm/rollhook/commit/baa4b4a249a2dc53fc077312933c2da750f701ee))
+
 ## [1.0.1](https://github.com/jkrumm/rollhook/compare/v1.0.0...v1.0.1) (2026-02-25)
 
 
