@@ -3,7 +3,9 @@ WORKDIR /app
 
 COPY package.json bun.lock ./
 COPY apps/server/package.json ./apps/server/package.json
+COPY apps/web/package.json ./apps/web/package.json
 COPY packages/rollhook/package.json ./packages/rollhook/package.json
+COPY e2e/package.json ./e2e/package.json
 RUN bun install --frozen-lockfile --production
 
 FROM oven/bun:1.3.9-slim AS runner
