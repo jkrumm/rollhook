@@ -1,3 +1,10 @@
+## [1.0.5](https://github.com/jkrumm/rollhook/compare/v1.0.4...v1.0.5) (2026-02-25)
+
+
+### Bug Fixes
+
+* **ci:** pin cosign-installer to v4.0.0 SHA ([0c42614](https://github.com/jkrumm/rollhook/commit/0c4261470a612f362dd3b22a550370e43ff80a7b))
+
 ## [1.0.4](https://github.com/jkrumm/rollhook/compare/v1.0.3...v1.0.4) (2026-02-25)
 
 
