@@ -7,7 +7,7 @@ COPY apps/web/package.json ./apps/web/package.json
 COPY packages/rollhook/package.json ./packages/rollhook/package.json
 COPY e2e/package.json ./e2e/package.json
 RUN --mount=type=cache,target=/root/.bun/install/cache \
-    bun install --frozen-lockfile --production
+    bun install --frozen-lockfile --production --ignore-scripts
 
 # Download Docker CLI static binary + docker-rollout in a throw-away stage.
 # Static binaries work on any Linux regardless of libc version.
