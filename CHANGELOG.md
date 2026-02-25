@@ -1,3 +1,10 @@
+## [1.0.8](https://github.com/jkrumm/rollhook/compare/v1.0.7...v1.0.8) (2026-02-25)
+
+
+### Bug Fixes
+
+* **ci:** drop --new-bundle-format flag, keep --tlog-upload=false for cosign v3 ([6173089](https://github.com/jkrumm/rollhook/commit/617308957b807a8547472acaa688103e4e10b21b))
+
 ## [1.0.7](https://github.com/jkrumm/rollhook/compare/v1.0.6...v1.0.7) (2026-02-25)
 
 
