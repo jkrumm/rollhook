@@ -114,14 +114,11 @@ jobs:
 
       - uses: docker/setup-buildx-action@v3
 
-      - uses: sigstore/cosign-installer@faadad0cce49287aee09b3a48701e75088a2c6ad # v4.0.0
-
       - name: Get build timestamp
         id: meta
         run: echo "created=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_OUTPUT
 
       - name: Build & push server
-        id: build-server
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -139,17 +136,7 @@ jobs:
           cache-from: type=gha,scope=server
           cache-to: type=gha,mode=max,scope=server
 
-      - name: Sign server image
-        env:
-          COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
-          COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
-        run: |
-          cosign sign --yes --key env://COSIGN_PRIVATE_KEY \
-            --tlog-upload=false \
-            registry.jkrumm.com/rollhook@${{ steps.build-server.outputs.digest }}
-
       - name: Build & push marketing
-        id: build-marketing
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -166,12 +153,3 @@ jobs:
             org.opencontainers.image.created=${{ steps.meta.outputs.created }}
           cache-from: type=gha,scope=marketing
           cache-to: type=gha,mode=max,scope=marketing
-
-      - name: Sign marketing image
-        env:
-          COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
-          COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
-        run: |
-          cosign sign --yes --key env://COSIGN_PRIVATE_KEY \
-            --tlog-upload=false \
-            registry.jkrumm.com/private/rollhook-marketing@${{ steps.build-marketing.outputs.digest }}
