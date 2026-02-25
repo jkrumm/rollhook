@@ -1,3 +1,10 @@
+## [1.0.3](https://github.com/jkrumm/rollhook/compare/v1.0.2...v1.0.3) (2026-02-25)
+
+
+### Bug Fixes
+
+* **rollout:** resolve docker binary path at module load via Bun.which ([0a79143](https://github.com/jkrumm/rollhook/commit/0a79143a480b62d64d669c7097defaf2199c83d9))
+
 ## [1.0.2](https://github.com/jkrumm/rollhook/compare/v1.0.1...v1.0.2) (2026-02-25)
 
 
