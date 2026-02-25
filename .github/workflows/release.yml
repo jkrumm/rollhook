@@ -143,7 +143,7 @@ jobs:
           COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
         run: |
           cosign sign --yes --key env://COSIGN_PRIVATE_KEY \
-            --new-bundle-format=false \
+            --new-bundle-format=false --tlog-upload=false \
             registry.jkrumm.com/rollhook@${{ steps.build-server.outputs.digest }}
 
       - name: Build & push marketing
@@ -171,5 +171,5 @@ jobs:
           COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
         run: |
           cosign sign --yes --key env://COSIGN_PRIVATE_KEY \
-            --new-bundle-format=false \
+            --new-bundle-format=false --tlog-upload=false \
             registry.jkrumm.com/rollhook-marketing@${{ steps.build-marketing.outputs.digest }}
