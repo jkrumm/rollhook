@@ -1,3 +1,17 @@
+# [1.2.0](https://github.com/jkrumm/rollhook/compare/v1.1.1...v1.2.0) (2026-02-26)
+
+
+### Bug Fixes
+
+* **ci:** add explicit OCI url label to Docker images ([dfe0ef1](https://github.com/jkrumm/rollhook/commit/dfe0ef13a47085cf75fe638e026c206a8c605854))
+
+
+### Features
+
+* **deploy:** make deployment endpoint synchronous by default ([d65ee09](https://github.com/jkrumm/rollhook/commit/d65ee090520faa1ae9076921b11f47233062d501))
+* **jobs:** add timestamps to logs and queued deployment entry ([7b0fefa](https://github.com/jkrumm/rollhook/commit/7b0fefae3ad1e2a5b9c390211a2ac7581cfbd9ab))
+* **marketing:** sharpen brand voice and redesign homepage ([80ef7f3](https://github.com/jkrumm/rollhook/commit/80ef7f3a1e157ed234d3f0d58bb97bba156e1a47))
+
 ## [1.1.1](https://github.com/jkrumm/rollhook/compare/v1.1.0...v1.1.1) (2026-02-26)
 
 
