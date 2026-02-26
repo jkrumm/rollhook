@@ -1,3 +1,10 @@
+# [1.1.0](https://github.com/jkrumm/rollhook/compare/v1.0.8...v1.1.0) (2026-02-26)
+
+
+### Features
+
+* **registry:** persist config changes to rollhook.config.yaml ([d76ce71](https://github.com/jkrumm/rollhook/commit/d76ce71fedf21a603bed6fbbc1cbf0be0a365d65))
+
 ## [1.0.8](https://github.com/jkrumm/rollhook/compare/v1.0.7...v1.0.8) (2026-02-25)
 
 
