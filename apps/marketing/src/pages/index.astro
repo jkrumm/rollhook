@@ -228,7 +228,7 @@ networks:
               <span class="shrink-0 font-mono text-xs text-muted-foreground/60 pt-1 w-8">01</span>
               <div class="space-y-1">
                 <p class="font-medium text-sm">CI pushes image, sends POST /deploy/my-api</p>
-                <p class="text-sm text-muted-foreground">Webhook body carries <code class="text-xs bg-muted/40 px-1 rounded">&#123;"image_tag": "..."&#125;</code> &mdash; job is queued immediately.</p>
+                <p class="text-sm text-muted-foreground">Webhook body carries <code class="text-xs bg-muted/40 px-1 rounded">&#123;"image_tag": "..."&#125;</code> &mdash; CI blocks until deployment completes. Returns HTTP 500 on failure.</p>
               </div>
             </li>
             <li class="flex gap-5">

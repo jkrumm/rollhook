@@ -1,7 +1,7 @@
 import { appendFileSync } from 'node:fs'
 
 export async function pullImage(imageTag: string, logPath: string): Promise<void> {
-  const log = (line: string) => appendFileSync(logPath, `${line}\n`)
+  const log = (line: string) => appendFileSync(logPath, `[${new Date().toISOString()}] ${line}\n`)
 
   log(`[pull] Pulling image: ${imageTag}`)
 

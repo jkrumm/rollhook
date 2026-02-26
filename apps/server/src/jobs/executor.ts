@@ -1,5 +1,5 @@
 import type { JobResult, JobStatus } from 'rollhook'
-import { appendFileSync } from 'node:fs'
+import { appendFileSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import process from 'node:process'
 import { loadConfig } from '@/config/loader'
@@ -19,7 +19,7 @@ export function getLogPath(jobId: string): string {
 async function executeJob(job: { jobId: string, app: string, imageTag: string }): Promise<void> {
   const { jobId, app, imageTag } = job
   const logPath = getLogPath(jobId)
-  const log = (line: string) => appendFileSync(logPath, `${line}\n`)
+  const log = (line: string) => appendFileSync(logPath, `[${new Date().toISOString()}] ${line}\n`)
 
   log(`[executor] Starting deployment: ${app} @ ${imageTag}`)
   updateJobStatus(jobId, 'running')
@@ -76,6 +76,8 @@ export function scheduleJob(app: string, imageTag: string): JobResult {
   }
 
   insertJob(job)
+  mkdirSync(LOGS_DIR, { recursive: true })
+  appendFileSync(getLogPath(id), `[${now}] [queue] Deployment queued: ${app} @ ${imageTag}\n`)
   enqueue({ jobId: id, app, imageTag })
 
   return job

@@ -13,10 +13,9 @@ beforeAll(async () => {
     headers: adminHeaders(),
     body: JSON.stringify({ image_tag: NONEXISTENT_IMAGE }),
   })
-  expect(res.status).toBe(200)
-  const { job_id } = await res.json() as { job_id: string }
-  // Pull fails in seconds — 60s is conservative to account for any queue depth
-  failedJob = await pollJobUntilDone(job_id, 60_000)
+  expect(res.status).toBe(500)
+  const body = await res.json() as { job_id: string }
+  failedJob = await pollJobUntilDone(body.job_id, 60_000)
 })
 
 describe('failed deployment lifecycle', () => {

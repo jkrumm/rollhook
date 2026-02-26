@@ -15,7 +15,7 @@ export async function rolloutApp(
   imageTag: string,
   logPath: string,
 ): Promise<void> {
-  const log = (line: string) => appendFileSync(logPath, `${line}\n`)
+  const log = (line: string) => appendFileSync(logPath, `[${new Date().toISOString()}] ${line}\n`)
   const cwd = dirname(composePath)
 
   for (const step of steps) {

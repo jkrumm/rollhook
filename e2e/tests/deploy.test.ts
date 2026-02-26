@@ -7,8 +7,8 @@ const IMAGE_V1 = 'localhost:5001/rollhook-e2e-hello:v1'
 // Single deploy shared across all tests — avoids accumulating container instances.
 // Each test validates a different aspect of the same completed job.
 let jobId: string
-let queuedApp: string
-let queuedStatus: string
+let deployApp: string
+let deployStatus: string
 let completedJob: JobResult
 
 beforeAll(async () => {
@@ -19,16 +19,16 @@ beforeAll(async () => {
   })
   const body = await res.json() as { job_id: string, app: string, status: string }
   jobId = body.job_id
-  queuedApp = body.app
-  queuedStatus = body.status
+  deployApp = body.app
+  deployStatus = body.status
   completedJob = await pollJobUntilDone(jobId)
 })
 
 describe('deploy API', () => {
-  it('deploy endpoint returns queued job', () => {
+  it('deploy endpoint blocks and returns completed job', () => {
     expect(jobId).toBeTruthy()
-    expect(queuedApp).toBe('hello-world')
-    expect(queuedStatus).toBe('queued')
+    expect(deployApp).toBe('hello-world')
+    expect(deployStatus).toBe('success')
   })
 
   it('deploy completes with success status', () => {

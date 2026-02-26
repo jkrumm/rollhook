@@ -2,7 +2,7 @@ import { appendFileSync, existsSync } from 'node:fs'
 import { isAbsolute } from 'node:path'
 
 export function validateCompose(composePath: string, logPath: string): void {
-  const log = (line: string) => appendFileSync(logPath, `${line}\n`)
+  const log = (line: string) => appendFileSync(logPath, `[${new Date().toISOString()}] ${line}\n`)
   log('[validate] Checking compose_path')
   if (!isAbsolute(composePath))
     throw new Error(`compose_path must be absolute, got: ${composePath}`)

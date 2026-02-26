@@ -23,22 +23,24 @@ describe('authentication', () => {
     expect(res.status).toBe(200)
   })
 
-  it('webhook token on POST /deploy/hello-world → 200', async () => {
+  it('webhook token on POST /deploy/hello-world → not 401/403', async () => {
     const res = await fetch(`${BASE_URL}/deploy/hello-world`, {
       method: 'POST',
       headers: webhookHeaders(),
       body: JSON.stringify({ image_tag: NONEXISTENT_IMAGE }),
     })
-    expect(res.status).toBe(200)
+    expect(res.status).not.toBe(401)
+    expect(res.status).not.toBe(403)
   })
 
-  it('admin token on POST /deploy/hello-world → 200', async () => {
+  it('admin token on POST /deploy/hello-world → not 401/403', async () => {
     const res = await fetch(`${BASE_URL}/deploy/hello-world`, {
       method: 'POST',
       headers: adminHeaders(),
       body: JSON.stringify({ image_tag: NONEXISTENT_IMAGE }),
     })
-    expect(res.status).toBe(200)
+    expect(res.status).not.toBe(401)
+    expect(res.status).not.toBe(403)
   })
 
   it('wrong token → 403', async () => {

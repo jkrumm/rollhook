@@ -113,10 +113,14 @@ curl -X POST https://your-vps:7700/deploy/my-api \
   -H "Content-Type: application/json" \
   -d '{"image_tag": "ghcr.io/you/my-api:abc123"}'
 
-# → {"job_id": "...", "app": "my-api", "status": "queued"}
+# → blocks until complete
+# → {"job_id": "...", "app": "my-api", "status": "success"}
+# → HTTP 500 + error field on failure
 ```
 
-Stream logs:
+Add `?async=true` to return immediately with `"status": "queued"` instead.
+
+Stream logs (admin only):
 
 ```bash
 curl -N https://your-vps:7700/jobs/<job_id>/logs \
