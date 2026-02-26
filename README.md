@@ -1,6 +1,6 @@
 # RollHook
 
-**The opinionated, TypeScript-native rolling deployment server for Docker Compose on VPS.**
+**Zero-downtime rolling Docker Compose deployments via webhooks.**
 
 [![npm](https://img.shields.io/npm/v/rollhook)](https://www.npmjs.com/package/rollhook)
 [![Docker](https://img.shields.io/badge/docker-ghcr.io%2Fjkrumm%2Frollhook-blue)](https://ghcr.io/jkrumm/rollhook)
@@ -10,16 +10,22 @@
 
 ## What it is
 
-RollHook is a self-hosted HTTP server that receives webhook calls from GitHub Actions, runs zero-downtime rolling deployments on your VPS, and streams logs back to CI.
+RollHook receives a webhook from your CI pipeline, pulls the new image, and rolls it
+out across your Docker Compose service — one container at a time, waiting for each
+healthcheck to pass before proceeding.
 
-It is **not** a PaaS, has no GUI, and does not manage clusters. It does one thing: take an image tag, roll it out across a Docker Compose service with zero downtime, and tell you if it worked.
+Configure via YAML. Integrate in one CI step. No dashboard, no provisioning, no vendor.
 
-**What it is NOT:**
+### Scope
 
-- Not a replacement for Kubernetes or Nomad
-- Not a full PaaS (no build system, no domain provisioning)
-- Not a GUI dashboard (API-only, Scalar docs at `/openapi`)
-- Not a multi-tenant platform (single-operator, self-hosted)
+RollHook handles rolling deployments. It does not:
+
+- Build or push images (that's your CI — GitHub Actions, Docker Buildx)
+- Manage DNS, TLS, or routing (that's Traefik)
+- Provision or configure servers
+- Replace a full PaaS if you need multi-tenant ops
+
+A deployment monitoring dashboard and multi-VPS support are on the roadmap.
 
 ---
 
