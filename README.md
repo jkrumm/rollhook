@@ -21,7 +21,7 @@ Configure via YAML. Integrate in one CI step. No dashboard, no provisioning, no 
 RollHook handles rolling deployments. It does not:
 
 - Build or push images (that's your CI — GitHub Actions, Docker Buildx)
-- Manage DNS, TLS, or routing (that's Traefik)
+- Manage DNS, TLS, or routing (that's your reverse proxy — Caddy, Traefik, nginx)
 - Provision or configure servers
 - Replace a full PaaS if you need multi-tenant ops
 
@@ -35,22 +35,22 @@ A deployment monitoring dashboard and multi-VPS support are on the roadmap.
 flowchart LR
     GH[GitHub Actions]
     SC[RollHook\nport 7700]
-    TR[Traefik\nreverse proxy]
+    PR[Reverse proxy\nCaddy / Traefik / nginx]
     APP[App containers]
 
     GH -->|POST /deploy/:app\nimage_tag| SC
     SC -->|rolling update| APP
-    TR -->|route traffic| APP
+    PR -->|route traffic via\nDocker DNS| APP
     SC -->|SSE log stream| GH
 ```
 
-Traefik handles ingress and zero-downtime traffic shifting during rollouts. RollHook orchestrates the deployment sequence and reports results.
+Your reverse proxy routes traffic to app containers via Docker's internal DNS — the service name resolves to all active containers automatically. During a rollout, old and new containers coexist briefly; the proxy load-balances between them until the old one is removed. RollHook orchestrates the deployment sequence and reports results.
 
 ---
 
-## Infra Prerequisites
+## Infra Setup
 
-RollHook requires Traefik running on the same host. Reference configurations are in [`examples/infra/`](examples/infra/):
+RollHook runs alongside your existing reverse proxy — Caddy, Traefik, nginx, or any other. No proxy-specific configuration is required. Reference infra configurations are in [`examples/infra/`](examples/infra/):
 
 | File                | Purpose                                           |
 | ------------------- | ------------------------------------------------- |
@@ -129,10 +129,10 @@ curl -N https://your-vps:7700/jobs/<job_id>/logs \
 
 For zero-downtime deployments to work correctly, each service must satisfy:
 
-1. **No `ports:` mapping** — use a reverse proxy for traffic routing; `ports:` prevents scaling to multiple instances
+1. **No `ports:` mapping** — your reverse proxy routes traffic via Docker's internal DNS; `ports:` prevents scaling to multiple instances
 2. **No `container_name:`** — fixed names prevent the scaler from creating a second instance
 3. **A `healthcheck:`** — the deployment waits for the new instance to be healthy before removing the old one
-4. **Traefik health check labels** — so Traefik only routes traffic to healthy instances (prevents 502s during the container swap window)
+4. **On the same Docker network as your proxy** — so the proxy can reach the service by its DNS name (e.g. `backend:3000`)
 
 Minimal example:
 
@@ -146,22 +146,17 @@ services:
       timeout: 5s
       start_period: 10s
       retries: 5
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.backend.rule=Host(`api.example.com`)
-      - traefik.http.routers.backend.entrypoints=websecure
-      - traefik.http.services.backend.loadbalancer.server.port=3000
-      # Active health check — Traefik only routes to instances that pass
-      - traefik.http.services.backend.loadbalancer.healthcheck.path=/health
-      - traefik.http.services.backend.loadbalancer.healthcheck.interval=2s
-      - traefik.http.services.backend.loadbalancer.healthcheck.timeout=1s
     networks:
-      - traefik
+      - proxy
 
 networks:
-  traefik:
+  proxy:
     external: true
 ```
+
+**How zero-downtime works without proxy config changes:** Docker's embedded DNS resolves the service name (`backend`) to all active containers in that service. During a rollout, old and new containers coexist — your proxy load-balances between them automatically. Once the old container is removed, only the new one remains. No dynamic discovery or label-watching required.
+
+**Traefik users:** Add [active health check labels](https://doc.traefik.io/traefik/routing/services/#health-check) so Traefik stops routing to the draining container immediately rather than waiting on passive checks. See [`examples/infra/`](examples/infra/) for a reference stack.
 
 **Image tag pattern:** use `${IMAGE_TAG:-registry.example.com/my-api:latest}` in `compose.yml`. RollHook passes `IMAGE_TAG=<full-uri>` as an inline environment variable when invoking `docker rollout` — no `.env` file is written or required.
 

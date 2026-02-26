@@ -34,12 +34,15 @@ const composeCode = `services:
       interval: 5s
       start_period: 10s
       retries: 5
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.api.rule=Host(\`api.example.com\`)
-      - traefik.http.services.api.loadbalancer.healthcheck.path=/health
+    # No ports: — proxy routes via Docker DNS (backend:3000)
+    # No container_name: — fixed names block docker-rollout from scaling
+    # Works with Caddy, Traefik, nginx, or any reverse proxy
     networks:
-      - traefik`
+      - proxy
+
+networks:
+  proxy:
+    external: true`
 ---
 
 <Layout
@@ -164,8 +167,8 @@ const composeCode = `services:
             <!-- 3: App compose.yml -->
             <div>
               <div class="mb-3">
-                <p class="text-sm font-medium">3. Add a healthcheck to your compose service</p>
-                <p class="text-xs text-muted-foreground mt-0.5">RollHook passes <code class="bg-muted/40 px-1 rounded">IMAGE_TAG</code> inline — no .env file written.</p>
+                <p class="text-sm font-medium">3. Add a healthcheck — that's it</p>
+                <p class="text-xs text-muted-foreground mt-0.5">Works with Caddy, Traefik, nginx, or any proxy. Docker's internal DNS handles the rest.</p>
               </div>
               <div class="rounded-lg border border-border/60 bg-muted/20 overflow-hidden">
                 <div class="flex items-center gap-2 px-4 py-3 border-b border-border/40">
