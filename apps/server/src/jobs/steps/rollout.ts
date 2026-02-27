@@ -2,12 +2,6 @@ import { appendFileSync } from 'node:fs'
 import { dirname } from 'node:path'
 import process from 'node:process'
 
-// Resolve docker binary once at module load. When Bun.spawn receives an
-// explicit `env` object, it uses posix_spawnp which resolves executables via
-// the PATH in the provided env — but there is an intermittent Bun bug where
-// this fails on the first invocation. Using an absolute path avoids the issue.
-const DOCKER_BIN = Bun.which('docker') ?? 'docker'
-
 // Note: steps always run sequentially (post-MVP: dependency graph)
 export async function rolloutApp(
   composePath: string,
@@ -18,28 +12,25 @@ export async function rolloutApp(
   const log = (line: string) => appendFileSync(logPath, `[${new Date().toISOString()}] ${line}\n`)
   const cwd = dirname(composePath)
 
-  // Bun intermittent bug: the first Bun.spawn call with an explicit env object may
-  // throw ENOENT even when the binary path is absolute. A harmless warmup primes the
-  // posix_spawn machinery so the actual rollout calls succeed.
-  try {
-    const warmup = Bun.spawn([DOCKER_BIN, '--version'], {
-      env: { ...process.env },
-      stdout: 'ignore',
-      stderr: 'ignore',
-    })
-    await warmup.exited
-  }
-  catch { /* absorb warmup ENOENT — subsequent spawns will succeed */ }
-
   for (const step of steps) {
     log(`[rollout] Rolling out service: ${step.service} (IMAGE_TAG=${imageTag})`)
 
-    const proc = Bun.spawn([DOCKER_BIN, 'rollout', step.service, '-f', composePath], {
+    // Bun intermittent bug: Bun.spawn with an explicit env object throws ENOENT
+    // on its first invocation in the process lifetime, even with an absolute binary
+    // path. Mutating process.env temporarily and spawning without an explicit env
+    // avoids the bug — the child inherits the parent env (including IMAGE_TAG) at
+    // fork time. Safe because the job queue is strictly sequential.
+    const prevImageTag = process.env.IMAGE_TAG
+    process.env.IMAGE_TAG = imageTag
+    const proc = Bun.spawn(['docker', 'rollout', step.service, '-f', composePath], {
       cwd,
-      env: { ...process.env, IMAGE_TAG: imageTag },
       stdout: 'pipe',
       stderr: 'pipe',
     })
+    if (prevImageTag === undefined)
+      delete process.env.IMAGE_TAG
+    else
+      process.env.IMAGE_TAG = prevImageTag
 
     const [exitCode, , stderr] = await Promise.all([
       proc.exited,
