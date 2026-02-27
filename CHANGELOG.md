@@ -1,3 +1,20 @@
+# [1.3.0](https://github.com/jkrumm/rollhook/compare/v1.2.0...v1.3.0) (2026-02-27)
+
+
+### Bug Fixes
+
+* **e2e:** use async deploy in zero-downtime test ([67dba14](https://github.com/jkrumm/rollhook/commit/67dba142bc6e11be1b446eb338970dcc5882f19d))
+* **examples:** replace direct docker.sock mount with read-only socket proxy for Traefik ([ff90437](https://github.com/jkrumm/rollhook/commit/ff904374cfdc7b786735ea498a5385ea738b65b6))
+* **executor:** avoid Bun spawn ENOENT by mutating process.env for IMAGE_TAG ([1e39597](https://github.com/jkrumm/rollhook/commit/1e39597731b86d91d8da63e2dffd3abe597b31e9))
+* **executor:** warm up posix_spawn to prevent ENOENT on first docker rollout ([70415d3](https://github.com/jkrumm/rollhook/commit/70415d3ddeb0e79b19b3995e56b7b87ab41f197f))
+* import order and HTML tag in test/marketing files ([9a0878d](https://github.com/jkrumm/rollhook/commit/9a0878d86041bec81323aa815b96f2b44d55f5a4))
+* **lint:** pin @antfu/eslint-config and treat bun:* as builtins ([efdd18c](https://github.com/jkrumm/rollhook/commit/efdd18c0b3ce199979ce439f993be088c5f4c222))
+
+
+### Features
+
+* bundle docker-compose, expose version in /health endpoint ([d50ed7d](https://github.com/jkrumm/rollhook/commit/d50ed7d1e00893f67a6da535ba20c02fcb963aca))
+
 # [1.2.0](https://github.com/jkrumm/rollhook/compare/v1.1.1...v1.2.0) (2026-02-26)
 
 
