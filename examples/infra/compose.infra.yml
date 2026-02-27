@@ -1,0 +1,160 @@
+# Reference infrastructure stack: Traefik + RollHook + socket proxies
+#
+# Deployment pattern:
+#   - Traefik handles TLS termination and reverse proxying
+#   - RollHook receives webhook deploys and runs docker-rollout
+#   - Each consumer gets its own socket proxy scoped to minimum permissions:
+#       socket-proxy         (read-only, POST=0) → Traefik label discovery
+#       socket-proxy-rollhook (POST=1, write)    → RollHook rolling deploys
+#   - No service mounts /var/run/docker.sock directly
+#
+# Prerequisites:
+#   - Docker network "proxy" must exist: docker network create proxy
+#   - .env file with required variables (see below)
+#
+# Required .env variables:
+#   DOMAIN=<your-domain>          # e.g. example.com
+#   ROLLHOOK_ADMIN_TOKEN=<token>  # openssl rand -hex 32
+#   ROLLHOOK_WEBHOOK_TOKEN=<token>
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # Socket proxy for Traefik — read-only Docker API for container label discovery.
+  # POST=0 ensures Traefik cannot mutate anything. Isolated on socket-proxy-net.
+  # ---------------------------------------------------------------------------
+  socket-proxy:
+    image: tecnativa/docker-socket-proxy:latest
+    container_name: socket-proxy
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      CONTAINERS: 1
+      NETWORKS: 1
+      SERVICES: 1
+      TASKS: 1
+      IMAGES: 1
+      INFO: 1
+      POST: 0
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - socket-proxy-net
+    logging:
+      driver: json-file
+      options: { max-size: "5m", max-file: "2" }
+
+  # ---------------------------------------------------------------------------
+  # Traefik — TLS termination + reverse proxy.
+  # Reads container labels via socket proxy (DOCKER_HOST), not direct socket.
+  # ---------------------------------------------------------------------------
+  traefik:
+    image: traefik:v3.3
+    container_name: traefik
+    restart: unless-stopped
+    depends_on:
+      - socket-proxy
+    security_opt:
+      - no-new-privileges:true
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - DOCKER_HOST=tcp://socket-proxy:2375
+      - CF_DNS_API_TOKEN=${CF_DNS_API_TOKEN}   # remove if not using Cloudflare DNS challenge
+    volumes:
+      - ./config/traefik/traefik.yml:/traefik.yml:ro
+      - ./config/traefik/dynamic.yml:/dynamic.yml:ro
+      - traefik-certs:/certs
+    networks:
+      - proxy
+      - socket-proxy-net
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+  # ---------------------------------------------------------------------------
+  # Socket proxy for RollHook — write access (POST=1) for rolling deployments.
+  # Isolated on socket-proxy-rollhook-net, never shared with Traefik's proxy.
+  # ---------------------------------------------------------------------------
+  socket-proxy-rollhook:
+    image: tecnativa/docker-socket-proxy:latest
+    container_name: socket-proxy-rollhook
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      CONTAINERS: 1
+      SERVICES: 1
+      IMAGES: 1
+      INFO: 1
+      POST: 1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - socket-proxy-rollhook-net
+    logging:
+      driver: json-file
+      options: { max-size: "5m", max-file: "2" }
+
+  # ---------------------------------------------------------------------------
+  # RollHook — zero-downtime rolling deployments via webhook.
+  #
+  # App compose files must be mounted for docker-rollout to read them.
+  # Add one volume per app:
+  #   - /srv/stacks/my-api:/srv/stacks/my-api:ro
+  # ---------------------------------------------------------------------------
+  rollhook:
+    image: registry.jkrumm.com/rollhook:latest
+    container_name: rollhook
+    restart: unless-stopped
+    depends_on:
+      - socket-proxy-rollhook
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      ADMIN_TOKEN: ${ROLLHOOK_ADMIN_TOKEN}
+      WEBHOOK_TOKEN: ${ROLLHOOK_WEBHOOK_TOKEN}
+      ROLLHOOK_CONFIG_PATH: /app/rollhook.config.yaml
+      DOCKER_HOST: tcp://socket-proxy-rollhook:2375
+      # Optional: Pushover mobile notifications
+      # PUSHOVER_USER_KEY: ${PUSHOVER_USER_KEY}
+      # PUSHOVER_APP_TOKEN: ${PUSHOVER_APP_TOKEN}
+    volumes:
+      - ./config/rollhook/rollhook.config.yaml:/app/rollhook.config.yaml:ro
+      - rollhook-data:/app/data
+      # Mount one directory per deployed app (read-only):
+      # - /srv/stacks/my-api:/srv/stacks/my-api:ro
+    healthcheck:
+      test: [CMD, bun, -e, "fetch('http://localhost:7700/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.rollhook.rule=Host(`rollhook.<your-domain>`)"
+      - "traefik.http.routers.rollhook.entrypoints=websecure"
+      - "traefik.http.routers.rollhook.tls.certresolver=letsencrypt"
+      - "traefik.http.services.rollhook.loadbalancer.server.port=7700"
+      - "traefik.http.services.rollhook.loadbalancer.healthcheck.path=/health"
+      - "traefik.http.services.rollhook.loadbalancer.healthcheck.interval=5s"
+    networks:
+      - proxy
+      - socket-proxy-rollhook-net
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+networks:
+  proxy:
+    external: true
+  socket-proxy-net:
+    internal: true
+  socket-proxy-rollhook-net:
+    internal: true
+
+volumes:
+  traefik-certs:
+  rollhook-data:
