@@ -1,3 +1,10 @@
+# [1.6.0](https://github.com/jkrumm/rollhook/compare/v1.5.1...v1.6.0) (2026-02-28)
+
+
+### Features
+
+* derive app from image_tag, remove :app from deploy route ([3621aad](https://github.com/jkrumm/rollhook/commit/3621aad73481a79e515dacc591e5a7e61ea13523))
+
 ## [1.5.1](https://github.com/jkrumm/rollhook/compare/v1.5.0...v1.5.1) (2026-02-28)
 
 
