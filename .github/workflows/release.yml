@@ -187,4 +187,5 @@ jobs:
         with:
           url: https://rollhook-vps.jkrumm.com
           token: ${{ secrets.ROLLHOOK_WEBHOOK_TOKEN }}
+          app: rollhook-marketing
           image_tag: registry.jkrumm.com/private/rollhook-marketing:${{ needs.release.outputs.version }}
