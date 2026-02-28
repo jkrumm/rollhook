@@ -1,3 +1,10 @@
+# [1.5.0](https://github.com/jkrumm/rollhook/compare/v1.4.2...v1.5.0) (2026-02-28)
+
+
+### Features
+
+* stateless discovery, improved E2E and auth ([b12777f](https://github.com/jkrumm/rollhook/commit/b12777fd717ebf08ed8df2e5adb98674cf7c783d))
+
 ## [1.4.2](https://github.com/jkrumm/rollhook/compare/v1.4.1...v1.4.2) (2026-02-28)
 
 
