@@ -17,6 +17,8 @@ export async function setup(): Promise<void> {
   // Tear down any stale state from a previous crashed run before starting fresh
   execSync(`docker compose --project-directory ${HELLO_WORLD_DIR} down -v 2>/dev/null || true`)
   execSync(`docker compose -f ${E2E_DIR}/compose.e2e.yml --project-name rollhook-e2e down -v 2>/dev/null || true`)
+  // Kill any stale rollhook server left behind by a previous interrupted run
+  execSync(`lsof -ti :7700 | xargs kill -9 2>/dev/null || true`)
 
   // Start infrastructure (Traefik + local registry)
   execSync(`docker compose -f ${E2E_DIR}/compose.e2e.yml --project-name rollhook-e2e up -d`, {
@@ -58,13 +60,6 @@ export async function setup(): Promise<void> {
   // before routing. Without this wait, zero-downtime "v1 is running" assertion can fail.
   await waitForUrl('http://localhost:9080/version', 30_000)
 
-  // Generate rollhook.config.yaml with machine-absolute compose_path
-  const configPath = join(E2E_DIR, 'rollhook.config.yaml')
-  writeFileSync(
-    configPath,
-    `apps:\n  - name: hello-world\n    compose_path: ${HELLO_WORLD_DIR}/compose.yml\n    steps:\n      - service: hello-world\n`,
-  )
-
   // Spawn rollhook server natively
   serverProcess = spawn('bun', ['run', 'apps/server/server.ts'], {
     cwd: ROOT,
@@ -72,7 +67,6 @@ export async function setup(): Promise<void> {
       ...process.env,
       ADMIN_TOKEN,
       WEBHOOK_TOKEN,
-      ROLLHOOK_CONFIG_PATH: configPath,
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   })

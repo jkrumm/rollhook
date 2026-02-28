@@ -138,6 +138,14 @@ jobs:
             org.opencontainers.image.version=${{ needs.release.outputs.version }}
             org.opencontainers.image.created=${{ steps.meta.outputs.created }}
             org.opencontainers.image.revision=${{ steps.meta.outputs.revision }}
+          annotations: |
+            manifest:org.opencontainers.image.title=RollHook
+            manifest:org.opencontainers.image.description=Webhook-driven rolling deployment orchestrator for Docker Compose
+            manifest:org.opencontainers.image.url=https://github.com/jkrumm/rollhook
+            manifest:org.opencontainers.image.source=https://github.com/jkrumm/rollhook
+            manifest:org.opencontainers.image.version=${{ needs.release.outputs.version }}
+            manifest:org.opencontainers.image.created=${{ steps.meta.outputs.created }}
+            manifest:org.opencontainers.image.revision=${{ steps.meta.outputs.revision }}
           cache-from: type=gha,scope=server
           cache-to: type=gha,mode=max,scope=server
 
@@ -158,6 +166,14 @@ jobs:
             org.opencontainers.image.version=${{ needs.release.outputs.version }}
             org.opencontainers.image.created=${{ steps.meta.outputs.created }}
             org.opencontainers.image.revision=${{ steps.meta.outputs.revision }}
+          annotations: |
+            manifest:org.opencontainers.image.title=RollHook Marketing
+            manifest:org.opencontainers.image.description=Marketing site for the RollHook deployment orchestrator
+            manifest:org.opencontainers.image.url=https://github.com/jkrumm/rollhook
+            manifest:org.opencontainers.image.source=https://github.com/jkrumm/rollhook
+            manifest:org.opencontainers.image.version=${{ needs.release.outputs.version }}
+            manifest:org.opencontainers.image.created=${{ steps.meta.outputs.created }}
+            manifest:org.opencontainers.image.revision=${{ steps.meta.outputs.revision }}
           cache-from: type=gha,scope=marketing
           cache-to: type=gha,mode=max,scope=marketing
 
@@ -171,6 +187,4 @@ jobs:
         with:
           url: ${{ secrets.ROLLHOOK_URL }}
           token: ${{ secrets.ROLLHOOK_WEBHOOK_TOKEN }}
-          admin_token: ${{ secrets.ROLLHOOK_ADMIN_TOKEN }}
-          app: rollhook-marketing
           image_tag: registry.jkrumm.com/private/rollhook-marketing:${{ needs.release.outputs.version }}

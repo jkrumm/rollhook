@@ -2,10 +2,10 @@ import type { JobResult, JobStatus } from 'rollhook'
 import { appendFileSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import process from 'node:process'
-import { loadConfig } from '@/config/loader'
-import { getJob, insertJob, updateJobStatus } from '@/db/jobs'
+import { getJob, insertJob, updateJobDiscovery, updateJobStatus } from '@/db/jobs'
 import { notify } from '@/jobs/notifier'
 import { enqueue, setProcessor } from '@/jobs/queue'
+import { discover } from '@/jobs/steps/discover'
 import { pullImage } from '@/jobs/steps/pull'
 import { rolloutApp } from '@/jobs/steps/rollout'
 import { validateCompose } from '@/jobs/steps/validate'
@@ -28,14 +28,13 @@ async function executeJob(job: { jobId: string, app: string, imageTag: string })
   let finalError: string | undefined
 
   try {
-    const config = loadConfig()
-    const appConfig = config.apps.find(a => a.name === app)
-    if (!appConfig)
-      throw new Error(`App "${app}" not found in rollhook.config.yaml`)
-
-    validateCompose(appConfig.compose_path, logPath)
+    const { composePath, service } = await discover(imageTag, app, logPath)
+    if (service !== app)
+      throw new Error(`Discovered service '${service}' does not match requested app '${app}'`)
+    updateJobDiscovery(jobId, composePath, service)
+    validateCompose(composePath, logPath)
     await pullImage(imageTag, logPath)
-    await rolloutApp(appConfig.compose_path, appConfig.steps, imageTag, logPath)
+    await rolloutApp(composePath, service, imageTag, logPath)
     log(`[executor] Deployment successful: ${app}`)
   }
   catch (err) {

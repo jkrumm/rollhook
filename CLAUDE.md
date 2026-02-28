@@ -4,6 +4,8 @@
 
 Webhook-driven rolling deployment orchestrator for Docker Compose stacks on self-hosted VPS. Receives GitHub Actions webhook calls, runs zero-downtime rolling deployments via `docker-rollout`, and streams job logs back to CI.
 
+**Stateless design:** No server-side config file needed. RollHook discovers the compose file and service name automatically from the running container's Docker Compose labels (`com.docker.compose.project.config_files` + `com.docker.compose.service`). The `image_tag` is the discovery key — one image = one service.
+
 **Companion repo:** `~/SourceRoot/rollhook-action` (`jkrumm/rollhook-action`) — GitHub Action that triggers deploys and streams SSE logs live to CI. Versioned independently (`v1.x`). Users reference it as `uses: jkrumm/rollhook-action@v1`.
 
 See: `~/Obsidian/Vault/03_Projects/rollhook.md`
@@ -23,34 +25,26 @@ rollhook/
           health.ts                # GET /health (no auth)
           deploy.ts                # POST /deploy/:app
           jobs.ts                  # GET /jobs/:id, GET /jobs/:id/logs (SSE), GET /jobs
-          registry.ts              # GET /registry, PATCH /registry/:app
         middleware/
           auth.ts                  # Bearer token plugin (role: admin | webhook)
         jobs/
-          executor.ts              # Main orchestrator: validate → pull → rollout → notify
+          executor.ts              # Main orchestrator: discover → validate → pull → rollout → notify
+          steps/discover.ts        # docker ps + docker inspect to find compose_path + service
           steps/pull.ts            # docker pull <image>
           steps/validate.ts        # Pre-deploy: check compose_path is absolute + exists
-          steps/rollout.ts         # docker rollout (ordered, healthcheck-gated, IMAGE_TAG via env)
-          notifier.ts              # Pushover + configurable webhook
+          steps/rollout.ts         # docker rollout (single service, healthcheck-gated, IMAGE_TAG via env)
+          notifier.ts              # Pushover + configurable webhook (NOTIFICATION_WEBHOOK_URL env var)
           queue.ts                 # In-memory job queue (Bun-native)
         db/
           client.ts                # bun:sqlite instance + auto-migrations
-          jobs.ts                  # Job CRUD (insert, get, updateStatus)
-        config/
-          loader.ts                # Parse + validate rollhook.config.yaml
-          schema.ts                # TypeBox schema for server config
+          jobs.ts                  # Job CRUD (insert, get, updateStatus, updateDiscovery)
       server.ts                    # Entry — .listen(7700)
-      rollhook.config.example.yaml
     marketing/                       # @rollhook/marketing — Astro marketing site (port 4321)
   packages/
     rollhook/                # rollhook — public NPM package
       src/
-        schema/
-          config.ts                # TypeBox schema for rollhook.config.yaml
-        types.ts                   # Derived TS types: ServerConfig, JobResult
+        types.ts                   # Derived TS types: JobResult, JobStatus
         index.ts                   # Re-exports
-      schema/
-        config.json                # Generated JSON Schema (from TypeBox)
   data/                            # gitignored
     rollhook.db              # SQLite — job metadata
     logs/                          # data/logs/<job-id>.log — raw job output
@@ -68,18 +62,17 @@ rollhook/
 
 ## Tech Stack
 
-| Layer              | Choice                                                                                     |
-| ------------------ | ------------------------------------------------------------------------------------------ |
-| Runtime            | Bun 1.3.9                                                                                  |
-| Monorepo           | Bun workspaces (native)                                                                    |
-| Language           | TypeScript 6.0.0-beta                                                                      |
-| Backend            | Elysia (Bun-native, OpenAPI, bearer auth plugin)                                           |
-| API Docs           | Scalar via `@elysiajs/openapi` at `/openapi`                                               |
-| Database           | `bun:sqlite` — `data/rollhook.db`, job metadata                                            |
-| Config             | YAML (`rollhook.config.yaml`) + Zod validation                                             |
-| Schema             | TypeBox (`@sinclair/typebox`) — schemas are valid JSON Schema natively, no conversion step |
-| Deployment         | `docker-rollout` — zero-downtime rolling updates                                           |
-| Linting/Formatting | @antfu/eslint-config (ESLint flat config, no Prettier)                                     |
+| Layer              | Choice                                                                               |
+| ------------------ | ------------------------------------------------------------------------------------ |
+| Runtime            | Bun 1.3.9                                                                            |
+| Monorepo           | Bun workspaces (native)                                                              |
+| Language           | TypeScript 6.0.0-beta                                                                |
+| Backend            | Elysia (Bun-native, OpenAPI, bearer auth plugin)                                     |
+| API Docs           | Scalar via `@elysiajs/openapi` at `/openapi`                                         |
+| Database           | `bun:sqlite` — `data/rollhook.db`, job metadata                                      |
+| Discovery          | `docker ps` + `docker inspect` — reads Docker Compose labels from running containers |
+| Deployment         | `docker-rollout` — zero-downtime rolling updates                                     |
+| Linting/Formatting | @antfu/eslint-config (ESLint flat config, no Prettier)                               |
 
 ---
 
@@ -141,16 +134,15 @@ bun run lint:fix    # Fix + format
 
 ## Elysia Server
 
-| File                                 | Purpose                                                    |
-| ------------------------------------ | ---------------------------------------------------------- |
-| `apps/server/server.ts`              | Entry point — `.listen(7700)`                              |
-| `apps/server/src/app.ts`             | Bare Elysia app (no `.listen()`) — OpenAPI + route plugins |
-| `apps/server/src/api/deploy.ts`      | `POST /deploy/:app` — accepts `image_tag`, enqueues job    |
-| `apps/server/src/api/jobs.ts`        | `GET /jobs/:id`, `GET /jobs/:id/logs` (SSE), `GET /jobs`   |
-| `apps/server/src/api/registry.ts`    | `GET /registry`, `PATCH /registry/:app`                    |
-| `apps/server/src/middleware/auth.ts` | Bearer token plugin — two roles: `admin`, `webhook`        |
-| `apps/server/src/db/client.ts`       | `bun:sqlite` instance, auto-migrations                     |
-| `apps/server/src/config/loader.ts`   | Parse + validate `rollhook.config.yaml`                    |
+| File                                     | Purpose                                                    |
+| ---------------------------------------- | ---------------------------------------------------------- |
+| `apps/server/server.ts`                  | Entry point — `.listen(7700)`                              |
+| `apps/server/src/app.ts`                 | Bare Elysia app (no `.listen()`) — OpenAPI + route plugins |
+| `apps/server/src/api/deploy.ts`          | `POST /deploy/:app` — accepts `image_tag`, enqueues job    |
+| `apps/server/src/api/jobs.ts`            | `GET /jobs/:id`, `GET /jobs/:id/logs` (SSE), `GET /jobs`   |
+| `apps/server/src/middleware/auth.ts`     | Bearer token plugin — two roles: `admin`, `webhook`        |
+| `apps/server/src/db/client.ts`           | `bun:sqlite` instance, auto-migrations                     |
+| `apps/server/src/jobs/steps/discover.ts` | `docker ps` + `docker inspect` — find compose_path/service |
 
 OpenAPI (Scalar UI): `@elysiajs/openapi` — served at `/openapi`, JSON spec at `/openapi/json`.
 
@@ -160,33 +152,25 @@ OpenAPI (Scalar UI): `@elysiajs/openapi` — served at `/openapi`, JSON spec at 
 
 Two bearer token roles, set via environment variables (never in config files):
 
-| Env var         | Role      | Allowed routes           |
-| --------------- | --------- | ------------------------ |
-| `ADMIN_TOKEN`   | `admin`   | All routes               |
-| `WEBHOOK_TOKEN` | `webhook` | `POST /deploy/:app` only |
+| Env var         | Role      | Allowed routes                                             |
+| --------------- | --------- | ---------------------------------------------------------- |
+| `ADMIN_TOKEN`   | `admin`   | All routes                                                 |
+| `WEBHOOK_TOKEN` | `webhook` | `POST /deploy/:app`, `GET /jobs/:id`, `GET /jobs/:id/logs` |
 
 ---
 
-## Config
+## Environment Variables
 
-`rollhook.config.yaml` — server config on the VPS, gitignored real file.
+All configuration via environment variables — no config file:
 
-```yaml
-# yaml-language-server: $schema=https://cdn.jsdelivr.net/npm/rollhook/schema/config.json
-apps:
-  - name: my-api
-    compose_path: /srv/stacks/my-api/compose.yml
-    steps:
-      - service: backend
-notifications:
-  webhook: '' # optional — POST job result JSON here on completion
-```
-
-Pushover credentials are **not** in the config file — they come from environment variables: `PUSHOVER_USER_KEY` and `PUSHOVER_APP_TOKEN`.
-
-Parsed and validated at startup via `apps/server/src/config/loader.ts` using `ServerConfigSchema` from `packages/rollhook/src/schema/config.ts`.
-
-An example file lives at `apps/server/rollhook.config.example.yaml`.
+| Env var                    | Required | Purpose                                      |
+| -------------------------- | -------- | -------------------------------------------- |
+| `ADMIN_TOKEN`              | yes      | Admin bearer token                           |
+| `WEBHOOK_TOKEN`            | yes      | Webhook bearer token                         |
+| `DOCKER_HOST`              | no       | Docker socket (default: local socket)        |
+| `PUSHOVER_USER_KEY`        | no       | Pushover user key for mobile notifications   |
+| `PUSHOVER_APP_TOKEN`       | no       | Pushover app token for mobile notifications  |
+| `NOTIFICATION_WEBHOOK_URL` | no       | URL to POST job result JSON to on completion |
 
 ---
 
@@ -194,47 +178,22 @@ An example file lives at `apps/server/rollhook.config.example.yaml`.
 
 `bun:sqlite` — `data/rollhook.db`, zero external dependencies.
 
-- Job metadata: id, app, status, image_tag, created_at, updated_at
+- Job metadata: id, app, status, image_tag, compose_path, service, error, created_at, updated_at
+- `compose_path` and `service` are populated after successful discovery
 - Job logs: `data/logs/<job-id>.log` (flat files, SSE-streamed via `GET /jobs/:id/logs`)
 - `data/` is gitignored
 
 ---
 
-## YAML Schema Conventions
-
-Config files are YAML validated by TypeBox schemas. TypeBox produces valid JSON Schema natively — no conversion library needed. Schemas are published in the `rollhook` npm package and served via jsDelivr CDN.
-
-### `rollhook.config.yaml` (server config)
-
-- TypeBox schema: `packages/rollhook/src/schema/config.ts`
-- JSON Schema: `packages/rollhook/schema/config.json`
-- CDN: `https://cdn.jsdelivr.net/npm/rollhook/schema/config.json`
-
----
-
 ## npm Package `rollhook`
 
-Primarily a schema delivery mechanism — published to npm so JSON Schemas are served via jsDelivr CDN. Schemas are defined in TypeBox (already in the stack via Elysia) which produces valid JSON Schema natively — no conversion library needed. The server imports the same TypeBox schemas directly for Elysia route validation. Published via `/release` skill.
+Publishes shared TypeScript types. Published via `/release` skill.
 
 **Exports:**
 
 ```ts
-export { ServerConfigSchema } // TypeBox schemas (= JSON Schema objects)
-export type { JobResult, ServerConfig } // Static<typeof Schema> derived types
+export type { JobResult, JobStatus }
 ```
-
-**`package.json` exports:**
-
-```json
-{
-  "exports": {
-    ".": "./dist/index.js",
-    "./schema/config": "./schema/config.json"
-  }
-}
-```
-
-JSON Schema files served via jsDelivr CDN from npm — no custom domain needed.
 
 ---
 
@@ -244,12 +203,11 @@ JSON Schema files served via jsDelivr CDN from npm — no custom domain needed.
 POST   /deploy/:app                # roles: admin, webhook
   Body: { image_tag: string }
   Returns: { job_id, app, status: "queued" }
+  Discovers compose_path + service from running container matching image_tag
 
-GET    /jobs/:id                   # role: admin
-GET    /jobs/:id/logs              # role: admin — SSE stream (text/event-stream)
+GET    /jobs/:id                   # roles: admin, webhook
+GET    /jobs/:id/logs              # roles: admin, webhook — SSE stream (text/event-stream)
 GET    /jobs?app=&status=&limit=   # role: admin — paginated history
-GET    /registry                   # role: admin — apps + last deploy
-PATCH  /registry/:app              # role: admin — update app config
 GET    /health                     # no auth
 GET    /openapi                    # Scalar UI, no auth
 ```

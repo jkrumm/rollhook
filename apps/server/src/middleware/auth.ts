@@ -10,9 +10,15 @@ if (!ADMIN_TOKEN || !WEBHOOK_TOKEN) {
   throw new Error('ADMIN_TOKEN and WEBHOOK_TOKEN environment variables are required')
 }
 
+// No `name` on the Elysia instance to prevent plugin deduplication: Elysia
+// deduplicates named plugins globally, so using requireRole('webhook') in both
+// deployApi and jobsApi would silently skip the second registration.
+// `{ as: 'local' }` keeps the hook scoped to THIS instance only — no upward
+// propagation. Routes MUST be chained onto the requireRole(...) return value
+// (not onto a parent after .use()) so the hook and routes share the same instance.
 export function requireRole(role: Role) {
-  return new Elysia({ name: `auth-${role}` })
-    .onBeforeHandle({ as: 'scoped' }, ({ headers, set }) => {
+  return new Elysia()
+    .onBeforeHandle({ as: 'local' }, ({ headers, set }) => {
       const authHeader = headers.authorization
       if (!authHeader?.startsWith('Bearer ')) {
         set.status = 401

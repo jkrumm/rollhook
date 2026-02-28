@@ -62,19 +62,19 @@ describe('authentication', () => {
     expect(res.status).toBe(200)
   })
 
-  it('webhook token on GET /registry → 403', async () => {
-    const res = await fetch(`${BASE_URL}/registry`, {
+  it('webhook token on GET /jobs/:id → not 401/403', async () => {
+    // Trigger a fast-failing deploy to get a job ID
+    const deployRes = await fetch(`${BASE_URL}/deploy/hello-world?async=true`, {
+      method: 'POST',
+      headers: webhookHeaders(),
+      body: JSON.stringify({ image_tag: NONEXISTENT_IMAGE }),
+    })
+    const { job_id } = await deployRes.json() as { job_id: string }
+
+    const res = await fetch(`${BASE_URL}/jobs/${job_id}`, {
       headers: { Authorization: `Bearer ${WEBHOOK_TOKEN}` },
     })
-    expect(res.status).toBe(403)
-  })
-
-  it('webhook token on PATCH /registry/:app → 403', async () => {
-    const res = await fetch(`${BASE_URL}/registry/hello-world`, {
-      method: 'PATCH',
-      headers: { 'Authorization': `Bearer ${WEBHOOK_TOKEN}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ compose_path: '/tmp/should-not-apply/compose.yml' }),
-    })
-    expect(res.status).toBe(403)
+    expect(res.status).not.toBe(401)
+    expect(res.status).not.toBe(403)
   })
 })

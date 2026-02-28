@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest'
-import { adminHeaders, BASE_URL, REGISTRY_HOST, webhookHeaders } from '../setup/fixtures.ts'
+import { adminHeaders, BASE_URL, REGISTRY_HOST, webhookHeaders, webhookPollJobUntilDone } from '../setup/fixtures.ts'
 
 const IMAGE_V1 = `${REGISTRY_HOST}/rollhook-e2e-hello:v1`
 const NONEXISTENT_IMAGE = `${REGISTRY_HOST}/rollhook-e2e-hello:no-such-tag`
@@ -58,6 +58,7 @@ describe('jobs API', () => {
 
     const text = await logRes.text()
     expect(text).toContain('[executor]')
+    expect(text).toContain('[discover]')
     expect(text).toContain('[validate]')
     expect(text).toContain('[pull]')
     expect(text).toContain('[rollout]')
@@ -130,4 +131,34 @@ describe('jobs API', () => {
       expect(j.status).toBe('success')
     })
   })
+
+  it('webhook token can fetch /jobs/:id and receives correct job data', async () => {
+    const res = await fetch(`${BASE_URL}/jobs/${completedJobId}`, { headers: webhookHeaders() })
+    expect(res.status).toBe(200)
+    const job = await res.json() as Record<string, unknown>
+    expect(job.id).toBe(completedJobId)
+    expect(job.status).toBe('success')
+    expect(job.app).toBe('hello-world')
+  })
+
+  it('webhook token can stream /jobs/:id/logs', async () => {
+    const res = await fetch(`${BASE_URL}/jobs/${completedJobId}/logs`, { headers: webhookHeaders() })
+    expect(res.status).toBe(200)
+    expect(res.headers.get('content-type')).toContain('text/event-stream')
+  })
+
+  it('webhook token can poll a job to completion (single-token CI journey)', async () => {
+    // Deploy with webhook token and poll with the same token — mirrors rollhook-action behavior
+    const deployRes = await fetch(`${BASE_URL}/deploy/hello-world`, {
+      method: 'POST',
+      headers: webhookHeaders(),
+      body: JSON.stringify({ image_tag: IMAGE_V1 }),
+    })
+    expect(deployRes.status).toBe(200)
+    const { job_id } = await deployRes.json() as { job_id: string }
+
+    const job = await webhookPollJobUntilDone(job_id)
+    expect(job.status).toBe('success')
+    expect(job.id).toBe(job_id)
+  }, 90_000)
 })

@@ -41,6 +41,14 @@ describe('deploy API', () => {
     expect(detail.app).toBe('hello-world')
   })
 
+  it('successful deploy job has compose_path and service populated', async () => {
+    const res = await fetch(`${BASE_URL}/jobs/${jobId}`, { headers: adminHeaders() })
+    const job = await res.json() as Record<string, unknown>
+    expect(typeof job.compose_path).toBe('string')
+    expect((job.compose_path as string).endsWith('compose.yml')).toBe(true)
+    expect(job.service).toBe('hello-world')
+  })
+
   it('successful deploy response does not include error field', async () => {
     const res = await fetch(`${BASE_URL}/jobs/${jobId}`, { headers: adminHeaders() })
     const detail = await res.json() as Record<string, unknown>
@@ -60,13 +68,23 @@ describe('deploy API', () => {
     expect(jobs.some(j => j.id === jobId)).toBe(true)
   })
 
-  it('deploying unknown app returns 404', async () => {
-    const res = await fetch(`${BASE_URL}/deploy/nonexistent-app`, {
+  it('deploy with image matching no running container returns 500', async () => {
+    // Use an image name with no running containers — discover step fails fast
+    const res = await fetch(`${BASE_URL}/deploy/any-app`, {
       method: 'POST',
       headers: adminHeaders(),
-      body: JSON.stringify({ image_tag: IMAGE_V1 }),
+      body: JSON.stringify({ image_tag: `${REGISTRY_HOST}/nonexistent-image:v1` }),
     })
-    expect(res.status).toBe(404)
+    expect(res.status).toBe(500)
+    const body = await res.json() as { job_id: string, status: string, error: string }
+    expect(body.status).toBe('failed')
+    expect(body.error).toContain('No running container found matching image')
+
+    // compose_path and service must be null — discovery never completed
+    const jobRes = await fetch(`${BASE_URL}/jobs/${body.job_id}`, { headers: adminHeaders() })
+    const job = await jobRes.json() as Record<string, unknown>
+    expect(job.compose_path == null).toBe(true)
+    expect(job.service == null).toBe(true)
   })
 
   it('missing image_tag body returns 422 validation error', async () => {

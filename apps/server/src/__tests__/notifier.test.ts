@@ -1,22 +1,8 @@
 import type { JobResult } from 'rollhook'
-import { afterAll, afterEach, beforeAll, describe, expect, it, mock, spyOn } from 'bun:test'
+import { afterAll, afterEach, beforeAll, describe, expect, it, spyOn } from 'bun:test'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-
-// Mutable config object — tests mutate .notifications and env vars per-test
-const mockConfig: {
-  apps: Array<{ name: string, clone_path: string }>
-  notifications?: { webhook?: string }
-} = {
-  apps: [{ name: 'test-app', clone_path: '/tmp/test' }],
-}
-
-// Register mock before notifier is imported (mock.module must precede import)
-mock.module('@/config/loader', () => ({
-  loadConfig: () => mockConfig,
-  saveConfig: () => {}, // not used by notifier, but required for module interface
-}))
 
 let notify: (job: JobResult, logPath: string) => Promise<void>
 
@@ -39,7 +25,6 @@ const JOB_FAILED: JobResult = {
 }
 
 beforeAll(async () => {
-  // Dynamic import ensures mock.module is registered first
   const mod = await import('../jobs/notifier')
   notify = mod.notify
 })
@@ -49,7 +34,7 @@ afterAll(() => {
 })
 
 afterEach(() => {
-  mockConfig.notifications = undefined
+  delete process.env.NOTIFICATION_WEBHOOK_URL
   delete process.env.PUSHOVER_USER_KEY
   delete process.env.PUSHOVER_APP_TOKEN
   writeFileSync(LOG_PATH, '')
@@ -100,7 +85,7 @@ describe('notify', () => {
   })
 
   it('sends webhook POST with job payload when configured', async () => {
-    mockConfig.notifications = { webhook: 'http://test.localhost/hook' }
+    process.env.NOTIFICATION_WEBHOOK_URL = 'http://test.localhost/hook'
     const spy = spyOn(globalThis, 'fetch').mockResolvedValue(new Response('ok', { status: 200 }))
     await notify(JOB_SUCCESS, LOG_PATH)
     expect(spy).toHaveBeenCalledTimes(1)
@@ -113,7 +98,7 @@ describe('notify', () => {
   it('sends both Pushover and webhook when both are configured', async () => {
     process.env.PUSHOVER_USER_KEY = 'test-user-key'
     process.env.PUSHOVER_APP_TOKEN = 'test-app-token'
-    mockConfig.notifications = { webhook: 'http://test.localhost/hook' }
+    process.env.NOTIFICATION_WEBHOOK_URL = 'http://test.localhost/hook'
     const spy = spyOn(globalThis, 'fetch').mockResolvedValue(new Response('ok', { status: 200 }))
     await notify(JOB_SUCCESS, LOG_PATH)
     expect(spy).toHaveBeenCalledTimes(2)
@@ -133,7 +118,7 @@ describe('notify', () => {
   })
 
   it('logs webhook error and does not throw on non-ok response', async () => {
-    mockConfig.notifications = { webhook: 'http://test.localhost/hook' }
+    process.env.NOTIFICATION_WEBHOOK_URL = 'http://test.localhost/hook'
     const spy = spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response('Internal Server Error', { status: 500 }),
     )

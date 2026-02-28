@@ -19,6 +19,17 @@ export function getJob(id: string): JobResult | null {
   return db.prepare('SELECT * FROM jobs WHERE id = ?').get(id) as JobResult | null
 }
 
+export function updateJobDiscovery(id: string, composePath: string, service: string): void {
+  db.prepare(`
+    UPDATE jobs SET compose_path = $compose_path, service = $service, updated_at = $updated_at WHERE id = $id
+  `).run({
+    $id: id,
+    $compose_path: composePath,
+    $service: service,
+    $updated_at: new Date().toISOString(),
+  })
+}
+
 export function updateJobStatus(id: string, status: JobStatus, error?: string): void {
   db.prepare(`
     UPDATE jobs SET status = $status, error = $error, updated_at = $updated_at WHERE id = $id

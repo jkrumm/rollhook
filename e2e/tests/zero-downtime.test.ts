@@ -108,10 +108,12 @@ describe('zero-downtime rolling deployment', () => {
     expect(minContainerCount).toBeGreaterThanOrEqual(1)
     expect(maxContainerCount).toBeLessThanOrEqual(2)
 
-    // Pipeline logs: all three steps must appear, no executor error
+    // Pipeline logs: all four steps must appear, no executor error
     const logsRes = await fetch(`${BASE_URL}/jobs/${job_id}/logs`, { headers: adminHeaders() })
     expect(logsRes.status).toBe(200)
     const logText = await logsRes.text()
+    expect(logText).toContain('[discover]')
+    expect(logText).toContain('[discover] Discovery complete')
     expect(logText).toContain('[validate]')
     expect(logText).toContain('[pull]')
     expect(logText).toContain('[rollout]')
