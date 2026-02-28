@@ -14,7 +14,7 @@ RollHook receives a webhook from your CI pipeline, pulls the new image, and roll
 out across your Docker Compose service — one container at a time, waiting for each
 healthcheck to pass before proceeding.
 
-Configure via YAML. Integrate in one CI step. No dashboard, no provisioning, no vendor.
+No config file. Integrate in one CI step. No dashboard, no provisioning, no vendor.
 
 ### Scope
 
@@ -95,9 +95,10 @@ services:
       # PUSHOVER_USER_KEY: ${PUSHOVER_USER_KEY}
       # PUSHOVER_APP_TOKEN: ${PUSHOVER_APP_TOKEN}
     volumes:
-      - ./rollhook.config.yaml:/app/rollhook.config.yaml:ro
       - rollhook-data:/app/data
-      # Mount one directory per deployed app (read-only):
+      # Mount each app's compose directory at the same absolute path it has on the host.
+      # RollHook discovers the path from Docker Compose labels and reads the file
+      # from inside the container — the paths must match exactly.
       # - /srv/stacks/my-api:/srv/stacks/my-api:ro
     networks:
       - socket-proxy-net
@@ -120,30 +121,30 @@ volumes:
 >   - /var/run/docker.sock:/var/run/docker.sock
 > ```
 
-### 2. Configure apps
+### 2. Ensure your app is running at least once
 
-```yaml
-# rollhook.config.yaml (on your VPS, gitignored)
-# yaml-language-server: $schema=https://cdn.jsdelivr.net/npm/rollhook/schema/config.json
-apps:
-  - name: my-api
-    compose_path: /srv/stacks/my-api/compose.yml
-    steps:
-      - service: backend
-  - name: my-frontend
-    compose_path: /srv/stacks/my-frontend/compose.yml
-    steps:
-      - service: frontend
+RollHook discovers the compose file and service automatically from the running container's Docker Compose labels — no server-side config file needed. This means the container must already exist before the first deploy.
 
-notifications:
-  webhook: https://hooks.example.com/deployments # optional
+```bash
+# First-time setup: start your service manually (or via your normal deploy process)
+docker compose -f /srv/stacks/my-api/compose.yml up -d
 ```
 
-### 3. Configure your `compose.yml` for zero-downtime deployments
+Two things are required in your `compose.yml`:
 
-See the [compose.yml requirements](#composeyml-requirements) section below.
+1. **`image: ${IMAGE_TAG:-...}`** — RollHook finds the running container by matching the image name you send in the webhook. RollHook passes `IMAGE_TAG` as an inline environment variable when invoking `docker rollout`.
+2. **A `healthcheck:`** — `docker rollout` gates each swap on the new container passing its healthcheck.
 
-### 4. Trigger a deploy
+See the [compose.yml requirements](#composeyml-requirements) section below for the full spec.
+
+> **Compose file access:** RollHook runs `docker rollout` inside the container, which reads the compose file from the container filesystem. Mount each app's compose directory as a read-only bind mount at the same path it has on the host:
+>
+> ```yaml
+> volumes:
+>   - /srv/stacks/my-api:/srv/stacks/my-api:ro
+> ```
+
+### 3. Trigger a deploy
 
 ```bash
 curl -X POST https://your-vps:7700/deploy/my-api \
@@ -158,11 +159,11 @@ curl -X POST https://your-vps:7700/deploy/my-api \
 
 Add `?async=true` to return immediately with `"status": "queued"` instead.
 
-Stream logs (admin only):
+Stream logs (webhook or admin token):
 
 ```bash
 curl -N https://your-vps:7700/jobs/<job_id>/logs \
-  -H "Authorization: Bearer $ADMIN_TOKEN"
+  -H "Authorization: Bearer $WEBHOOK_TOKEN"
 ```
 
 ---
@@ -271,16 +272,14 @@ See [`examples/bun-hello-world/`](examples/bun-hello-world/) for a complete work
 
 Interactive docs at `/openapi` (Scalar UI). Key routes:
 
-| Method  | Route            | Auth           | Description                                                                                                  |
-| ------- | ---------------- | -------------- | ------------------------------------------------------------------------------------------------------------ |
-| `POST`  | `/deploy/:app`   | webhook, admin | Trigger rolling deployment                                                                                   |
-| `GET`   | `/jobs/:id`      | admin          | Job status + metadata                                                                                        |
-| `GET`   | `/jobs/:id/logs` | admin          | SSE log stream                                                                                               |
-| `GET`   | `/jobs`          | admin          | Paginated job history (`?app=&status=&limit=`)                                                               |
-| `GET`   | `/registry`      | admin          | All registered apps + last deploy                                                                            |
-| `PATCH` | `/registry/:app` | admin          | Update app config at runtime                                                                                 |
-| `GET`   | `/health`        | none           | Returns `200 { "status": "ok", "version": "1.2.3" }` — suitable for Uptime Kuma, Traefik health checks, etc. |
-| `GET`   | `/openapi`       | none           | Scalar API docs                                                                                              |
+| Method | Route            | Auth           | Description                                                                                                  |
+| ------ | ---------------- | -------------- | ------------------------------------------------------------------------------------------------------------ |
+| `POST` | `/deploy/:app`   | webhook, admin | Trigger rolling deployment                                                                                   |
+| `GET`  | `/jobs/:id`      | webhook, admin | Job status + metadata (includes `compose_path`, `service`, `error`)                                          |
+| `GET`  | `/jobs/:id/logs` | webhook, admin | SSE log stream                                                                                               |
+| `GET`  | `/jobs`          | admin          | Paginated job history (`?app=&status=&limit=`)                                                               |
+| `GET`  | `/health`        | none           | Returns `200 { "status": "ok", "version": "1.2.3" }` — suitable for Uptime Kuma, Traefik health checks, etc. |
+| `GET`  | `/openapi`       | none           | Scalar API docs                                                                                              |
 
 **Auth:** `Authorization: Bearer <token>` header.
 
@@ -300,7 +299,7 @@ PUSHOVER_USER_KEY=your-user-key
 PUSHOVER_APP_TOKEN=your-app-token
 ```
 
-**Webhook**: set `notifications.webhook` in `rollhook.config.yaml`. RollHook POSTs the full job result JSON to that URL on completion.
+**Webhook**: set `NOTIFICATION_WEBHOOK_URL` as an environment variable. RollHook POSTs the full job result JSON to that URL on completion.
 
 Notification failures are written to the job log — they never affect job status.
 
@@ -308,15 +307,15 @@ Notification failures are written to the job log — they never affect job statu
 
 ## Environment Variables
 
-| Variable               | Required | Description                                                                                     |
-| ---------------------- | -------- | ----------------------------------------------------------------------------------------------- |
-| `ADMIN_TOKEN`          | yes      | Bearer token for admin API access                                                               |
-| `WEBHOOK_TOKEN`        | yes      | Bearer token for deploy webhook calls                                                           |
-| `DOCKER_HOST`          | no       | Docker daemon endpoint (e.g. `tcp://socket-proxy:2375`). Defaults to the local socket if unset. |
-| `PORT`                 | no       | Port to listen on (default: `7700`)                                                             |
-| `ROLLHOOK_CONFIG_PATH` | no       | Absolute path to config file (default: `rollhook.config.yaml` in CWD)                           |
-| `PUSHOVER_USER_KEY`    | no       | Pushover user key for mobile notifications                                                      |
-| `PUSHOVER_APP_TOKEN`   | no       | Pushover app token for mobile notifications                                                     |
+| Variable                   | Required | Description                                                                                     |
+| -------------------------- | -------- | ----------------------------------------------------------------------------------------------- |
+| `ADMIN_TOKEN`              | yes      | Bearer token for admin API access                                                               |
+| `WEBHOOK_TOKEN`            | yes      | Bearer token for deploy webhook calls                                                           |
+| `DOCKER_HOST`              | no       | Docker daemon endpoint (e.g. `tcp://socket-proxy:2375`). Defaults to the local socket if unset. |
+| `PORT`                     | no       | Port to listen on (default: `7700`)                                                             |
+| `PUSHOVER_USER_KEY`        | no       | Pushover user key for mobile notifications                                                      |
+| `PUSHOVER_APP_TOKEN`       | no       | Pushover app token for mobile notifications                                                     |
+| `NOTIFICATION_WEBHOOK_URL` | no       | URL to POST the full job result JSON to on completion                                           |
 
 ---
 
@@ -359,7 +358,7 @@ Never expose port 7700 directly to the internet. Always place RollHook behind a 
 
 `ADMIN_TOKEN` should never leave the server — it has full API access including job logs and registry mutation. If you run behind a reverse proxy, consider blocking `/jobs`, `/registry`, and `/openapi` from external networks and only exposing `/deploy` and `/health` to CI.
 
-`WEBHOOK_TOKEN` is the only credential that needs to exist in CI secrets. It is scoped to `POST /deploy/:app` only.
+`WEBHOOK_TOKEN` is the only credential that needs to exist in CI secrets. It covers `POST /deploy/:app`, `GET /jobs/:id`, and `GET /jobs/:id/logs` — the full CI journey of trigger → poll → stream.
 
 ### Bun baseline image
 
@@ -373,29 +372,22 @@ HMAC-SHA256 webhook signature verification (`X-Hub-Signature-256`) is planned as
 
 ## Volume Mounts (when running in Docker)
 
-| Path                        | Purpose                                                                             |
-| --------------------------- | ----------------------------------------------------------------------------------- |
-| `/app/rollhook.config.yaml` | Server config (mount as read-only)                                                  |
-| `/app/data`                 | SQLite DB + job logs (persist across restarts)                                      |
-| `/var/run/docker.sock`      | Docker socket — only when using direct socket mount (not needed with `DOCKER_HOST`) |
-| `/host/path/to/app`         | App compose file directories (one read-only mount per deployed app)                 |
+| Path                   | Purpose                                                                                                                                                                                                           |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/app/data`            | SQLite DB + job logs (persist across restarts)                                                                                                                                                                    |
+| `/var/run/docker.sock` | Docker socket — only when using direct socket mount (not needed with `DOCKER_HOST`)                                                                                                                               |
+| `/srv/stacks/my-app`   | App compose directory — one read-only bind mount per deployed app, at the same absolute path as on the host. RollHook discovers the path from Docker labels and reads the compose file from inside the container. |
 
 ---
 
 ## `rollhook` npm Package
 
-The `rollhook` npm package is primarily a schema delivery mechanism — schemas are served via jsDelivr CDN for YAML editor validation.
-
-| Schema                 | URL                                                        |
-| ---------------------- | ---------------------------------------------------------- |
-| `rollhook.config.yaml` | `https://cdn.jsdelivr.net/npm/rollhook/schema/config.json` |
-
-Add the `# yaml-language-server: $schema=...` comment at the top of your config file for IDE validation.
+The `rollhook` npm package exports shared TypeScript types for working with the RollHook API programmatically.
 
 ```ts
-// Optional: programmatic validation in your tooling
-import type { ServerConfig } from 'rollhook'
-import { ServerConfigSchema } from 'rollhook'
+import type { JobResult, JobStatus } from 'rollhook'
+// JobStatus: 'queued' | 'running' | 'success' | 'failed'
+// JobResult: full job record shape returned by GET /jobs/:id
 ```
 
 ---
@@ -452,13 +444,12 @@ The action POSTs the deploy trigger, then streams SSE logs live to the CI run an
 
 The following scenarios are not covered by the current test suite. They are tracked here rather than as TODO comments in code.
 
-| Area               | Gap                                                                                       | Risk   |
-| ------------------ | ----------------------------------------------------------------------------------------- | ------ |
-| `steps/rollout.ts` | Multi-service rollouts (2+ steps) — only single-service tested via E2E                    | Medium |
-| `config/loader.ts` | File-not-found and invalid YAML error paths — hard to unit test due to module-level cache | Medium |
-| `server.ts`        | Graceful SIGTERM: 503 response during shutdown, clean exit — code exists, no test         | Low    |
-| `api/jobs.ts`      | SSE stream abort mid-read, empty log file (404)                                           | Low    |
-| `api/deploy.ts`    | Empty `image_tag` input (passes `t.String()` validation)                                  | Low    |
+| Area               | Gap                                                                               | Risk   |
+| ------------------ | --------------------------------------------------------------------------------- | ------ |
+| `steps/rollout.ts` | Multi-service rollouts (2+ steps) — only single-service tested via E2E            | Medium |
+| `server.ts`        | Graceful SIGTERM: 503 response during shutdown, clean exit — code exists, no test | Low    |
+| `api/jobs.ts`      | SSE stream abort mid-read, empty log file (404)                                   | Low    |
+| `api/deploy.ts`    | Empty `image_tag` input (passes `t.String()` validation)                          | Low    |
 
 ---
 
@@ -472,10 +463,10 @@ The following scenarios are not covered by the current test suite. They are trac
 - [x] `GET /jobs/:id/logs` — SSE stream from `data/logs/<id>.log`
 - [x] `GET /jobs` — paginated job history with app/status filters
 - [x] Pre-deploy validation (`compose_path` existence check)
+- [x] Stateless auto-discovery — finds compose file and service from running container's Docker Compose labels
 - [x] Zero-downtime rolling deployment (scale → health-gate → remove old)
-- [x] Pushover + configurable webhook notifications
-- [x] `rollhook` npm package (TypeBox schemas + TS types, JSON Schema via jsDelivr CDN)
-- [x] `rollhook.config.yaml` loading + validation
+- [x] Pushover + configurable webhook notifications (`NOTIFICATION_WEBHOOK_URL`)
+- [x] `rollhook` npm package (shared TypeScript types: `JobResult`, `JobStatus`)
 - [x] Example app with correct compose, healthcheck, and graceful shutdown
 - [x] Public Docker image: `registry.jkrumm.com/rollhook`
 - [x] `examples/infra/` — reference `compose.infra.yml` (Traefik + RollHook + socket proxy)
@@ -483,7 +474,6 @@ The following scenarios are not covered by the current test suite. They are trac
 
 ### Post-MVP
 
-- [ ] `PATCH /registry/:app` — persist config changes to `rollhook.config.yaml` (currently in-memory only)
 - [ ] Ordered multi-service steps with dependency graph
 - [ ] Rollback: `POST /deploy/:app/rollback` (redeploy last successful image)
 - [ ] Multi-VPS support via Docker contexts

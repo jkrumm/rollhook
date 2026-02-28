@@ -1,11 +1,8 @@
 import type { JobResult } from 'rollhook'
 import { appendFileSync } from 'node:fs'
 import process from 'node:process'
-import { loadConfig } from '@/config/loader'
 
 export async function notify(job: JobResult, logPath: string): Promise<void> {
-  const config = loadConfig()
-  const notifications = config.notifications
   const log = (line: string) => appendFileSync(logPath, `${line}\n`)
 
   const title = job.status === 'success'
@@ -21,8 +18,9 @@ export async function notify(job: JobResult, logPath: string): Promise<void> {
     promises.push(sendPushover(pushoverUserKey, pushoverAppToken, title, message, log))
   }
 
-  if (notifications?.webhook) {
-    promises.push(sendWebhook(notifications.webhook, job, log))
+  const notificationWebhookUrl = process.env.NOTIFICATION_WEBHOOK_URL
+  if (notificationWebhookUrl) {
+    promises.push(sendWebhook(notificationWebhookUrl, job, log))
   }
 
   await Promise.allSettled(promises)

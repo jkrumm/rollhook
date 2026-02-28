@@ -1,2 +1,1 @@
-export { ServerConfigSchema } from './schema/config'
-export type { JobResult, JobStatus, ServerConfig } from './types'
+export type { JobResult, JobStatus } from './types'

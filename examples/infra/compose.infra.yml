@@ -13,8 +13,8 @@
 #   - .env file with required variables (see below)
 #
 # Required .env variables:
-#   DOMAIN=<your-domain>          # e.g. example.com
-#   ROLLHOOK_ADMIN_TOKEN=<token>  # openssl rand -hex 32
+#   DOMAIN=<your-domain>           # e.g. example.com
+#   ROLLHOOK_ADMIN_TOKEN=<token>   # openssl rand -hex 32
 #   ROLLHOOK_WEBHOOK_TOKEN=<token>
 
 services:
@@ -102,9 +102,8 @@ services:
   # ---------------------------------------------------------------------------
   # RollHook — zero-downtime rolling deployments via webhook.
   #
-  # App compose files must be mounted for docker-rollout to read them.
-  # Add one volume per app:
-  #   - /srv/stacks/my-api:/srv/stacks/my-api:ro
+  # No config file needed. RollHook discovers the compose file and service
+  # automatically from the running container's Docker Compose labels.
   # ---------------------------------------------------------------------------
   rollhook:
     image: registry.jkrumm.com/rollhook:latest
@@ -117,21 +116,18 @@ services:
     environment:
       ADMIN_TOKEN: ${ROLLHOOK_ADMIN_TOKEN}
       WEBHOOK_TOKEN: ${ROLLHOOK_WEBHOOK_TOKEN}
-      ROLLHOOK_CONFIG_PATH: /app/rollhook.config.yaml
       DOCKER_HOST: tcp://socket-proxy-rollhook:2375
       # Optional: Pushover mobile notifications
       # PUSHOVER_USER_KEY: ${PUSHOVER_USER_KEY}
       # PUSHOVER_APP_TOKEN: ${PUSHOVER_APP_TOKEN}
+      # Optional: POST job result JSON to a URL on completion
+      # NOTIFICATION_WEBHOOK_URL: ${NOTIFICATION_WEBHOOK_URL}
     volumes:
-      - ./config/rollhook/rollhook.config.yaml:/app/rollhook.config.yaml:ro
       - rollhook-data:/app/data
       # Required if pulling from a private registry:
       # docker-rollout runs docker pull using the container's Docker CLI credentials,
       # not the host's. Mount the host's config to pass private registry auth through.
       # - /root/.docker/config.json:/root/.docker/config.json:ro
-      #
-      # Mount one directory per deployed app (read-only):
-      # - /srv/stacks/my-api:/srv/stacks/my-api:ro
     healthcheck:
       test: [CMD, bun, -e, "fetch('http://localhost:7700/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 10s

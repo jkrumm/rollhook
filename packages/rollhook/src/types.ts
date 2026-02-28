@@ -1,8 +1,3 @@
-import type { Static } from '@sinclair/typebox'
-import type { ServerConfigSchema } from './schema/config'
-
-export type ServerConfig = Static<typeof ServerConfigSchema>
-
 export type JobStatus = 'queued' | 'running' | 'success' | 'failed'
 
 export interface JobResult {
@@ -13,4 +8,6 @@ export interface JobResult {
   created_at: string
   updated_at: string
   error?: string
+  compose_path?: string
+  service?: string
 }

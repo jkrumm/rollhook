@@ -30,3 +30,17 @@ export async function pollJobUntilDone(jobId: string, timeoutMs = 90_000): Promi
   }
   throw new Error(`Job ${jobId} did not complete within ${timeoutMs}ms`)
 }
+
+// Same as pollJobUntilDone but uses the webhook token — mirrors the real CI journey
+// where rollhook-action only has a webhook token, not an admin token.
+export async function webhookPollJobUntilDone(jobId: string, timeoutMs = 90_000): Promise<JobResult> {
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    const res = await fetch(`${BASE_URL}/jobs/${jobId}`, { headers: webhookHeaders() })
+    const job = await res.json() as JobResult
+    if (job.status === 'success' || job.status === 'failed')
+      return job
+    await new Promise(resolve => setTimeout(resolve, 1_000))
+  }
+  throw new Error(`Job ${jobId} did not complete within ${timeoutMs}ms`)
+}

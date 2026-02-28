@@ -61,8 +61,40 @@ describe('Auth middleware (app.handle)', () => {
         body: JSON.stringify({ image_tag: 'test:latest' }),
       }),
     )
-    // Auth passed — response is not 401 or 403 (may be 404 or 500 depending on config availability)
+    // Auth passed — response is not 401 or 403 (may be 200 or 500 depending on whether discover can find a running container)
     expect(res.status).not.toBe(401)
     expect(res.status).not.toBe(403)
+  })
+
+  it('webhook token is accepted on GET /jobs/:id', async () => {
+    // A job that doesn't exist returns 404, but auth passes first
+    const res = await app.handle(
+      new Request('http://localhost/jobs/00000000-0000-0000-0000-000000000000', {
+        headers: { Authorization: 'Bearer test-webhook' },
+      }),
+    )
+    expect(res.status).not.toBe(401)
+    expect(res.status).not.toBe(403)
+    // 404 is the expected result — job doesn't exist, but auth passed
+    expect(res.status).toBe(404)
+  })
+
+  it('webhook token is accepted on GET /jobs/:id/logs', async () => {
+    const res = await app.handle(
+      new Request('http://localhost/jobs/00000000-0000-0000-0000-000000000000/logs', {
+        headers: { Authorization: 'Bearer test-webhook' },
+      }),
+    )
+    expect(res.status).not.toBe(401)
+    expect(res.status).not.toBe(403)
+  })
+
+  it('webhook token is still rejected on GET /jobs (list)', async () => {
+    const res = await app.handle(
+      new Request('http://localhost/jobs', {
+        headers: { Authorization: 'Bearer test-webhook' },
+      }),
+    )
+    expect(res.status).toBe(403)
   })
 })

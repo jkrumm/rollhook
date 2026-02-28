@@ -9,25 +9,17 @@ const workflowCode = `- name: Build & push
     tags: ghcr.io/you/my-api:\${{ github.sha }}
 
 - name: Deploy via RollHook
-  run: |
-    curl -sf -X POST \\
-      -H "Authorization: Bearer \${{ secrets.WEBHOOK_TOKEN }}" \\
-      -H "Content-Type: application/json" \\
-      -d '{"image_tag":"ghcr.io/you/my-api:\${{ github.sha }}"}' \\
-      \${{ secrets.ROLLHOOK_URL }}/deploy/my-api`
+  uses: jkrumm/rollhook-action@v1
+  with:
+    url: \${{ secrets.ROLLHOOK_URL }}
+    token: \${{ secrets.ROLLHOOK_WEBHOOK_TOKEN }}
+    image_tag: ghcr.io/you/my-api:\${{ github.sha }}`
 
-const configCode = `# yaml-language-server: $schema=https://cdn.jsdelivr.net/npm/rollhook/schema/config.json
-apps:
-  - name: my-api
-    compose_path: /srv/stacks/my-api/compose.yml
-    steps:
-      - service: backend
-
-notifications:
-  webhook: https://hooks.example.com/deployments`
-
-const composeCode = `services:
+const composeVarsCode = `services:
   backend:
+    # IMAGE_TAG is set by RollHook on each deploy.
+    # The running container's image name is the discovery key —
+    # RollHook finds it automatically via Docker Compose labels.
     image: \${IMAGE_TAG:-ghcr.io/you/my-api:latest}
     healthcheck:
       test: [CMD, curl, -f, http://localhost:3000/health]
@@ -36,13 +28,13 @@ const composeCode = `services:
       retries: 5
     # No ports: — proxy routes via Docker DNS (backend:3000)
     # No container_name: — fixed names block docker-rollout from scaling
-    # Works with Caddy, Traefik, nginx, or any reverse proxy
     networks:
       - proxy
 
 networks:
   proxy:
     external: true`
+
 ---
 
 <Layout
@@ -125,9 +117,9 @@ networks:
       <section class="px-6 pb-20">
         <div class="max-w-5xl mx-auto">
           <div class="text-center mb-12">
-            <h2 class="text-2xl font-semibold">Three files. That's the integration.</h2>
+            <h2 class="text-2xl font-semibold">Two things. That's the integration.</h2>
             <p class="text-muted-foreground mt-3 text-sm max-w-xl mx-auto">
-              Your CI workflow, a server config, and a compose file — nothing else needed.
+              Your CI workflow and a compose file — no server config, no registration, no YAML on the VPS.
             </p>
           </div>
           <div class="grid grid-cols-1 gap-8">
@@ -150,30 +142,11 @@ networks:
               </div>
             </div>
 
-            <!-- 2: RollHook config -->
+            <!-- 2: App compose.yml -->
             <div>
               <div class="mb-3">
-                <p class="text-sm font-medium">2. Register your app</p>
-                <p class="text-xs text-muted-foreground mt-0.5">Point RollHook at the compose file and list the services to roll out.</p>
-              </div>
-              <div class="rounded-lg border border-border/60 bg-muted/20 overflow-hidden">
-                <div class="flex items-center gap-2 px-4 py-3 border-b border-border/40">
-                  <div class="flex gap-1.5">
-                    <div class="h-3 w-3 rounded-full bg-muted-foreground/30"></div>
-                    <div class="h-3 w-3 rounded-full bg-muted-foreground/30"></div>
-                    <div class="h-3 w-3 rounded-full bg-muted-foreground/30"></div>
-                  </div>
-                  <span class="text-xs text-muted-foreground ml-2">rollhook.config.yaml</span>
-                </div>
-                <Code code={configCode} lang="yaml" theme="github-dark" class="m-0 p-5 text-sm leading-relaxed" />
-              </div>
-            </div>
-
-            <!-- 3: App compose.yml -->
-            <div>
-              <div class="mb-3">
-                <p class="text-sm font-medium">3. Add a healthcheck — that's it</p>
-                <p class="text-xs text-muted-foreground mt-0.5">Works with Caddy, Traefik, nginx, or any proxy. Docker's internal DNS handles the rest.</p>
+                <p class="text-sm font-medium">2. Use <code class="text-xs bg-muted/40 px-1 rounded">image: $&#123;IMAGE_TAG&#125;</code> and add a healthcheck</p>
+                <p class="text-xs text-muted-foreground mt-0.5">RollHook finds the compose file automatically from the running container's labels. No registration needed.</p>
               </div>
               <div class="rounded-lg border border-border/60 bg-muted/20 overflow-hidden">
                 <div class="flex items-center gap-2 px-4 py-3 border-b border-border/40">
@@ -184,7 +157,7 @@ networks:
                   </div>
                   <span class="text-xs text-muted-foreground ml-2">compose.yml</span>
                 </div>
-                <Code code={composeCode} lang="yaml" theme="github-dark" class="m-0 p-5 text-sm leading-relaxed" />
+                <Code code={composeVarsCode} lang="yaml" theme="github-dark" class="m-0 p-5 text-sm leading-relaxed" />
               </div>
             </div>
           </div>
@@ -213,8 +186,8 @@ networks:
               <p class="text-sm text-muted-foreground leading-relaxed">SQLite-backed, no external dependencies. Query status and logs any time.</p>
             </div>
             <div class="rounded-lg border border-border/60 bg-muted/10 p-5 space-y-2 hover:bg-muted/20 transition-colors">
-              <p class="text-sm font-semibold uppercase tracking-wider">YAML Config</p>
-              <p class="text-sm text-muted-foreground leading-relaxed">Configure apps, compose paths, and notification targets in one file.</p>
+              <p class="text-sm font-semibold uppercase tracking-wider">Auto-Discovery</p>
+              <p class="text-sm text-muted-foreground leading-relaxed">No config file. RollHook finds the compose file and service from Docker Compose labels on the running container.</p>
             </div>
             <div class="rounded-lg border border-border/60 bg-muted/10 p-5 space-y-2 hover:bg-muted/20 transition-colors">
               <p class="text-sm font-semibold uppercase tracking-wider">Notifications</p>
@@ -239,26 +212,33 @@ networks:
             <li class="flex gap-5">
               <span class="shrink-0 font-mono text-xs text-muted-foreground/60 pt-1 w-8">02</span>
               <div class="space-y-1">
-                <p class="font-medium text-sm">compose_path validated, image pulled</p>
-                <p class="text-sm text-muted-foreground">Checks that the compose file exists on disk, then pulls the new image from your registry.</p>
+                <p class="font-medium text-sm">Discovers the running container automatically</p>
+                <p class="text-sm text-muted-foreground">Matches the image name against running containers, reads Docker Compose labels to find the compose file path and service name. No config file needed.</p>
               </div>
             </li>
             <li class="flex gap-5">
               <span class="shrink-0 font-mono text-xs text-muted-foreground/60 pt-1 w-8">03</span>
+              <div class="space-y-1">
+                <p class="font-medium text-sm">Compose file validated, image pulled</p>
+                <p class="text-sm text-muted-foreground">Confirms the compose file exists on disk, then pulls the new image from your registry.</p>
+              </div>
+            </li>
+            <li class="flex gap-5">
+              <span class="shrink-0 font-mono text-xs text-muted-foreground/60 pt-1 w-8">04</span>
               <div class="space-y-1">
                 <p class="font-medium text-sm">docker rollout replaces containers one at a time</p>
                 <p class="text-sm text-muted-foreground">New container starts alongside the old one. Traffic continues to the old instance.</p>
               </div>
             </li>
             <li class="flex gap-5">
-              <span class="shrink-0 font-mono text-xs text-muted-foreground/60 pt-1 w-8">04</span>
+              <span class="shrink-0 font-mono text-xs text-muted-foreground/60 pt-1 w-8">05</span>
               <div class="space-y-1">
                 <p class="font-medium text-sm">Each step waits for healthcheck to pass</p>
                 <p class="text-sm text-muted-foreground">Old container removed only after the new one passes its healthcheck. No traffic loss.</p>
               </div>
             </li>
             <li class="flex gap-5">
-              <span class="shrink-0 font-mono text-xs text-muted-foreground/60 pt-1 w-8">05</span>
+              <span class="shrink-0 font-mono text-xs text-muted-foreground/60 pt-1 w-8">06</span>
               <div class="space-y-1">
                 <p class="font-medium text-sm">Full log stream via SSE; Pushover fires on completion</p>
                 <p class="text-sm text-muted-foreground">CI tails the log stream in real time. Notification sent with full job result on finish.</p>
@@ -276,9 +256,7 @@ networks:
             <pre class="p-5 text-sm font-mono leading-relaxed overflow-x-auto"><code><span class="text-green-400">POST  </span><span class="text-foreground/80">/deploy/:app        </span><span class="text-muted-foreground"># Trigger a deployment</span>
 <span class="text-blue-400">GET   </span><span class="text-foreground/80">/jobs/:id           </span><span class="text-muted-foreground"># Job status + metadata</span>
 <span class="text-blue-400">GET   </span><span class="text-foreground/80">/jobs/:id/logs      </span><span class="text-muted-foreground"># SSE log stream</span>
-<span class="text-blue-400">GET   </span><span class="text-foreground/80">/jobs               </span><span class="text-muted-foreground"># Deployment history</span>
-<span class="text-blue-400">GET   </span><span class="text-foreground/80">/registry           </span><span class="text-muted-foreground"># Apps + last deploy</span>
-<span class="text-yellow-400">PATCH </span><span class="text-foreground/80">/registry/:app      </span><span class="text-muted-foreground"># Update app config</span>
+<span class="text-blue-400">GET   </span><span class="text-foreground/80">/jobs               </span><span class="text-muted-foreground"># Deployment history (admin)</span>
 <span class="text-blue-400">GET   </span><span class="text-foreground/80">/health             </span><span class="text-muted-foreground"># Health check (no auth)</span></code></pre>
           </div>
         </div>
@@ -301,11 +279,11 @@ networks:
       <!-- CTA -->
       <section class="px-6 py-24 border-t border-border/40 text-center">
         <div class="max-w-xl mx-auto space-y-6">
-          <h2 class="text-3xl font-bold tracking-tight">One curl command away.</h2>
+          <h2 class="text-3xl font-bold tracking-tight">One GitHub Action away.</h2>
           <p class="text-muted-foreground">
-            Add RollHook to your infra compose stack, configure your apps in
-            <code class="text-xs bg-muted/40 px-1.5 py-0.5 rounded">rollhook.config.yaml</code>,
-            and add the deploy step to your CI workflow.
+            Add RollHook to your infra compose stack, add
+            <code class="text-xs bg-muted/40 px-1.5 py-0.5 rounded">jkrumm/rollhook-action@v1</code>
+            to your CI workflow, and you're done — no config file needed.
           </p>
           <a
             href="https://github.com/jkrumm/rollhook"
