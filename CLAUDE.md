@@ -4,6 +4,8 @@
 
 Webhook-driven rolling deployment orchestrator for Docker Compose stacks on self-hosted VPS. Receives GitHub Actions webhook calls, runs zero-downtime rolling deployments via `docker-rollout`, and streams job logs back to CI.
 
+**Companion repo:** `~/SourceRoot/rollhook-action` (`jkrumm/rollhook-action`) — GitHub Action that triggers deploys and streams SSE logs live to CI. Versioned independently (`v1.x`). Users reference it as `uses: jkrumm/rollhook-action@v1`.
+
 See: `~/Obsidian/Vault/03_Projects/rollhook.md`
 North Star Stack: `~/Obsidian/Vault/04_Areas/Engineering/north-star-stack.md`
 

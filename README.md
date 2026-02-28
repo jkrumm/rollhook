@@ -367,7 +367,7 @@ The Docker image uses `oven/bun:1.3.9-slim` (the x86_64 baseline variant) intent
 
 ### Future
 
-HMAC-SHA256 webhook signature verification (`X-Hub-Signature-256`) is planned as an optional hardening layer once a native GitHub Actions workflow is provided. This will let callers sign the exact payload with a shared secret, adding defense-in-depth against token-only leakage.
+HMAC-SHA256 webhook signature verification (`X-Hub-Signature-256`) is planned as an optional hardening layer. This will let callers sign the exact payload with a shared secret, adding defense-in-depth against token-only leakage.
 
 ---
 
@@ -402,11 +402,28 @@ import { ServerConfigSchema } from 'rollhook'
 
 ## GitHub Actions integration
 
+Use the official [rollhook-action](https://github.com/jkrumm/rollhook-action) for real-time log streaming back to CI:
+
+```yaml
+- uses: jkrumm/rollhook-action@v1
+  with:
+    url: ${{ secrets.ROLLHOOK_URL }}
+    token: ${{ secrets.ROLLHOOK_WEBHOOK_TOKEN }}
+    image_tag: registry.example.com/my-api:${{ github.sha }}
+```
+
+The action POSTs the deploy trigger, then streams SSE logs live to the CI run and polls for the terminal state — no custom scripts needed.
+
+**Inputs:** `url`, `token`, `app` (default: repo name), `image_tag`, `timeout` (default: 600s)
+**Outputs:** `job_id`, `status`
+
+**Alternative — plain curl:**
+
 ```yaml
 - name: Deploy
   run: |
-    curl -sf -X POST ${{ secrets.ROLLHOOK_URL }}/deploy/my-api \
-      -H "Authorization: Bearer ${{ secrets.WEBHOOK_TOKEN }}" \
+    curl --fail-with-body -sS -X POST ${{ secrets.ROLLHOOK_URL }}/deploy/my-api \
+      -H "Authorization: Bearer ${{ secrets.ROLLHOOK_WEBHOOK_TOKEN }}" \
       -H "Content-Type: application/json" \
       -d '{"image_tag": "${{ env.REGISTRY }}/my-api:${{ github.sha }}"}'
 ```
@@ -462,6 +479,7 @@ The following scenarios are not covered by the current test suite. They are trac
 - [x] Example app with correct compose, healthcheck, and graceful shutdown
 - [x] Public Docker image: `registry.jkrumm.com/rollhook`
 - [x] `examples/infra/` — reference `compose.infra.yml` (Traefik + RollHook + socket proxy)
+- [x] `jkrumm/rollhook-action` — GitHub Action with real-time SSE log streaming to CI
 
 ### Post-MVP
 
