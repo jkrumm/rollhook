@@ -185,6 +185,6 @@ jobs:
     steps:
       - uses: jkrumm/rollhook-action@v1
         with:
-          url: ${{ secrets.ROLLHOOK_URL }}
+          url: https://rollhook-vps.jkrumm.com
           token: ${{ secrets.ROLLHOOK_WEBHOOK_TOKEN }}
           image_tag: registry.jkrumm.com/private/rollhook-marketing:${{ needs.release.outputs.version }}
