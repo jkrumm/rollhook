@@ -169,7 +169,7 @@ jobs:
     steps:
       - name: Trigger RollHook deployment
         run: |
-          curl -sf -X POST "${{ secrets.ROLLHOOK_URL }}/deploy/rollhook-marketing" \
+          curl --fail-with-body -sS -X POST "${{ secrets.ROLLHOOK_URL }}/deploy/rollhook-marketing" \
             -H "Authorization: Bearer ${{ secrets.ROLLHOOK_WEBHOOK_TOKEN }}" \
             -H "Content-Type: application/json" \
             -d "{\"image_tag\": \"registry.jkrumm.com/private/rollhook-marketing:${{ needs.release.outputs.version }}\"}"
