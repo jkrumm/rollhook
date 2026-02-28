@@ -23,7 +23,7 @@ rollhook/
         app.ts                     # Bare Elysia app (no .listen()), plugin composition
         api/
           health.ts                # GET /health (no auth)
-          deploy.ts                # POST /deploy/:app
+          deploy.ts                # POST /deploy
           jobs.ts                  # GET /jobs/:id, GET /jobs/:id/logs (SSE), GET /jobs
         middleware/
           auth.ts                  # Bearer token plugin (role: admin | webhook)
@@ -138,7 +138,7 @@ bun run lint:fix    # Fix + format
 | ---------------------------------------- | ---------------------------------------------------------- |
 | `apps/server/server.ts`                  | Entry point — `.listen(7700)`                              |
 | `apps/server/src/app.ts`                 | Bare Elysia app (no `.listen()`) — OpenAPI + route plugins |
-| `apps/server/src/api/deploy.ts`          | `POST /deploy/:app` — accepts `image_tag`, enqueues job    |
+| `apps/server/src/api/deploy.ts`          | `POST /deploy` — accepts `image_tag`, enqueues job    |
 | `apps/server/src/api/jobs.ts`            | `GET /jobs/:id`, `GET /jobs/:id/logs` (SSE), `GET /jobs`   |
 | `apps/server/src/middleware/auth.ts`     | Bearer token plugin — two roles: `admin`, `webhook`        |
 | `apps/server/src/db/client.ts`           | `bun:sqlite` instance, auto-migrations                     |
@@ -155,7 +155,7 @@ Two bearer token roles, set via environment variables (never in config files):
 | Env var         | Role      | Allowed routes                                             |
 | --------------- | --------- | ---------------------------------------------------------- |
 | `ADMIN_TOKEN`   | `admin`   | All routes                                                 |
-| `WEBHOOK_TOKEN` | `webhook` | `POST /deploy/:app`, `GET /jobs/:id`, `GET /jobs/:id/logs` |
+| `WEBHOOK_TOKEN` | `webhook` | `POST /deploy`, `GET /jobs/:id`, `GET /jobs/:id/logs` |
 
 ---
 
@@ -222,3 +222,4 @@ Follow SourceRoot conventions (see `~/SourceRoot/CLAUDE.md`):
 - `/pr` for GitHub PR workflow
 - No ticket numbers (personal project)
 - No AI attribution
+- **NEVER use `!` or `BREAKING CHANGE` in commits** — this is a greenfield project with no external consumers. All changes are `feat:` or `fix:`, never `feat!:`. Major version bumps are forbidden.

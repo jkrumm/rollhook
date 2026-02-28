@@ -5,8 +5,9 @@ import { requireRole } from '@/middleware/auth'
 export const deployApi = new Elysia({ prefix: '/deploy' })
   .use(
     requireRole('webhook')
-      .post('/:app', async ({ params, body, query, set }) => {
-        const job = scheduleJob(params.app, body.image_tag)
+      .post('/', async ({ body, query, set }) => {
+        const app = body.image_tag.split('/').pop()!.split(':')[0]
+        const job = scheduleJob(app, body.image_tag)
 
         if (query.async) {
           return { job_id: job.id, app: job.app, status: job.status }
@@ -20,9 +21,8 @@ export const deployApi = new Elysia({ prefix: '/deploy' })
 
         return { job_id: result.id, app: result.app, status: result.status }
       }, {
-        params: t.Object({ app: t.String() }),
         body: t.Object({ image_tag: t.String() }),
         query: t.Object({ async: t.Optional(t.Boolean()) }),
-        detail: { tags: ['Deploy'], summary: 'Trigger rolling deployment for an app. Blocks until complete by default; pass ?async=true for fire-and-forget.' },
+        detail: { tags: ['Deploy'], summary: 'Trigger rolling deployment. App name is derived from the image tag. Blocks until complete by default; pass ?async=true for fire-and-forget.' },
       }),
   )
