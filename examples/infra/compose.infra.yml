@@ -86,6 +86,7 @@ services:
       - no-new-privileges:true
     environment:
       CONTAINERS: 1
+      NETWORKS: 1
       SERVICES: 1
       IMAGES: 1
       INFO: 1
@@ -124,6 +125,11 @@ services:
     volumes:
       - ./config/rollhook/rollhook.config.yaml:/app/rollhook.config.yaml:ro
       - rollhook-data:/app/data
+      # Required if pulling from a private registry:
+      # docker-rollout runs docker pull using the container's Docker CLI credentials,
+      # not the host's. Mount the host's config to pass private registry auth through.
+      # - /root/.docker/config.json:/root/.docker/config.json:ro
+      #
       # Mount one directory per deployed app (read-only):
       # - /srv/stacks/my-api:/srv/stacks/my-api:ro
     healthcheck:
