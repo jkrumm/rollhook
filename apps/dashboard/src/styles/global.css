@@ -1,0 +1,19 @@
+@import 'basalt-ui/css';
+@source "../../../../packages/ui/src";
+
+/* Status indicator colors — higher-chroma OKLCH for vivid visual signals.
+   Basalt-ui's semantic colors (--green, --red) are intentionally low-chroma
+   for text/backgrounds. These are specifically for borders and chart bars. */
+:root {
+  --status-success: oklch(0.68 0.16 131);
+  --status-failed: oklch(0.6 0.18 15);
+  --status-running: oklch(0.65 0.14 249);
+  --status-queued: oklch(0.8 0.14 84);
+}
+
+@theme inline {
+  --color-status-success: var(--status-success);
+  --color-status-failed: var(--status-failed);
+  --color-status-running: var(--status-running);
+  --color-status-queued: var(--status-queued);
+}

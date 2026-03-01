@@ -1,0 +1,26 @@
+{
+  "name": "@rollhook/ui",
+  "type": "module",
+  "version": "0.0.1",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "dependencies": {
+    "@tanstack/react-virtual": "^3.13.19",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.575.0",
+    "recharts": "^2.12.0",
+    "rollhook": "workspace:*",
+    "tailwind-merge": "^3.5.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.14"
+  }
+}

@@ -62,9 +62,9 @@ export const jobsApi = new Elysia({ prefix: '/jobs' })
         detail: { tags: ['Jobs'], summary: 'Stream job logs via SSE' },
       }),
   )
-  // GET / — admin only
+  // GET / — webhook role (dashboard needs this)
   .use(
-    requireRole('admin')
+    requireRole('webhook')
       .get('/', ({ query }) => {
         return listJobs({
           app: query.app,

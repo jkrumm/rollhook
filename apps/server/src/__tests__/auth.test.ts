@@ -18,15 +18,6 @@ describe('Auth middleware (app.handle)', () => {
     expect(res.status).toBe(401)
   })
 
-  it('returns 403 when webhook token is used on admin-only endpoint', async () => {
-    const res = await app.handle(
-      new Request('http://localhost/jobs', {
-        headers: { Authorization: 'Bearer test-webhook' },
-      }),
-    )
-    expect(res.status).toBe(403)
-  })
-
   it('returns 403 when unknown token is used', async () => {
     const res = await app.handle(
       new Request('http://localhost/jobs', {
@@ -89,12 +80,13 @@ describe('Auth middleware (app.handle)', () => {
     expect(res.status).not.toBe(403)
   })
 
-  it('webhook token is still rejected on GET /jobs (list)', async () => {
+  it('webhook token is accepted on GET /jobs (list)', async () => {
     const res = await app.handle(
       new Request('http://localhost/jobs', {
         headers: { Authorization: 'Bearer test-webhook' },
       }),
     )
-    expect(res.status).toBe(403)
+    expect(res.status).not.toBe(401)
+    expect(res.status).not.toBe(403)
   })
 })

@@ -71,6 +71,12 @@ export async function setup(): Promise<void> {
 }
 
 export async function teardown(): Promise<void> {
+  try {
+    execSync(`bun ${E2E_DIR}/export-demo.ts`, { stdio: 'inherit', cwd: ROOT })
+  }
+  catch (err) {
+    console.warn('demo export failed (non-fatal):', err)
+  }
   execSync(`docker compose --project-directory ${HELLO_WORLD_DIR} down -v`, {
     stdio: 'inherit',
   })
