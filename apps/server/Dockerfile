@@ -1,3 +1,11 @@
+FROM golang:1.23-alpine AS go-builder
+WORKDIR /app
+COPY go.mod go.sum ./
+RUN go mod download
+COPY cmd/ ./cmd/
+COPY internal/ ./internal/
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o /rollhook ./cmd/rollhook
+
 # Download Docker CLI static binary + docker-rollout in a throw-away stage.
 # Static binaries work on any Linux regardless of libc version.
 FROM alpine:3.21 AS tool-downloader
@@ -31,6 +39,7 @@ COPY --from=tool-downloader /usr/local/bin/docker /usr/local/bin/docker
 RUN mkdir -p /usr/local/lib/docker/cli-plugins
 COPY --from=tool-downloader /usr/local/bin/docker-compose-plugin /usr/local/lib/docker/cli-plugins/docker-compose
 COPY --from=tool-downloader /usr/local/bin/zot /usr/local/bin/zot
+COPY --from=go-builder /rollhook /usr/local/bin/rollhook-go
 
 ARG VERSION=dev
 ENV NODE_ENV=production
