@@ -1,3 +1,18 @@
+# [1.7.0](https://github.com/jkrumm/rollhook/compare/v1.6.0...v1.7.0) (2026-03-01)
+
+
+### Bug Fixes
+
+* **deploy:** fix critical bugs in rolling deploy, harden Docker adapter ([c5d6d0a](https://github.com/jkrumm/rollhook/commit/c5d6d0a019f8af96e19a0debd50f6bd94225ad53)), closes [hi#level](https://github.com/hi/issues/level)
+* **e2e:** update tests for stateless app derivation from image tag ([30e979d](https://github.com/jkrumm/rollhook/commit/30e979d469db7382bf24a29168e852486ba3dd20))
+* **review:** address all CodeRabbit review findings ([8913aa2](https://github.com/jkrumm/rollhook/commit/8913aa28d2df53019158916a2f81e6f48f00789e))
+
+
+### Features
+
+* **deploy:** replace docker-rollout with TypeScript rolling deploy via Docker API ([4aed7be](https://github.com/jkrumm/rollhook/commit/4aed7bed21f44710b0dcffffd99219a7034c7e61))
+* **e2e,examples:** containerize RollHook in E2E, add production reference stacks ([d498ce4](https://github.com/jkrumm/rollhook/commit/d498ce4a315c46d4d1872765a36033abb48eec1b))
+
 # [1.6.0](https://github.com/jkrumm/rollhook/compare/v1.5.1...v1.6.0) (2026-02-28)
 
 
