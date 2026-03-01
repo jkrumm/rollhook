@@ -27,7 +27,7 @@ const composeVarsCode = `services:
       start_period: 10s
       retries: 5
     # No ports: — proxy routes via Docker DNS (backend:3000)
-    # No container_name: — fixed names block docker-rollout from scaling
+    # No container_name: — fixed names prevent the scaler from creating a second instance
     networks:
       - proxy
 
@@ -171,11 +171,11 @@ networks:
           <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
             <div class="rounded-lg border border-border/60 bg-muted/10 p-5 space-y-2 hover:bg-muted/20 transition-colors">
               <p class="text-sm font-semibold uppercase tracking-wider">Webhook-Driven</p>
-              <p class="text-sm text-muted-foreground leading-relaxed">POST /deploy/:app from any CI pipeline. Admin + webhook token roles.</p>
+              <p class="text-sm text-muted-foreground leading-relaxed">POST /deploy from any CI pipeline. App derived from image_tag. Admin + webhook token roles.</p>
             </div>
             <div class="rounded-lg border border-border/60 bg-muted/10 p-5 space-y-2 hover:bg-muted/20 transition-colors">
               <p class="text-sm font-semibold uppercase tracking-wider">Rolling Updates</p>
-              <p class="text-sm text-muted-foreground leading-relaxed">docker-rollout replaces containers one at a time, healthcheck-gated.</p>
+              <p class="text-sm text-muted-foreground leading-relaxed">TypeScript rolling deploy scales up, health-gates each container, then removes old ones.</p>
             </div>
             <div class="rounded-lg border border-border/60 bg-muted/10 p-5 space-y-2 hover:bg-muted/20 transition-colors">
               <p class="text-sm font-semibold uppercase tracking-wider">Real-Time Logs</p>
@@ -205,7 +205,7 @@ networks:
             <li class="flex gap-5">
               <span class="shrink-0 font-mono text-xs text-muted-foreground/60 pt-1 w-8">01</span>
               <div class="space-y-1">
-                <p class="font-medium text-sm">CI pushes image, sends POST /deploy/my-api</p>
+                <p class="font-medium text-sm">CI pushes image, sends POST /deploy</p>
                 <p class="text-sm text-muted-foreground">Webhook body carries <code class="text-xs bg-muted/40 px-1 rounded">&#123;"image_tag": "..."&#125;</code> &mdash; CI blocks until deployment completes. Returns HTTP 500 on failure.</p>
               </div>
             </li>
@@ -226,7 +226,7 @@ networks:
             <li class="flex gap-5">
               <span class="shrink-0 font-mono text-xs text-muted-foreground/60 pt-1 w-8">04</span>
               <div class="space-y-1">
-                <p class="font-medium text-sm">docker rollout replaces containers one at a time</p>
+                <p class="font-medium text-sm">Rolling deploy scales up, waits for health, removes old containers</p>
                 <p class="text-sm text-muted-foreground">New container starts alongside the old one. Traffic continues to the old instance.</p>
               </div>
             </li>
@@ -253,7 +253,7 @@ networks:
         <div class="max-w-2xl mx-auto">
           <h2 class="text-2xl font-semibold text-center mb-12">API Surface</h2>
           <div class="rounded-lg border border-border/60 bg-muted/20 overflow-hidden">
-            <pre class="p-5 text-sm font-mono leading-relaxed overflow-x-auto"><code><span class="text-green-400">POST  </span><span class="text-foreground/80">/deploy/:app        </span><span class="text-muted-foreground"># Trigger a deployment</span>
+            <pre class="p-5 text-sm font-mono leading-relaxed overflow-x-auto"><code><span class="text-green-400">POST  </span><span class="text-foreground/80">/deploy             </span><span class="text-muted-foreground"># Trigger a deployment</span>
 <span class="text-blue-400">GET   </span><span class="text-foreground/80">/jobs/:id           </span><span class="text-muted-foreground"># Job status + metadata</span>
 <span class="text-blue-400">GET   </span><span class="text-foreground/80">/jobs/:id/logs      </span><span class="text-muted-foreground"># SSE log stream</span>
 <span class="text-blue-400">GET   </span><span class="text-foreground/80">/jobs               </span><span class="text-muted-foreground"># Deployment history (admin)</span>
