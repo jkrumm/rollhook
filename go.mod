@@ -1,5 +1,26 @@
 module github.com/jkrumm/rollhook
 
-go 1.23
+go 1.24.1
 
-require github.com/go-chi/chi/v5 v5.2.1
+require github.com/go-chi/chi/v5 v5.2.5
+
+require (
+	github.com/compose-spec/compose-go/v2 v2.10.1 // indirect
+	github.com/danielgtaylor/huma/v2 v2.36.0 // indirect
+	github.com/docker/docker v28.5.2+incompatible // indirect
+	github.com/dustin/go-humanize v1.0.1 // indirect
+	github.com/google/go-containerregistry v0.20.6 // indirect
+	github.com/google/uuid v1.6.0 // indirect
+	github.com/mattn/go-isatty v0.0.20 // indirect
+	github.com/ncruces/go-strftime v1.0.0 // indirect
+	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
+	golang.org/x/crypto v0.48.0 // indirect
+	golang.org/x/exp v0.0.0-20251023183803-a4bb9ffd2546 // indirect
+	golang.org/x/net v0.50.0 // indirect
+	golang.org/x/sys v0.41.0 // indirect
+	golang.org/x/text v0.34.0 // indirect
+	modernc.org/libc v1.67.6 // indirect
+	modernc.org/mathutil v1.7.1 // indirect
+	modernc.org/memory v1.11.0 // indirect
+	modernc.org/sqlite v1.46.1 // indirect
+)
