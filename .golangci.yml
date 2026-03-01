@@ -1,0 +1,12 @@
+linters:
+  enable:
+    - gofmt
+    - govet
+    - errcheck
+    - staticcheck
+    - unused
+linters-settings:
+  gofmt:
+    simplify: true
+run:
+  timeout: 5m
