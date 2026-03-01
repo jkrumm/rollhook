@@ -12,12 +12,25 @@ RUN apk add --no-cache curl \
   && echo "${DOCKER_COMPOSE_SHA256}  /usr/local/bin/docker-compose-plugin" | sha256sum -c - \
   && chmod +x /usr/local/bin/docker-compose-plugin
 
+ARG TARGETARCH
+ARG ZOT_VERSION=2.1.14
+ARG ZOT_AMD64_SHA256=c96e2394e1d94ddd3439f3b19d1d2b707e5bcbf34fec49532805bf3cd734bfc7
+ARG ZOT_ARM64_SHA256=e447ebe874d9b906feb2c769d535f1c8f4682f479a1320572c5201684b81c17c
+RUN ZOT_ARCH=$([ "$TARGETARCH" = "arm64" ] && echo "arm64" || echo "amd64") \
+  && ZOT_SHA=$([ "$TARGETARCH" = "arm64" ] && echo "${ZOT_ARM64_SHA256}" || echo "${ZOT_AMD64_SHA256}") \
+  && curl -fsSL \
+     "https://github.com/project-zot/zot/releases/download/v${ZOT_VERSION}/zot-linux-${ZOT_ARCH}" \
+     -o /usr/local/bin/zot \
+  && echo "${ZOT_SHA}  /usr/local/bin/zot" | sha256sum -c - \
+  && chmod +x /usr/local/bin/zot
+
 FROM oven/bun:1.3.9-slim AS runner
 WORKDIR /app
 
 COPY --from=tool-downloader /usr/local/bin/docker /usr/local/bin/docker
 RUN mkdir -p /usr/local/lib/docker/cli-plugins
 COPY --from=tool-downloader /usr/local/bin/docker-compose-plugin /usr/local/lib/docker/cli-plugins/docker-compose
+COPY --from=tool-downloader /usr/local/bin/zot /usr/local/bin/zot
 
 ARG VERSION=dev
 ENV NODE_ENV=production
