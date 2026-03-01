@@ -25,8 +25,10 @@ ENV VERSION=$VERSION
 
 COPY package.json bun.lock ./
 COPY apps/server/package.json ./apps/server/package.json
+COPY apps/dashboard/package.json ./apps/dashboard/package.json
 COPY apps/marketing/package.json ./apps/marketing/package.json
 COPY packages/rollhook/package.json ./packages/rollhook/package.json
+COPY packages/ui/package.json ./packages/ui/package.json
 COPY e2e/package.json ./e2e/package.json
 RUN --mount=type=cache,target=/root/.bun/install/cache \
     bun install --frozen-lockfile --production --ignore-scripts

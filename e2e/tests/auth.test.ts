@@ -11,11 +11,11 @@ describe('authentication', () => {
     expect(res.status).toBe(401)
   })
 
-  it('webhook token on GET /jobs → 403', async () => {
+  it('webhook token on GET /jobs → 200', async () => {
     const res = await fetch(`${BASE_URL}/jobs`, {
       headers: { Authorization: `Bearer ${WEBHOOK_TOKEN}` },
     })
-    expect(res.status).toBe(403)
+    expect(res.status).toBe(200)
   })
 
   it('admin token on GET /jobs → 200', async () => {

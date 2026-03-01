@@ -52,9 +52,9 @@ Your reverse proxy routes traffic to app containers via Docker's internal DNS �
 
 RollHook runs alongside your existing reverse proxy — Caddy, Traefik, nginx, or any other. No proxy-specific configuration is required. Two production-ready reference stacks are provided in [`examples/`](examples/):
 
-| File | Purpose |
-|-|-|
-| `compose.simple.yml` | Direct socket mount — minimal setup for trusted VPS |
+| File                 | Purpose                                                                |
+| -------------------- | ---------------------------------------------------------------------- |
+| `compose.simple.yml` | Direct socket mount — minimal setup for trusted VPS                    |
 | `compose.socket.yml` | Socket proxy per service — least-privilege, recommended for production |
 
 ---
@@ -426,12 +426,12 @@ The action POSTs the deploy trigger, then streams SSE logs live to the CI run an
 
 ### Commands
 
-| Command                 | Description                                    |
-| ----------------------- | ---------------------------------------------- |
-| `bun run test`          | Unit tests (bun:test, no Docker required)      |
-| `bun run test:coverage` | Unit tests with per-file coverage table        |
-| `bun run test:e2e`      | E2E tests (requires Docker)                    |
-| `bun run validate`      | Full suite: lint + typecheck + unit + E2E      |
+| Command                 | Description                               |
+| ----------------------- | ----------------------------------------- |
+| `bun run test`          | Unit tests (bun:test, no Docker required) |
+| `bun run test:coverage` | Unit tests with per-file coverage table   |
+| `bun run test:e2e`      | E2E tests (requires Docker)               |
+| `bun run validate`      | Full suite: lint + typecheck + unit + E2E |
 
 ### Coverage scope
 
