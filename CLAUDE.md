@@ -11,6 +11,8 @@ Webhook-driven rolling deployment orchestrator for Docker Compose stacks on self
 See: `~/Obsidian/Vault/03_Projects/rollhook.md`
 North Star Stack: `~/Obsidian/Vault/04_Areas/Engineering/north-star-stack.md`
 
+**Go gotchas:** If something behaves unexpectedly — a library API, stdlib quirk, Docker SDK type name, SQLite concurrency issue, Zot/Dockerfile constraint, huma panic, or orval codegen surprise — check `docs/GO_GOTCHAS.md` before researching externally. It contains battle-tested fixes from the full Go rewrite.
+
 ---
 
 ## Repository Layout
@@ -199,6 +201,26 @@ Always initialize `out.Status = http.StatusOK` immediately after `out := &FooOut
 ### Docker SDK v28
 
 `ContainerList` returns `[]container.Summary` (not `types.Container`). Options types are in sub-packages (`container`, `image` under `api/types/`).
+
+### Graceful shutdown / SIGTERM
+
+`jobCtx` is decoupled from the signal context — SIGTERM does NOT cancel in-flight deploys.
+`cancelJobs()` is the safety valve, called only if `Drain(5 * time.Minute)` times out.
+
+Production compose must set `stop_grace_period: 3m` — Docker's default is 10 seconds which
+SIGKILLs the process before any deploy can finish.
+
+```yaml
+services:
+  rollhook:
+    stop_grace_period: 3m
+```
+
+### Auth middleware
+
+`middleware.HumaAuth(api, secret)` for huma operations — 401 for missing/malformed Bearer, 403 for wrong token.
+`middleware.RequireAuth(secret)` for chi routes (SSE) — same 401/403 distinction.
+Both use `subtle.ConstantTimeCompare` to prevent timing attacks.
 
 ---
 

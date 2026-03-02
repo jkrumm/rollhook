@@ -72,6 +72,22 @@ func TestSetEnvLine(t *testing.T) {
 			value:   "app:v2",
 			want:    "MY_IMAGE_TAG=other\nIMAGE_TAG=app:v2\n",
 		},
+		{
+			// Commented-out key must NOT be treated as an existing value —
+			// it should be appended as a new line, not replace the comment.
+			name:    "commented key is not replaced",
+			content: "# IMAGE_TAG=old\n",
+			key:     "IMAGE_TAG",
+			value:   "app:v2",
+			want:    "# IMAGE_TAG=old\nIMAGE_TAG=app:v2\n",
+		},
+		{
+			name:    "commented key mid-file is not replaced",
+			content: "FOO=bar\n# IMAGE_TAG=old\nBAZ=qux",
+			key:     "IMAGE_TAG",
+			value:   "app:v2",
+			want:    "FOO=bar\n# IMAGE_TAG=old\nBAZ=qux\nIMAGE_TAG=app:v2",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

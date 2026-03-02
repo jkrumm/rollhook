@@ -2,6 +2,7 @@ package jobs_test
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -10,6 +11,13 @@ import (
 	"github.com/jkrumm/rollhook/internal/jobs"
 )
 
+func mustEnqueue(t *testing.T, q *jobs.Queue, fn func(context.Context)) {
+	t.Helper()
+	if err := q.Enqueue(fn); err != nil {
+		t.Fatalf("Enqueue failed unexpectedly: %v", err)
+	}
+}
+
 func TestQueue_FIFO(t *testing.T) {
 	q := jobs.NewQueue(context.Background())
 	var mu sync.Mutex
@@ -17,7 +25,7 @@ func TestQueue_FIFO(t *testing.T) {
 
 	for i := range 3 {
 		n := i
-		q.Enqueue(func(_ context.Context) {
+		mustEnqueue(t, q, func(_ context.Context) {
 			mu.Lock()
 			results = append(results, n)
 			mu.Unlock()
@@ -39,7 +47,7 @@ func TestQueue_Sequential(t *testing.T) {
 	var overlap atomic.Bool
 
 	for range 5 {
-		q.Enqueue(func(_ context.Context) {
+		mustEnqueue(t, q, func(_ context.Context) {
 			if active.Add(1) > 1 {
 				overlap.Store(true)
 			}
@@ -59,7 +67,7 @@ func TestQueue_Drain(t *testing.T) {
 	q := jobs.NewQueue(context.Background())
 	var done atomic.Bool
 
-	q.Enqueue(func(_ context.Context) {
+	mustEnqueue(t, q, func(_ context.Context) {
 		time.Sleep(20 * time.Millisecond)
 		done.Store(true)
 	})
@@ -84,13 +92,15 @@ func TestQueue_DrainNoopsAfterFirst(t *testing.T) {
 	}
 }
 
-func TestQueue_EnqueueAfterDrainIsNoOp(t *testing.T) {
+func TestQueue_EnqueueAfterDrain_ReturnsError(t *testing.T) {
 	q := jobs.NewQueue(context.Background())
 	q.Drain(time.Second)
 
-	// Enqueue after drain must not panic and must not run the job.
 	var ran atomic.Bool
-	q.Enqueue(func(_ context.Context) { ran.Store(true) })
+	err := q.Enqueue(func(_ context.Context) { ran.Store(true) })
+	if !errors.Is(err, jobs.ErrQueueDrained) {
+		t.Errorf("expected ErrQueueDrained, got %v", err)
+	}
 	time.Sleep(20 * time.Millisecond)
 	if ran.Load() {
 		t.Error("job enqueued after Drain should not execute")
@@ -104,7 +114,7 @@ func TestQueue_ContextCancel(t *testing.T) {
 	started := make(chan struct{})
 	stopped := make(chan struct{})
 
-	q.Enqueue(func(ctx context.Context) {
+	mustEnqueue(t, q, func(ctx context.Context) {
 		close(started)
 		<-ctx.Done() // blocks until context is cancelled
 		close(stopped)
@@ -119,4 +129,33 @@ func TestQueue_ContextCancel(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatal("job did not receive context cancellation within 1s")
 	}
+}
+
+func TestQueue_Full_ReturnsErrQueueFull(t *testing.T) {
+	q := jobs.NewQueue(context.Background())
+
+	// Block the worker so the buffer builds up.
+	started := make(chan struct{})
+	unblock := make(chan struct{})
+	mustEnqueue(t, q, func(_ context.Context) {
+		close(started)
+		<-unblock
+	})
+	<-started
+
+	// Fill the 1024-slot buffer.
+	for i := 0; i < 1024; i++ {
+		if err := q.Enqueue(func(_ context.Context) {}); err != nil {
+			t.Fatalf("unexpected error filling buffer at slot %d: %v", i, err)
+		}
+	}
+
+	// The 1025th enqueue must fail immediately (non-blocking).
+	err := q.Enqueue(func(_ context.Context) {})
+	if !errors.Is(err, jobs.ErrQueueFull) {
+		t.Errorf("expected ErrQueueFull, got %v", err)
+	}
+
+	close(unblock)
+	q.Drain(time.Minute)
 }

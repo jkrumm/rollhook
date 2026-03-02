@@ -69,7 +69,9 @@ func (e *Executor) Submit(job db.Job) error {
 	logPath := db.LogPath(e.dataDir, job.ID)
 	_ = db.AppendLog(logPath, fmt.Sprintf("[queue] Deployment queued: %s @ %s", job.App, job.ImageTag))
 
-	e.queue.Enqueue(func(ctx context.Context) { e.run(ctx, job) })
+	if err := e.queue.Enqueue(func(ctx context.Context) { e.run(ctx, job) }); err != nil {
+		return fmt.Errorf("executor: %w", err)
+	}
 	return nil
 }
 
@@ -88,8 +90,21 @@ func extractApp(imageTag string) string {
 
 func (e *Executor) run(ctx context.Context, job db.Job) {
 	logPath := db.LogPath(e.dataDir, job.ID)
+
+	// Open log file once for the full job duration — avoids open/write/close per line.
+	// The SSE reader opens independently with O_RDONLY so there is no conflict.
+	logFile, err := db.OpenLog(logPath)
+	if err != nil {
+		slog.Error("failed to open log file", "job", job.ID, "err", err)
+	}
+	if logFile != nil {
+		defer logFile.Close()
+	}
 	log := func(line string) {
-		if err := db.AppendLog(logPath, line); err != nil {
+		if logFile == nil {
+			return
+		}
+		if err := db.AppendLogLine(logFile, line); err != nil {
 			slog.Warn("append log failed", "job", job.ID, "err", err)
 		}
 	}
@@ -140,7 +155,7 @@ func (e *Executor) execute(ctx context.Context, job db.Job, log func(string)) er
 
 	// Step 2: Validate
 	log("[validate] Validating deployment parameters")
-	if err := steps.Validate(result.ComposePath, result.Service, job.ImageTag); err != nil {
+	if err := steps.Validate(result.ComposePath, result.Service, job.ImageTag, log); err != nil {
 		return err
 	}
 	log(fmt.Sprintf("[validate] OK — %s", result.ComposePath))

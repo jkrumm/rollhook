@@ -36,6 +36,13 @@ type getJobOutput struct {
 // RegisterJobsAPI registers the GET /jobs and GET /jobs/{id} handlers via huma.
 // The SSE stream endpoint /jobs/{id}/logs is registered separately via StreamLogsHandler.
 func RegisterJobsAPI(humaAPI huma.API, store *db.Store) {
+	validStatuses := map[string]bool{
+		string(db.StatusQueued):  true,
+		string(db.StatusRunning): true,
+		string(db.StatusSuccess): true,
+		string(db.StatusFailed):  true,
+	}
+
 	huma.Register(humaAPI, huma.Operation{
 		OperationID: "get-jobs",
 		Method:      http.MethodGet,
@@ -45,6 +52,10 @@ func RegisterJobsAPI(humaAPI huma.API, store *db.Store) {
 		Tags:        []string{"Jobs"},
 		Security:    []map[string][]string{{"bearer": {}}},
 	}, func(_ context.Context, input *listJobsInput) (*listJobsOutput, error) {
+		if input.Status != "" && !validStatuses[input.Status] {
+			return nil, huma.NewError(http.StatusBadRequest,
+				fmt.Sprintf("invalid status %q: must be one of queued, running, success, failed", input.Status))
+		}
 		jobs, err := store.List(input.App, input.Status, input.Limit)
 		if err != nil {
 			return nil, huma.NewError(http.StatusInternalServerError, err.Error())

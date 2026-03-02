@@ -2,9 +2,16 @@ package jobs
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"time"
 )
+
+// ErrQueueFull is returned by Enqueue when the 1024-slot buffer is exhausted.
+var ErrQueueFull = errors.New("queue full")
+
+// ErrQueueDrained is returned by Enqueue after Drain has been called.
+var ErrQueueDrained = errors.New("queue is shutting down")
 
 // Queue is a buffered FIFO job runner backed by a Go channel.
 // Only one job runs at a time — sequential execution is guaranteed.
@@ -34,14 +41,21 @@ func (q *Queue) worker() {
 	}
 }
 
-// Enqueue adds fn to the back of the queue. No-ops after Drain is called.
-func (q *Queue) Enqueue(fn func(context.Context)) {
+// Enqueue adds fn to the back of the queue.
+// Returns ErrQueueFull if the 1024-slot buffer is exhausted, or ErrQueueDrained after Drain.
+// The non-blocking send prevents HTTP handler goroutines from hanging indefinitely.
+func (q *Queue) Enqueue(fn func(context.Context)) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	if q.drained {
-		return
+		return ErrQueueDrained
 	}
-	q.ch <- fn
+	select {
+	case q.ch <- fn:
+		return nil
+	default:
+		return ErrQueueFull
+	}
 }
 
 // Drain stops accepting new work, waits for all queued and in-flight jobs to

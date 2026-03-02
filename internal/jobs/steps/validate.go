@@ -5,16 +5,19 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/compose-spec/compose-go/v2/cli"
 	"github.com/compose-spec/compose-go/v2/loader"
 )
 
 // Validate checks that composePath is absolute, the compose file is parseable,
-// the named service exists, and (if the service declares an image) that it
-// references the same image name as imageTag.
-func Validate(composePath, service, imageTag string) error {
+// and the named service exists.
+//
+// If the service has no healthcheck configured (compose-level), a warning is
+// emitted via logFn so the user sees it before scale-up. This is advisory —
+// if the Docker image itself has a HEALTHCHECK instruction, the deploy will
+// still succeed. logFn may be nil.
+func Validate(composePath, service, imageTag string, logFn func(string)) error {
 	if !filepath.IsAbs(composePath) {
 		return fmt.Errorf("compose_path must be absolute, got: %s", composePath)
 	}
@@ -44,13 +47,14 @@ func Validate(composePath, service, imageTag string) error {
 		return fmt.Errorf("service %q not found in %s", service, composePath)
 	}
 
-	// Only check the image reference if the service has an explicit image field.
-	// Build-only services (no image:) are allowed.
-	if svc.Image != "" {
-		imageName := ExtractImageName(imageTag)
-		if !strings.Contains(svc.Image, imageName) {
-			return fmt.Errorf("service %q image %q does not reference %q", service, svc.Image, imageName)
-		}
+	// Warn if the service has no compose-level healthcheck.
+	// The deploy will still fail at rollout if the Docker image also lacks a
+	// HEALTHCHECK instruction — this is an early heads-up to the user.
+	if svc.HealthCheck == nil && logFn != nil {
+		logFn(fmt.Sprintf(
+			"[validate] Warning: service %q has no healthcheck configured. "+
+				"Add a HEALTHCHECK to your Dockerfile or a healthcheck: block to your compose service "+
+				"for zero-downtime deploys to work.", service))
 	}
 
 	return nil

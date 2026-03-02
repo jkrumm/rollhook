@@ -1,6 +1,7 @@
 package registry
 
 import (
+	"crypto/subtle"
 	"encoding/base64"
 	"encoding/json"
 	"net/http"
@@ -39,7 +40,7 @@ func validateProxyAuth(header, secret string) bool {
 		return false
 	}
 	if bearer, ok := strings.CutPrefix(header, "Bearer "); ok {
-		return bearer == secret
+		return subtle.ConstantTimeCompare([]byte(bearer), []byte(secret)) == 1
 	}
 	if basic, ok := strings.CutPrefix(header, "Basic "); ok {
 		decoded, err := base64.StdEncoding.DecodeString(basic)
@@ -50,7 +51,7 @@ func validateProxyAuth(header, secret string) bool {
 		if !found {
 			return false
 		}
-		return password == secret
+		return subtle.ConstantTimeCompare([]byte(password), []byte(secret)) == 1
 	}
 	return false
 }

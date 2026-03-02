@@ -1,12 +1,28 @@
+version: '2'
 linters:
+  default: none
   enable:
-    - gofmt
     - govet
     - errcheck
     - staticcheck
-    - unused
-linters-settings:
-  gofmt:
-    simplify: true
+  settings:
+    errcheck:
+      # Ignore Close/Remove calls that are conventionally unchecked in Go.
+      # Most are in defer statements where handling the error is not useful.
+      exclude-functions:
+        - (*os.File).Close
+        - (*database/sql.DB).Close
+        - (*database/sql.Rows).Close
+        - (io.ReadCloser).Close
+        - (io.Closer).Close
+        - (*github.com/docker/docker/client.Client).Close
+        - fmt.Fprintf
+        - os.Remove
+formatters:
+  enable:
+    - gofmt
+  settings:
+    gofmt:
+      simplify: true
 run:
   timeout: 5m

@@ -54,16 +54,26 @@ export async function setup(): Promise<void> {
     { stdio: 'inherit' },
   )
 
+  // Build unhealthy variant: starts on port 3000 but /health always returns 503.
+  // Used by rollout-failure.test.ts to exercise health-check failure + rollback.
+  execSync(
+    `docker build -t rollhook-e2e-hello:v-unhealthy -f ${HELLO_WORLD_DIR}/Dockerfile.unhealthy ${HELLO_WORLD_DIR}`,
+    { stdio: 'inherit' },
+  )
+
   // Remove stale registry-tagged images so Docker daemon re-checks layer existence
   // instead of skipping uploads based on a previous (now-gone) registry session.
   execSync(`docker rmi ${REGISTRY_HOST}/rollhook-e2e-hello:v1 2>/dev/null || true`)
   execSync(`docker rmi ${REGISTRY_HOST}/rollhook-e2e-hello:v2 2>/dev/null || true`)
+  execSync(`docker rmi ${REGISTRY_HOST}/rollhook-e2e-hello:v-unhealthy 2>/dev/null || true`)
 
   // Push images to RollHook's embedded registry so executor's docker pull step succeeds
   execSync(`docker tag rollhook-e2e-hello:v1 ${REGISTRY_HOST}/rollhook-e2e-hello:v1`)
   execSync(`docker push ${REGISTRY_HOST}/rollhook-e2e-hello:v1`, { stdio: 'inherit' })
   execSync(`docker tag rollhook-e2e-hello:v2 ${REGISTRY_HOST}/rollhook-e2e-hello:v2`)
   execSync(`docker push ${REGISTRY_HOST}/rollhook-e2e-hello:v2`, { stdio: 'inherit' })
+  execSync(`docker tag rollhook-e2e-hello:v-unhealthy ${REGISTRY_HOST}/rollhook-e2e-hello:v-unhealthy`)
+  execSync(`docker push ${REGISTRY_HOST}/rollhook-e2e-hello:v-unhealthy`, { stdio: 'inherit' })
 
   // Start hello-world app at v1
   // Pass IMAGE_TAG explicitly — a stale .env file in the project dir could override the compose default

@@ -40,11 +40,11 @@ func TestFindMatchingContainer(t *testing.T) {
 		imageName string
 		wantID    string
 	}{
-		{"nginx", "aaa"},                      // bare name matches "nginx:latest"
-		{"localhost:5000/app", "bbb"},         // exact match without tag
-		{"localhost:5000/myapp", "ccc"},       // prefix match with tag
-		{"localhost:5000/other", ""},          // no match
-		{"localhost:5000/app:v3", ""},         // full tag doesn't match bare image
+		{"nginx", "aaa"},                // bare name matches "nginx:latest"
+		{"localhost:5000/app", "bbb"},   // exact match without tag
+		{"localhost:5000/myapp", "ccc"}, // prefix match with tag
+		{"localhost:5000/other", ""},    // no match
+		{"localhost:5000/app:v3", ""},   // full tag doesn't match bare image
 	}
 
 	for _, tc := range cases {

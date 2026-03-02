@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 
@@ -67,10 +66,12 @@ func main() {
 	}
 	defer cli.Close()
 
-	// Job executor (creates and starts the internal queue).
-	// ctx is the SIGTERM-cancellable signal context — cancelling it interrupts
-	// any in-flight docker pull or compose rollout.
-	exec := jobs.NewExecutor(ctx, store, cli, secret, dataDir)
+	// jobCtx is decoupled from the signal context so SIGTERM does not immediately
+	// cancel in-flight deploys. It is cancelled only if Drain times out (safety valve).
+	jobCtx, cancelJobs := context.WithCancel(context.Background())
+	defer cancelJobs()
+
+	exec := jobs.NewExecutor(jobCtx, store, cli, secret, dataDir)
 
 	r := chi.NewRouter()
 
@@ -91,25 +92,7 @@ func main() {
 	// are checked; public operations (health, openapi) pass through.
 	// - No Authorization header or non-Bearer format → 401 Unauthorized
 	// - Bearer with wrong token → 403 Forbidden
-	humaAPI.UseMiddleware(func(ctx huma.Context, next func(huma.Context)) {
-		if len(ctx.Operation().Security) > 0 {
-			auth := ctx.Header("Authorization")
-			if auth == "" {
-				_ = huma.WriteErr(humaAPI, ctx, http.StatusUnauthorized, "unauthorized")
-				return
-			}
-			token, ok := strings.CutPrefix(auth, "Bearer ")
-			if !ok {
-				_ = huma.WriteErr(humaAPI, ctx, http.StatusUnauthorized, "unauthorized")
-				return
-			}
-			if token != secret {
-				_ = huma.WriteErr(humaAPI, ctx, http.StatusForbidden, "forbidden")
-				return
-			}
-		}
-		next(ctx)
-	})
+	humaAPI.UseMiddleware(middleware.HumaAuth(humaAPI, secret))
 
 	// Scalar UI — served at /openapi, spec JSON is at /openapi.json (huma default)
 	r.Get("/openapi", func(w http.ResponseWriter, r *http.Request) {
@@ -147,7 +130,11 @@ func main() {
 		// Allow Traefik time to deregister this backend before we stop accepting.
 		time.Sleep(3 * time.Second)
 		// Wait for any in-flight job to complete (up to 5 minutes).
-		exec.Queue().Drain(5 * time.Minute)
+		// jobCtx is independent of the signal context, so in-flight deploys run to completion.
+		// If they don't finish within the timeout, cancelJobs() force-kills them.
+		if !exec.Queue().Drain(5 * time.Minute) {
+			cancelJobs()
+		}
 		// Stop registry and HTTP server.
 		_ = mgr.Stop()
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)

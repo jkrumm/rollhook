@@ -22,10 +22,12 @@ func TestRequireAuth(t *testing.T) {
 		wantStatus int
 	}{
 		{"no header", "", http.StatusUnauthorized},
-		{"wrong token", "Bearer wrong-token", http.StatusUnauthorized},
+		{"wrong token", "Bearer wrong-token", http.StatusForbidden},
 		{"correct token", "Bearer " + secret, http.StatusOK},
 		{"missing Bearer prefix", secret, http.StatusUnauthorized},
-		{"empty bearer", "Bearer ", http.StatusUnauthorized},
+		// Empty bearer string is parsed as a valid Bearer format with empty token —
+		// token mismatch → 403, not 401.
+		{"empty bearer", "Bearer ", http.StatusForbidden},
 	}
 
 	for _, tc := range tests {

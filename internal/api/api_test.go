@@ -53,16 +53,7 @@ func newTestServer(t *testing.T) (http.Handler, *db.Store, string) {
 	humaAPI := humachi.New(r, config)
 
 	// Auth middleware matching production setup.
-	humaAPI.UseMiddleware(func(ctx huma.Context, next func(huma.Context)) {
-		if len(ctx.Operation().Security) > 0 {
-			token, ok := strings.CutPrefix(ctx.Header("Authorization"), "Bearer ")
-			if !ok || token != testSecret {
-				_ = huma.WriteErr(humaAPI, ctx, http.StatusUnauthorized, "unauthorized")
-				return
-			}
-		}
-		next(ctx)
-	})
+	humaAPI.UseMiddleware(middleware.HumaAuth(humaAPI, testSecret))
 
 	api.RegisterDeploy(humaAPI, exec, store)
 	api.RegisterJobsAPI(humaAPI, store)
@@ -167,16 +158,7 @@ func TestListJobs_WithFilter(t *testing.T) {
 	config := huma.DefaultConfig("RollHook", "test")
 	config.DocsPath = ""
 	humaAPI := humachi.New(r, config)
-	humaAPI.UseMiddleware(func(ctx huma.Context, next func(huma.Context)) {
-		if len(ctx.Operation().Security) > 0 {
-			token, ok := strings.CutPrefix(ctx.Header("Authorization"), "Bearer ")
-			if !ok || token != testSecret {
-				_ = huma.WriteErr(humaAPI, ctx, http.StatusUnauthorized, "unauthorized")
-				return
-			}
-		}
-		next(ctx)
-	})
+	humaAPI.UseMiddleware(middleware.HumaAuth(humaAPI, testSecret))
 	api.RegisterJobsAPI(humaAPI, store)
 
 	req := httptest.NewRequest(http.MethodGet, "/jobs?status=queued", nil)
@@ -192,6 +174,17 @@ func TestListJobs_WithFilter(t *testing.T) {
 	}
 	if len(out) != 1 || out[0].ID != "id-1" {
 		t.Errorf("expected 1 queued job, got %d: %+v", len(out), out)
+	}
+}
+
+func TestListJobs_InvalidStatus(t *testing.T) {
+	srv, _, _ := newTestServer(t)
+	req := httptest.NewRequest(http.MethodGet, "/jobs?status=succes", nil) // typo
+	req.Header.Set("Authorization", authHeader())
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected 400 for invalid status, got %d: %s", w.Code, w.Body.String())
 	}
 }
 
