@@ -3,6 +3,7 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -123,18 +124,19 @@ func (s *Store) UpdateDiscovery(id string, composePath, service string) error {
 	return err
 }
 
-// scanRow scans a single *sql.Row into a Job, returning nil for ErrNoRows.
-func scanRow(row *sql.Row) (*Job, error) {
+// rowScanner abstracts *sql.Row and *sql.Rows to share scan logic.
+type rowScanner interface {
+	Scan(dest ...any) error
+}
+
+// scanJob scans a row into a Job using the shared column order.
+func scanJob(s rowScanner) (*Job, error) {
 	var j Job
 	var composePath, service, errMsg sql.NullString
 	var createdAt, updatedAt string
 
-	err := row.Scan(&j.ID, &j.App, &j.Status, &j.ImageTag,
-		&composePath, &service, &errMsg, &createdAt, &updatedAt)
-	if err == sql.ErrNoRows {
-		return nil, nil
-	}
-	if err != nil {
+	if err := s.Scan(&j.ID, &j.App, &j.Status, &j.ImageTag,
+		&composePath, &service, &errMsg, &createdAt, &updatedAt); err != nil {
 		return nil, err
 	}
 
@@ -152,30 +154,18 @@ func scanRow(row *sql.Row) (*Job, error) {
 	return &j, nil
 }
 
+// scanRow scans a single *sql.Row into a Job, returning nil for ErrNoRows.
+func scanRow(row *sql.Row) (*Job, error) {
+	j, err := scanJob(row)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	return j, err
+}
+
 // scanRows scans a *sql.Rows row into a Job.
 func scanRows(rows *sql.Rows) (*Job, error) {
-	var j Job
-	var composePath, service, errMsg sql.NullString
-	var createdAt, updatedAt string
-
-	err := rows.Scan(&j.ID, &j.App, &j.Status, &j.ImageTag,
-		&composePath, &service, &errMsg, &createdAt, &updatedAt)
-	if err != nil {
-		return nil, err
-	}
-
-	if composePath.Valid {
-		j.ComposePath = &composePath.String
-	}
-	if service.Valid {
-		j.Service = &service.String
-	}
-	if errMsg.Valid {
-		j.Error = &errMsg.String
-	}
-	j.CreatedAt = parseTime(createdAt)
-	j.UpdatedAt = parseTime(updatedAt)
-	return &j, nil
+	return scanJob(rows)
 }
 
 // parseTime parses a stored datetime string, tolerating multiple formats.
@@ -185,6 +175,7 @@ func parseTime(s string) time.Time {
 			return t
 		}
 	}
+	slog.Warn("parseTime: unrecognised format", "value", s)
 	return time.Time{}
 }
 
@@ -200,13 +191,31 @@ func EnsureLogDir(dataDir string) error {
 	return os.MkdirAll(filepath.Join(dataDir, "logs"), 0o755)
 }
 
-// AppendLog appends a timestamped line to the given log file path.
-func AppendLog(logPath, line string) error {
+// OpenLog opens (or creates) a job log file for append-only writing.
+// The caller is responsible for closing the returned file.
+// Use AppendLogLine to write timestamped lines to it.
+func OpenLog(logPath string) (*os.File, error) {
 	f, err := os.OpenFile(logPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
 	if err != nil {
-		return fmt.Errorf("open log file: %w", err)
+		return nil, fmt.Errorf("open log file: %w", err)
+	}
+	return f, nil
+}
+
+// AppendLogLine writes a timestamped line to an open log file.
+func AppendLogLine(f *os.File, line string) error {
+	_, err := fmt.Fprintf(f, "[%s] %s\n", time.Now().UTC().Format(time.RFC3339), line)
+	return err
+}
+
+// AppendLog opens the log file, writes a single line, and closes it.
+// For one-off writes (e.g. the initial "queued" log before the file handle
+// is held open). For the main job run, prefer OpenLog + AppendLogLine.
+func AppendLog(logPath, line string) error {
+	f, err := OpenLog(logPath)
+	if err != nil {
+		return err
 	}
 	defer f.Close()
-	_, err = fmt.Fprintf(f, "[%s] %s\n", time.Now().UTC().Format(time.RFC3339), line)
-	return err
+	return AppendLogLine(f, line)
 }

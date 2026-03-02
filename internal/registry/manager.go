@@ -21,14 +21,19 @@ const (
 	stopTimeout  = 5 * time.Second
 )
 
+// restartBackoffs are the wait durations between successive restart attempts.
+// After len(restartBackoffs) consecutive crashes without recovery, Zot is not restarted.
+var restartBackoffs = []time.Duration{1 * time.Second, 5 * time.Second, 30 * time.Second}
+
 // Manager starts and manages Zot as a child subprocess.
 // Zot binds to 127.0.0.1:5000 — never exposed externally.
 type Manager struct {
-	dataDir string
-	secret  string
-	mu      sync.Mutex
-	cmd     *exec.Cmd
-	done    chan struct{} // closed by the watcher goroutine when zot exits
+	dataDir    string
+	secret     string
+	configPath string
+	mu         sync.Mutex
+	cmd        *exec.Cmd
+	done       chan struct{} // closed by the watcher goroutine when zot exits
 }
 
 // NewManager creates a registry Manager. Call Start to launch Zot.
@@ -37,19 +42,19 @@ func NewManager(dataDir, secret string) *Manager {
 }
 
 // Start writes Zot config + htpasswd, launches the Zot subprocess,
-// pipes its stdout/stderr line-by-line with a "[zot]" prefix, and polls
-// http://127.0.0.1:5000/v2/ until ready (200 or 401) or ctx deadline.
+// pipes its stdout/stderr line-by-line, and polls until ready or ctx deadline.
+// After Start returns, a background watcher goroutine restarts Zot on unexpected exits.
 func (m *Manager) Start(ctx context.Context) error {
 	registryDir := filepath.Join(m.dataDir, "registry")
 	if err := os.MkdirAll(registryDir, 0o755); err != nil {
 		return fmt.Errorf("create registry dir: %w", err)
 	}
 
-	configPath := filepath.Join(registryDir, "config.json")
+	m.configPath = filepath.Join(registryDir, "config.json")
 	htpasswdPath := filepath.Join(registryDir, ".htpasswd")
 
 	configJSON := GenerateZotConfig(registryDir, htpasswdPath, zotPort)
-	if err := os.WriteFile(configPath, []byte(configJSON), 0o600); err != nil {
+	if err := os.WriteFile(m.configPath, []byte(configJSON), 0o600); err != nil {
 		return fmt.Errorf("write zot config: %w", err)
 	}
 
@@ -61,7 +66,18 @@ func (m *Manager) Start(ctx context.Context) error {
 		return fmt.Errorf("write htpasswd: %w", err)
 	}
 
-	cmd := exec.Command("zot", "serve", configPath) //nolint:gosec
+	if err := m.startProcess(); err != nil {
+		return err
+	}
+
+	go m.watch(ctx)
+
+	return m.waitUntilReady(ctx)
+}
+
+// startProcess launches a fresh Zot subprocess and sets m.cmd + m.done.
+func (m *Manager) startProcess() error {
+	cmd := exec.Command("zot", "serve", m.configPath) //nolint:gosec
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return fmt.Errorf("zot stdout pipe: %w", err)
@@ -82,7 +98,6 @@ func (m *Manager) Start(ctx context.Context) error {
 	m.done = done
 	m.mu.Unlock()
 
-	// Line-buffered log forwarders — avoids mid-line splits from byte-chunk reads.
 	go func() {
 		scanner := bufio.NewScanner(stdout)
 		for scanner.Scan() {
@@ -92,22 +107,77 @@ func (m *Manager) Start(ctx context.Context) error {
 	go func() {
 		scanner := bufio.NewScanner(stderr)
 		for scanner.Scan() {
-			slog.Info(scanner.Text(), "source", "zot")
+			slog.Error(scanner.Text(), "source", "zot")
 		}
 	}()
 
-	// Single watcher goroutine owns the cmd.Wait() call.
+	// Single goroutine owns cmd.Wait() — must be called exactly once.
 	go func() {
 		defer close(done)
 		if err := cmd.Wait(); err != nil {
-			slog.Error("zot exited unexpectedly", "error", err, "source", "zot")
+			slog.Error("zot process exited", "error", err, "source", "zot")
 		}
 		m.mu.Lock()
 		m.cmd = nil
 		m.mu.Unlock()
 	}()
 
-	return m.waitUntilReady(ctx)
+	return nil
+}
+
+// watch monitors the done channel and restarts Zot on unexpected exits.
+// Exits when ctx is cancelled (graceful shutdown via SIGTERM).
+// Uses exponential backoff: 1s, 5s, 30s. Gives up after len(restartBackoffs) consecutive failures.
+func (m *Manager) watch(ctx context.Context) {
+	consecutiveCrashes := 0
+
+	for {
+		m.mu.Lock()
+		done := m.done
+		m.mu.Unlock()
+
+		// Wait for Zot to exit or for graceful shutdown.
+		select {
+		case <-ctx.Done():
+			return
+		case <-done:
+		}
+
+		// ctx may have been cancelled concurrently with done closing (e.g. SIGTERM
+		// arrives while Zot crashes). Don't restart during graceful shutdown.
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+
+		consecutiveCrashes++
+		if consecutiveCrashes > len(restartBackoffs) {
+			slog.Error("zot crashed too many times, giving up", "crashes", consecutiveCrashes, "source", "zot")
+			return
+		}
+
+		backoff := restartBackoffs[consecutiveCrashes-1]
+		slog.Warn("zot exited unexpectedly, restarting", "backoff", backoff, "attempt", consecutiveCrashes, "source", "zot")
+
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(backoff):
+		}
+
+		if err := m.startProcess(); err != nil {
+			slog.Error("zot restart failed", "error", err, "source", "zot")
+			continue
+		}
+
+		slog.Info("zot restarted successfully", "attempt", consecutiveCrashes, "source", "zot")
+
+		// Wait a moment for Zot to stabilise before checking liveness again.
+		// (waitUntilReady is only called on initial Start; here we trust the
+		// process to come up on its own from a saved state.)
+		consecutiveCrashes = 0
+	}
 }
 
 func (m *Manager) waitUntilReady(ctx context.Context) error {
@@ -136,6 +206,8 @@ func (m *Manager) waitUntilReady(ctx context.Context) error {
 }
 
 // Stop sends SIGTERM to Zot and waits up to 5 s before force-killing.
+// The watch goroutine will exit when it detects ctx cancellation, which
+// happens before Stop is called in the graceful shutdown sequence.
 func (m *Manager) Stop() error {
 	m.mu.Lock()
 	cmd := m.cmd

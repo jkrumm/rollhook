@@ -23,10 +23,10 @@ type zotConfig struct {
 }
 
 type zotHTTP struct {
-	Address string      `json:"address"`
-	Port    string      `json:"port"`
-	Auth    zotAuth     `json:"auth"`
-	Compat  []string    `json:"compat"`
+	Address string   `json:"address"`
+	Port    string   `json:"port"`
+	Auth    zotAuth  `json:"auth"`
+	Compat  []string `json:"compat"`
 }
 
 type zotAuth struct {

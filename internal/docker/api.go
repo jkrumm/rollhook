@@ -64,7 +64,7 @@ func InspectContainer(ctx context.Context, cli *client.Client, id string) (conta
 // StopContainer stops a container. Already-stopped (304) is treated as success.
 func StopContainer(ctx context.Context, cli *client.Client, id string) error {
 	err := cli.ContainerStop(ctx, id, container.StopOptions{})
-	if err != nil && !errdefs.IsNotModified(err) {
+	if err != nil && !errdefs.IsNotModified(err) { //nolint:staticcheck
 		return fmt.Errorf("stopping container %s: %w", shortID(id), err)
 	}
 	return nil
@@ -73,7 +73,7 @@ func StopContainer(ctx context.Context, cli *client.Client, id string) error {
 // RemoveContainer removes a container. Already-removed (404) is treated as success.
 func RemoveContainer(ctx context.Context, cli *client.Client, id string) error {
 	err := cli.ContainerRemove(ctx, id, container.RemoveOptions{})
-	if err != nil && !errdefs.IsNotFound(err) {
+	if err != nil && !errdefs.IsNotFound(err) { //nolint:staticcheck
 		return fmt.Errorf("removing container %s: %w", shortID(id), err)
 	}
 	return nil
@@ -95,7 +95,7 @@ func PullImage(ctx context.Context, cli *client.Client, imageTag string, logFn f
 
 	reader, err := cli.ImagePull(ctx, imageTag, opts)
 	if err != nil {
-		return fmt.Errorf("Docker pull failed: %w", err)
+		return fmt.Errorf("docker pull failed: %w", err)
 	}
 	defer reader.Close()
 
@@ -154,7 +154,7 @@ func parsePullStream(r io.Reader, logFn func(string)) error {
 			continue // skip malformed NDJSON lines
 		}
 		if event.Error != "" {
-			return fmt.Errorf("Docker pull failed: %s", event.Error)
+			return fmt.Errorf("docker pull failed: %s", event.Error)
 		}
 		if event.Status != "" {
 			for _, prefix := range pullLogPrefixes {

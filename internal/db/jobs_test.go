@@ -91,7 +91,7 @@ func TestGetMissingReturnsNil(t *testing.T) {
 
 func TestUpdateStatusTransitions(t *testing.T) {
 	tests := []struct {
-		name       string
+		name        string
 		transitions []struct {
 			status JobStatus
 			errMsg *string
@@ -284,6 +284,69 @@ func TestListOrderedNewestFirst(t *testing.T) {
 	}
 	if list[0].ID != "j3" || list[2].ID != "j1" {
 		t.Errorf("order: got %q %q %q, want j3 j2 j1", list[0].ID, list[1].ID, list[2].ID)
+	}
+}
+
+func TestParseTime_UnrecognisedFormat(t *testing.T) {
+	got := parseTime("not-a-date")
+	if !got.IsZero() {
+		t.Errorf("expected zero time for unrecognised format, got %v", got)
+	}
+}
+
+func TestParseTime_EmptyString(t *testing.T) {
+	got := parseTime("")
+	if !got.IsZero() {
+		t.Errorf("expected zero time for empty string, got %v", got)
+	}
+}
+
+func TestParseTime_ValidRFC3339(t *testing.T) {
+	want, _ := time.Parse(time.RFC3339, "2024-01-15T10:30:00Z")
+	got := parseTime("2024-01-15T10:30:00Z")
+	if !got.Equal(want) {
+		t.Errorf("parseTime(RFC3339): got %v, want %v", got, want)
+	}
+}
+
+func TestParseTime_SQLiteFormat(t *testing.T) {
+	// SQLite CURRENT_TIMESTAMP uses "YYYY-MM-DD HH:MM:SS" format.
+	want, _ := time.Parse("2006-01-02 15:04:05", "2024-01-15 10:30:00")
+	got := parseTime("2024-01-15 10:30:00")
+	if !got.Equal(want) {
+		t.Errorf("parseTime(sqlite): got %v, want %v", got, want)
+	}
+}
+
+func TestOpenLogAndAppendLogLine(t *testing.T) {
+	dir := t.TempDir()
+	if err := EnsureLogDir(dir); err != nil {
+		t.Fatal(err)
+	}
+	logPath := LogPath(dir, "job-open-test")
+
+	f, err := OpenLog(logPath)
+	if err != nil {
+		t.Fatalf("OpenLog: %v", err)
+	}
+	defer f.Close()
+
+	if err := AppendLogLine(f, "first"); err != nil {
+		t.Fatalf("AppendLogLine 1: %v", err)
+	}
+	if err := AppendLogLine(f, "second"); err != nil {
+		t.Fatalf("AppendLogLine 2: %v", err)
+	}
+
+	data, err := os.ReadFile(logPath)
+	if err != nil {
+		t.Fatalf("ReadFile: %v", err)
+	}
+	content := string(data)
+	for _, want := range []string{"first", "second"} {
+		if !strings.Contains(content, want) {
+			t.Errorf("log file missing %q, content: %q", want, content)
+		}
 	}
 }
 

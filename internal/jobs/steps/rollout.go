@@ -149,7 +149,11 @@ func waitHealthy(ctx context.Context, cli *client.Client, id string, timeoutMS i
 			return fmt.Errorf("container %s became unhealthy", short)
 		}
 
-		time.Sleep(pollIntervalMS * time.Millisecond)
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(pollIntervalMS * time.Millisecond):
+		}
 	}
 }
 

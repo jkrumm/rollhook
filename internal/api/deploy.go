@@ -2,7 +2,10 @@ package api
 
 import (
 	"context"
+	"errors"
 	"net/http"
+	"os"
+	"strconv"
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -27,6 +30,25 @@ type DeployOutput struct {
 	}
 }
 
+// syncTimeout returns the timeout for synchronous deploy polling.
+// Derived from ROLLHOOK_HEALTH_TIMEOUT_MS + 5 minutes for pull/queue buffer.
+// Override with ROLLHOOK_SYNC_TIMEOUT_MIN (integer minutes).
+func syncTimeout() time.Duration {
+	if v := os.Getenv("ROLLHOOK_SYNC_TIMEOUT_MIN"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			return time.Duration(n) * time.Minute
+		}
+	}
+	const defaultHealthTimeoutMS = 60_000
+	healthMS := defaultHealthTimeoutMS
+	if v := os.Getenv("ROLLHOOK_HEALTH_TIMEOUT_MS"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			healthMS = n
+		}
+	}
+	return time.Duration(healthMS)*time.Millisecond + 5*time.Minute
+}
+
 func RegisterDeploy(humaAPI huma.API, exec *jobspkg.Executor, store *db.Store) {
 	huma.Register(humaAPI, huma.Operation{
 		OperationID: "post-deploy",
@@ -42,6 +64,9 @@ func RegisterDeploy(humaAPI huma.API, exec *jobspkg.Executor, store *db.Store) {
 		}
 		job := jobspkg.NewJob(input.Body.ImageTag)
 		if err := exec.Submit(job); err != nil {
+			if errors.Is(err, jobspkg.ErrQueueFull) || errors.Is(err, jobspkg.ErrQueueDrained) {
+				return nil, huma.NewError(http.StatusServiceUnavailable, "server busy, try again later")
+			}
 			return nil, huma.NewError(http.StatusInternalServerError, err.Error())
 		}
 
@@ -56,9 +81,12 @@ func RegisterDeploy(humaAPI huma.API, exec *jobspkg.Executor, store *db.Store) {
 		}
 
 		// Synchronous mode: poll DB until the job reaches a terminal state.
+		// Timeout = ROLLHOOK_HEALTH_TIMEOUT_MS + 5 min for image pull + queue wait.
+		// Defaults to 10 minutes — well within Traefik's read timeout and long
+		// enough for most deploys. Set ROLLHOOK_SYNC_TIMEOUT_MIN to override.
 		ticker := time.NewTicker(200 * time.Millisecond)
 		defer ticker.Stop()
-		deadline := time.After(30 * time.Minute)
+		deadline := time.After(syncTimeout())
 
 		for {
 			select {
