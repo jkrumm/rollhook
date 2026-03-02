@@ -16,9 +16,9 @@ import (
 )
 
 type listJobsInput struct {
-	App    string `query:"app"`
-	Status string `query:"status"`
-	Limit  int    `query:"limit"`
+	App    string `query:"app" doc:"Filter by app name"`
+	Status string `query:"status" doc:"Filter by status: queued, running, success, or failed"`
+	Limit  int    `query:"limit" doc:"Maximum results to return (default 50)"`
 }
 
 type listJobsOutput struct {
@@ -26,7 +26,7 @@ type listJobsOutput struct {
 }
 
 type getJobInput struct {
-	ID string `path:"id"`
+	ID string `path:"id" doc:"Job UUID returned by POST /deploy"`
 }
 
 type getJobOutput struct {
@@ -40,7 +40,8 @@ func RegisterJobsAPI(humaAPI huma.API, store *db.Store) {
 		OperationID: "get-jobs",
 		Method:      http.MethodGet,
 		Path:        "/jobs",
-		Summary:     "List jobs with optional filters",
+		Summary:     "List deployment jobs",
+		Description: "Returns deployment jobs ordered newest-first. Supports optional filters by app name and status. Default limit is 50.",
 		Tags:        []string{"Jobs"},
 		Security:    []map[string][]string{{"bearer": {}}},
 	}, func(_ context.Context, input *listJobsInput) (*listJobsOutput, error) {
@@ -60,7 +61,8 @@ func RegisterJobsAPI(humaAPI huma.API, store *db.Store) {
 		OperationID: "get-job",
 		Method:      http.MethodGet,
 		Path:        "/jobs/{id}",
-		Summary:     "Get job status",
+		Summary:     "Get job by ID",
+		Description: "Returns a single deployment job by ID. Returns 404 if not found. compose_path and service are populated after discovery completes; error is set only when status is failed.",
 		Tags:        []string{"Jobs"},
 		Security:    []map[string][]string{{"bearer": {}}},
 	}, func(_ context.Context, input *getJobInput) (*getJobOutput, error) {

@@ -21,7 +21,8 @@
     "e2e:up": "docker compose -f e2e/compose.e2e.yml up -d",
     "e2e:down": "docker compose -f e2e/compose.e2e.yml down -v",
     "e2e:build": "docker build -t rollhook-e2e-hello:v1 --build-arg BUILD_VERSION=v1 examples/bun-hello-world && docker build -t rollhook-e2e-hello:v2 --build-arg BUILD_VERSION=v2 examples/bun-hello-world",
-    "demo:export": "bun e2e/export-demo.ts"
+    "demo:export": "bun e2e/export-demo.ts",
+    "generate:api": "bun run --filter @rollhook/dashboard generate:api"
   },
   "devDependencies": {
     "@antfu/eslint-config": "7.4.3",
