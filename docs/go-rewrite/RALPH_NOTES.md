@@ -332,3 +332,48 @@ Switched the Dockerfile runner stage from `oven/bun:1.3.9-slim` to `debian:12-sl
 ### What was deleted
 - `apps/server/` — entire Bun/Elysia TypeScript server (~20 files). No production code retained; all functionality reimplemented in Go.
 - `package.json` scripts: `dev:server`, `test`, `test:coverage` removed (server-specific); `dev` no longer starts `dev:server` in parallel.
+
+---
+
+## Group 10: OpenAPI Polish + Orval + README + Final Cleanup
+
+### What was implemented
+Added `Description` fields and `doc` tags to all huma operations and input/output structs. Created `cmd/gendocs/main.go` — a spec extractor that initializes the huma API with nil deps and dumps the OpenAPI 3.1 JSON via httptest (no server needed). Configured orval v8 to generate typed fetch functions for the dashboard from the committed `openapi.json`. Updated CLAUDE.md (rewrote entirely for Go architecture), README.md (fixed testing section, removed stale Bun image note, updated API table). Cleaned up `.gitignore` (removed stale `apps/server/public/`, added Go build artifacts).
+
+### Deviations from prompt
+- **`client: 'fetch'` not `client: 'react-query'`**: The dashboard has no `@tanstack/react-query` dependency, and the existing `api.ts` handles demo mode and SSE which orval can't generate. Using `fetch` client avoids adding a new runtime dep while still providing typed functions for non-SSE endpoints.
+- **`cmd/gendocs` instead of live server**: The prompt suggested `target: 'http://localhost:7700/openapi.json'` (live server URL). The gendocs tool generates the spec without needing Zot/DB/Docker running — more useful in CI and for developers. The static `openapi.json` is committed alongside the generated types.
+- **orval custom instance signature**: Context7 docs showed a `{method, params, body}` object signature, but orval v8's fetch client actually calls `customInstance(url, RequestInit)` with the URL already containing query params. Confirmed by inspecting generated output first, then wrote matching `client.ts`.
+- **No SSE in OpenAPI spec**: `GET /jobs/{id}/logs` is not registered through huma and therefore absent from the spec. Documented in README and CLAUDE.md. Adding it via manual spec patching would be fragile and provide no orval benefit (SSE can't be generated as a typed fetch function).
+
+### Gotchas & surprises
+- **`bun run X --cwd Y` recursive loop**: Root script `"generate:api": "bun run generate:api --cwd apps/dashboard"` causes bun to append `--cwd apps/dashboard` on every invocation, looping forever. Fix: use `bun run --filter @rollhook/dashboard generate:api`.
+- **`2>&1 >file` order matters**: Running `docker run ... go run ./cmd/gendocs > openapi.json 2>&1` merges stderr (go module download logs) into the output file. Must use `2>/dev/null > openapi.json` to keep the JSON clean.
+- **orval `mode: 'tags-split'`**: Generates one file per OpenAPI tag (`deploy.ts`, `jobs.ts`, `health.ts`) plus `models/`. Relative imports use `'.././models'` — slightly odd but valid TypeScript.
+- **`cmd/gendocs` nil deps are safe**: `api.RegisterDeploy(humaAPI, nil, nil)` works for spec generation because huma only calls the handler closure on HTTP requests, not during `huma.Register()`.
+
+### Security notes
+- Generated `src/api/generated/` files are read-only by orval convention ("Do not edit manually"). The `client.ts` that injects auth is outside the generated directory and not overwritten on regeneration.
+- `setApiToken` stores the token in a module-level variable — appropriate for a SPA (token comes from user input, not persisted).
+
+### Tests added
+None — documentation and tooling group only. Go test count remains 74/74. E2E count remains 56/56.
+
+### Future improvements
+- Add a `generate:api:from-server` script that starts the Go server, curls the spec, and runs orval — useful once Zot is in dev PATH or a mock mode is added.
+- Wire generated `getJobs`, `getJob`, `postDeploy` functions into dashboard components as replacements for hand-rolled `api.ts` equivalents.
+- Document `GET /jobs/{id}/logs` SSE in the spec via manual huma spec extension or a separate non-handler registration.
+
+---
+
+## Overall Rewrite Summary (Groups 1–10)
+
+Replaced the Bun/Elysia TypeScript server with an idiomatic Go binary. Key outcomes:
+
+- **74 Go unit tests** across `internal/api`, `internal/db`, `internal/docker`, `internal/jobs`, `internal/middleware`, `internal/notifier`, `internal/registry`
+- **56 E2E tests** passing against the Go Docker image (same behavioral contracts as TypeScript)
+- **Single binary** — no Node.js, no Bun runtime in production
+- **Embedded Zot registry** — users push to RollHook directly; external registries still work
+- **One volume** (`/app/data/`) — SQLite + registry blobs + logs — trivial backup
+- **`cmd/gendocs`** — reproducible OpenAPI spec generation without a running server
+- **orval** — typed TypeScript client for dashboard, synced to Go huma operations

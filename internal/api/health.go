@@ -23,6 +23,7 @@ func RegisterHealth(api huma.API) {
 		Method:      http.MethodGet,
 		Path:        "/health",
 		Summary:     "Health check",
+		Description: "Returns server status and deployed version. Returns 503 during graceful shutdown so load balancers deregister this backend before the process exits.",
 		Tags:        []string{"Health"},
 	}, func(_ context.Context, _ *struct{}) (*healthOutput, error) {
 		version := os.Getenv("VERSION")

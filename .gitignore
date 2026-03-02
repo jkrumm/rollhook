@@ -13,8 +13,9 @@ __unconfig*
 # Data store (file-based DB, excluded from version control)
 data/
 
-# Dashboard build output (generated, served by server)
-apps/server/public/
+# Go build artifacts
+/rollhook
+/rollhook-go
 
 # OS
 .DS_Store

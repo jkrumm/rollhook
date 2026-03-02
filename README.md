@@ -271,16 +271,18 @@ See [`examples/bun-hello-world/`](examples/bun-hello-world/) for a complete work
 
 Interactive docs at `/openapi` (Scalar UI). Key routes:
 
-| Method | Route            | Auth           | Description                                                                                                  |
-| ------ | ---------------- | -------------- | ------------------------------------------------------------------------------------------------------------ |
-| `POST` | `/deploy`        | webhook, admin | Trigger rolling deployment (app derived from `image_tag`)                                                    |
-| `GET`  | `/jobs/:id`      | webhook, admin | Job status + metadata (includes `compose_path`, `service`, `error`)                                          |
-| `GET`  | `/jobs/:id/logs` | webhook, admin | SSE log stream                                                                                               |
-| `GET`  | `/jobs`          | admin          | Paginated job history (`?app=&status=&limit=`)                                                               |
-| `GET`  | `/health`        | none           | Returns `200 { "status": "ok", "version": "1.2.3" }` — suitable for Uptime Kuma, Traefik health checks, etc. |
-| `GET`  | `/openapi`       | none           | Scalar API docs                                                                                              |
+| Method | Route | Auth | Description |
+|-|-|-|-|
+| `POST` | `/deploy` | bearer | Trigger rolling deployment (app derived from `image_tag`) |
+| `GET` | `/jobs/{id}` | bearer | Job status + metadata (includes `compose_path`, `service`, `error`) |
+| `GET` | `/jobs/{id}/logs` | bearer | SSE log stream (`text/event-stream`) |
+| `GET` | `/jobs` | bearer | Paginated job history (`?app=&status=&limit=`) |
+| `GET` | `/health` | none | Returns `200 { "status": "ok", "version": "..." }` |
+| `GET` | `/openapi` | none | Scalar API docs |
+| `GET` | `/openapi.json` | none | OpenAPI 3.1 spec (JSON) |
+| `*` | `/v2/*` | bearer/basic | OCI proxy to embedded Zot registry |
 
-**Auth:** `Authorization: Bearer <ROLLHOOK_SECRET>` header — single token, all routes.
+**Auth:** `Authorization: Bearer <ROLLHOOK_SECRET>` header — single token, all protected routes.
 
 ---
 
@@ -353,10 +355,6 @@ Never expose port 7700 directly to the internet. Always place RollHook behind a 
 
 `ROLLHOOK_SECRET` is the only credential. Store it as a CI secret — it covers the full CI journey: `POST /deploy`, `GET /jobs/:id`, and `GET /jobs/:id/logs`. If you run behind a reverse proxy, consider blocking `/jobs`, `/registry`, and `/openapi` from external networks and only exposing `/deploy` and `/health` to CI.
 
-### Bun baseline image
-
-The Docker image uses `oven/bun:1.3.9-slim` (the x86_64 baseline variant) intentionally. This ensures compatibility across older x86_64 hardware without AVX2. Modern CPUs incur no meaningful performance difference for this workload.
-
 ### Future
 
 HMAC-SHA256 webhook signature verification (`X-Hub-Signature-256`) is planned as an optional hardening layer. This will let callers sign the exact payload with a shared secret, adding defense-in-depth against token-only leakage.
@@ -419,30 +417,25 @@ The action POSTs the deploy trigger, then streams SSE logs live to the CI run an
 
 ### Commands
 
-| Command                 | Description                               |
-| ----------------------- | ----------------------------------------- |
-| `bun run test`          | Unit tests (bun:test, no Docker required) |
-| `bun run test:coverage` | Unit tests with per-file coverage table   |
-| `bun run test:e2e`      | E2E tests (requires Docker)               |
-| `bun run validate`      | Full suite: lint + typecheck + unit + E2E |
+| Command | Description |
+|-|-|
+| `go test ./...` | Go unit tests (74 tests, no Docker required) |
+| `bun run test:e2e` | E2E tests (requires Docker) |
 
-### Coverage scope
+### Test layers
 
-`bun run test:coverage` reports unit test coverage only. E2E tests run the server as a subprocess — server-side coverage during E2E is not collected. The two test layers serve complementary purposes:
-
-- **Unit tests** — pure logic in isolation (auth middleware, config validation, queue, notifications)
-- **E2E tests** — behavioral contracts against a live RollHook container with real Docker and Traefik
+- **Go unit tests** — pure logic in isolation (auth middleware, DB CRUD, queue, Docker API helpers, notifier, rollout logic)
+- **E2E tests** — behavioral contracts against a live RollHook Docker container with real Docker and Traefik (56 tests)
 
 ### Known gaps
 
-The following scenarios are not covered by the current test suite. They are tracked here rather than as TODO comments in code.
+The following scenarios are not covered by the current test suite.
 
-| Area               | Gap                                                                               | Risk   |
-| ------------------ | --------------------------------------------------------------------------------- | ------ |
-| `steps/rollout.ts` | Multi-service rollouts (2+ steps) — only single-service tested via E2E            | Medium |
-| `server.ts`        | Graceful SIGTERM: 503 response during shutdown, clean exit — code exists, no test | Low    |
-| `api/jobs.ts`      | SSE stream abort mid-read, empty log file (404)                                   | Low    |
-| `api/deploy.ts`    | Empty `image_tag` input (passes `t.String()` validation)                          | Low    |
+| Area | Gap | Risk |
+|-|-|-|
+| `steps/rollout.go` | Multi-service rollouts (2+ steps) — only single-service tested via E2E | Medium |
+| `cmd/rollhook/main.go` | Graceful SIGTERM: 503 response during shutdown, clean exit | Low |
+| `api/jobs.go` | SSE stream abort mid-read, empty log file (404) | Low |
 
 ---
 
