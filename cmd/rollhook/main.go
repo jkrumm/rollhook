@@ -120,11 +120,13 @@ func main() {
 	}
 
 	srv := &http.Server{
-		Addr:              ":" + port,
-		Handler:           r,
+		Addr:    ":" + port,
+		Handler: r,
+		// ReadHeaderTimeout guards against Slowloris attacks (client that sends headers slowly).
+		// WriteTimeout is intentionally absent: synchronous /deploy and SSE /jobs/{id}/logs
+		// hold the connection open for the duration of a job (up to ROLLHOOK_HEALTH_TIMEOUT_MS),
+		// so a blanket WriteTimeout would kill those connections mid-flight.
 		ReadHeaderTimeout: 5 * time.Second,
-		ReadTimeout:       30 * time.Second,
-		WriteTimeout:      30 * time.Second,
 		IdleTimeout:       120 * time.Second,
 	}
 
