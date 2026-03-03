@@ -9,11 +9,11 @@ import (
 	"io"
 	"strings"
 
+	cerrdefs "github.com/containerd/errdefs"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/client"
-	"github.com/docker/docker/errdefs"
 )
 
 // pullLogPrefixes are the high-signal pull events forwarded to logFn.
@@ -60,7 +60,7 @@ func InspectContainer(ctx context.Context, cli *client.Client, id string) (conta
 // StopContainer stops a container. Already-stopped (304) is treated as success.
 func StopContainer(ctx context.Context, cli *client.Client, id string) error {
 	err := cli.ContainerStop(ctx, id, container.StopOptions{})
-	if err != nil && !errdefs.IsNotModified(err) { //nolint:staticcheck
+	if err != nil && !cerrdefs.IsNotModified(err) {
 		return fmt.Errorf("stopping container %s: %w", shortID(id), err)
 	}
 	return nil
@@ -69,7 +69,7 @@ func StopContainer(ctx context.Context, cli *client.Client, id string) error {
 // RemoveContainer removes a container. Already-removed (404) is treated as success.
 func RemoveContainer(ctx context.Context, cli *client.Client, id string) error {
 	err := cli.ContainerRemove(ctx, id, container.RemoveOptions{})
-	if err != nil && !errdefs.IsNotFound(err) { //nolint:staticcheck
+	if err != nil && !cerrdefs.IsNotFound(err) {
 		return fmt.Errorf("removing container %s: %w", shortID(id), err)
 	}
 	return nil

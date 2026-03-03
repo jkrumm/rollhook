@@ -57,10 +57,20 @@ async function main() {
     }
   }
 
+  // Redact machine-specific paths before committing demo data.
+  const sanitize = (s: string) => s.replaceAll(ROOT, '/workspace/rollhook')
+  const sanitizedJobs = jobs.map(j => ({
+    ...j,
+    compose_path: j.compose_path ? sanitize(j.compose_path) : j.compose_path,
+  }))
+  const sanitizedLogs: Record<string, string[]> = {}
+  for (const [id, lines] of Object.entries(logs))
+    sanitizedLogs[id] = lines.map(sanitize)
+
   const data = {
     generated: new Date().toISOString(),
-    jobs,
-    logs,
+    jobs: sanitizedJobs,
+    logs: sanitizedLogs,
   }
   writeFileSync(OUTPUT, `${JSON.stringify(data, null, 2)}\n`)
   console.warn(`Exported ${jobs.length} jobs to ${OUTPUT}`)
