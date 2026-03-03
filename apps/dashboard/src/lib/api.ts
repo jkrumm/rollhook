@@ -30,7 +30,9 @@ export async function fetchJobs(params: { app?: string, status?: JobStatus, limi
     return jobs
   }
   const result = await getJobs(params)
-  return ((result as { data: JobResult[] | null }).data ?? [])
+  if (result.status === 200)
+    return (result.data as JobResult[]) ?? []
+  return []
 }
 
 export function streamLogs(jobId: string, onLine: (line: string) => void, signal: AbortSignal): Promise<void> {

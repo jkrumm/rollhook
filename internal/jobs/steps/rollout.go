@@ -73,8 +73,12 @@ func Rollout(ctx context.Context, cli *client.Client, composePath, service, proj
 		return fmt.Errorf("docker compose up --scale failed: %w", err)
 	}
 
-	// 3. Find new containers — poll to account for Docker API propagation delay.
-	newContainers, err := pollNewContainers(ctx, cli, project, service, oldIDs)
+	// 3. Find new containers — poll until all expected replicas appear.
+	expectedNew := scaleCount - len(oldIDs)
+	if expectedNew < 1 {
+		expectedNew = 1
+	}
+	newContainers, err := pollNewContainers(ctx, cli, project, service, oldIDs, expectedNew)
 	if err != nil {
 		return err
 	}
@@ -181,12 +185,12 @@ func rollbackContainers(cli *client.Client, ids []string, reason string, logFn f
 
 // pollNewContainers retries findNewContainers up to 10 times with 500ms delays
 // to handle Docker API propagation delay after compose scale-up.
-func pollNewContainers(ctx context.Context, cli *client.Client, project, service string, oldIDs map[string]struct{}) ([]container.Summary, error) {
+func pollNewContainers(ctx context.Context, cli *client.Client, project, service string, oldIDs map[string]struct{}, expectedNew int) ([]container.Summary, error) {
 	found, err := findNewContainers(ctx, cli, project, service, oldIDs)
 	if err != nil {
 		return nil, err
 	}
-	if len(found) > 0 {
+	if len(found) >= expectedNew {
 		return found, nil
 	}
 
@@ -196,12 +200,12 @@ func pollNewContainers(ctx context.Context, cli *client.Client, project, service
 		if err != nil {
 			return nil, err
 		}
-		if len(found) > 0 {
+		if len(found) >= expectedNew {
 			return found, nil
 		}
 	}
 
-	return nil, fmt.Errorf("scale-up produced no new containers for service %s after 5s", service)
+	return nil, fmt.Errorf("scale-up produced only %d/%d new containers for service %s after 5s", len(found), expectedNew, service)
 }
 
 func findNewContainers(ctx context.Context, cli *client.Client, project, service string, oldIDs map[string]struct{}) ([]container.Summary, error) {
