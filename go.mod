@@ -1,6 +1,6 @@
 module github.com/jkrumm/rollhook
 
-go 1.24.1
+go 1.24.13
 
 require (
 	github.com/compose-spec/compose-go/v2 v2.10.1
