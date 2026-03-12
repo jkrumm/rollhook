@@ -13,7 +13,7 @@
     "@astrojs/react": "5.0.0",
     "@astrojs/sitemap": "3.7.1",
     "astro": "6.0.3",
-    "basalt-ui": "0.3.0",
+    "basalt-ui": "0.4.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.575.0",
