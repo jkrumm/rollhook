@@ -21,8 +21,10 @@
       "name": "@rollhook/dashboard",
       "version": "0.0.1",
       "dependencies": {
+        "@fontsource-variable/instrument-sans": "^5.2.8",
+        "@fontsource-variable/jetbrains-mono": "^5.2.8",
         "@rollhook/ui": "workspace:*",
-        "basalt-ui": "0.2.2",
+        "basalt-ui": "0.4.2",
         "lucide-react": "^0.575.0",
         "react": "^19.2.4",
         "react-dom": "^19.2.4",
@@ -822,7 +824,7 @@
 
     "balanced-match": ["balanced-match@4.0.4", "", {}, "sha512-BLrgEcRTwX2o6gGxGOCNyMvGSp35YofuYzw9h1IMTRmKqttAZZVU67bdb9Pr2vUHA8+j3i2tJfjO6C6+4myGTA=="],
 
-    "basalt-ui": ["basalt-ui@0.2.2", "", { "dependencies": { "@fontsource-variable/instrument-sans": "^5.2.8", "@fontsource-variable/jetbrains-mono": "^5.2.8" }, "peerDependencies": { "@tailwindcss/typography": "^0.5.19", "shadcn": "^3.8.0", "tailwindcss": "^4.0.0", "tw-animate-css": "^1.4.0" } }, "sha512-wEuL1gvVkGhCe5HEVZFLJtwxKUnxWvcK2HIN1LjEvF5BMGy/sMJ1DyVsv1+T+uTCNtpsnSkatgU2JNt1g9qOqg=="],
+    "basalt-ui": ["basalt-ui@0.4.2", "", { "peerDependencies": { "@fontsource-variable/instrument-sans": "^5.0.0", "@fontsource-variable/jetbrains-mono": "^5.0.0", "@tailwindcss/typography": "^0.5.19", "shadcn": "^3.8.0", "tailwindcss": "^4.0.0", "tw-animate-css": "^1.4.0" }, "optionalPeers": ["@fontsource-variable/instrument-sans", "@fontsource-variable/jetbrains-mono"] }, "sha512-XdolDClyURVcIkCVitKLjmhHm85psakn4DzCXzoT1nkNMeJ5mOQBaWo32+MCi8v2mOirs8JU/vLZVK4htf20ow=="],
 
     "baseline-browser-mapping": ["baseline-browser-mapping@2.10.0", "", { "bin": { "baseline-browser-mapping": "dist/cli.cjs" } }, "sha512-lIyg0szRfYbiy67j9KN8IyeD7q7hcmqnJ1ddWmNt19ItGpNN64mnllmxUNFIOdOm6by97jlL6wfpTTJrmnjWAA=="],
 
@@ -2295,8 +2297,6 @@
     "@modelcontextprotocol/sdk/zod": ["zod@3.25.76", "", {}, "sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ=="],
 
     "@orval/core/esbuild": ["esbuild@0.27.3", "", { "optionalDependencies": { "@esbuild/aix-ppc64": "0.27.3", "@esbuild/android-arm": "0.27.3", "@esbuild/android-arm64": "0.27.3", "@esbuild/android-x64": "0.27.3", "@esbuild/darwin-arm64": "0.27.3", "@esbuild/darwin-x64": "0.27.3", "@esbuild/freebsd-arm64": "0.27.3", "@esbuild/freebsd-x64": "0.27.3", "@esbuild/linux-arm": "0.27.3", "@esbuild/linux-arm64": "0.27.3", "@esbuild/linux-ia32": "0.27.3", "@esbuild/linux-loong64": "0.27.3", "@esbuild/linux-mips64el": "0.27.3", "@esbuild/linux-ppc64": "0.27.3", "@esbuild/linux-riscv64": "0.27.3", "@esbuild/linux-s390x": "0.27.3", "@esbuild/linux-x64": "0.27.3", "@esbuild/netbsd-arm64": "0.27.3", "@esbuild/netbsd-x64": "0.27.3", "@esbuild/openbsd-arm64": "0.27.3", "@esbuild/openbsd-x64": "0.27.3", "@esbuild/openharmony-arm64": "0.27.3", "@esbuild/sunos-x64": "0.27.3", "@esbuild/win32-arm64": "0.27.3", "@esbuild/win32-ia32": "0.27.3", "@esbuild/win32-x64": "0.27.3" }, "bin": { "esbuild": "bin/esbuild" } }, "sha512-8VwMnyGCONIs6cWue2IdpHxHnAjzxnw2Zr7MkVxB2vjmQ2ivqGFb4LEG3SMnv0Gb2F/G/2yA8zUaiL1gywDCCg=="],
-
-    "@rollhook/marketing/basalt-ui": ["basalt-ui@0.4.2", "", { "peerDependencies": { "@fontsource-variable/instrument-sans": "^5.0.0", "@fontsource-variable/jetbrains-mono": "^5.0.0", "@tailwindcss/typography": "^0.5.19", "shadcn": "^3.8.0", "tailwindcss": "^4.0.0", "tw-animate-css": "^1.4.0" }, "optionalPeers": ["@fontsource-variable/instrument-sans", "@fontsource-variable/jetbrains-mono"] }, "sha512-XdolDClyURVcIkCVitKLjmhHm85psakn4DzCXzoT1nkNMeJ5mOQBaWo32+MCi8v2mOirs8JU/vLZVK4htf20ow=="],
 
     "@rollhook/marketing/typescript": ["typescript@5.9.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw=="],
 
