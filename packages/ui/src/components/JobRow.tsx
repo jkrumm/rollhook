@@ -67,7 +67,7 @@ export function JobRow({ job, expanded, onToggle }: JobRowProps) {
       <StatusBadge status={job.status} className="hidden sm:inline-flex shrink-0" />
 
       {/* Fixed-width data columns: consistent position across all rows */}
-      <span className="font-mono text-xs text-muted-foreground tabular-nums text-right w-[7ch] shrink-0">
+      <span className="font-mono text-xs text-muted-foreground tabular-nums text-right w-[7ch] sm:w-[12ch] shrink-0 truncate" title={job.image_tag}>
         {extractVersion(job.image_tag)}
       </span>
       <span className="font-mono text-xs text-muted-foreground tabular-nums text-right w-[11ch] shrink-0 ml-2 sm:ml-0">

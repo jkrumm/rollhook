@@ -68,7 +68,7 @@ export function Dashboard({ onLogout }: DashboardProps) {
   const chartData = computeChartData(appStatusFiltered)
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col overflow-x-hidden">
       <header className="flex items-center justify-between px-4 py-3 border-b border-border">
         <a
           href="https://rollhook.com"
