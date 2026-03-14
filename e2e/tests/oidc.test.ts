@@ -41,15 +41,14 @@ describe('oidc authentication', () => {
       body: JSON.stringify({ image_tag: IMAGE_V2 }),
     })
     // 200 = deploy accepted (queued). 503 = queue full (also acceptable under load).
-    // 4xx would indicate auth/authz failure.
-    expect(res.status).not.toBe(401)
-    expect(res.status).not.toBe(403)
+    expect([200, 503]).toContain(res.status)
   })
 
   it('valid OIDC token but repo not in allowed_repos → 403', async () => {
     const token = await getOIDCToken({
       repository: 'attacker/evil-repo',
       ref: 'refs/heads/main',
+      aud: BASE_URL,
     })
     const res = await fetch(`${BASE_URL}/deploy?async=true`, {
       method: 'POST',
@@ -63,6 +62,7 @@ describe('oidc authentication', () => {
     const token = await getOIDCToken({
       repository: 'rollhook-e2e/hello',
       ref: 'refs/pull/42/merge',
+      aud: BASE_URL,
     })
     const res = await fetch(`${BASE_URL}/deploy?async=true`, {
       method: 'POST',
@@ -76,6 +76,7 @@ describe('oidc authentication', () => {
     const token = await getOIDCToken({
       repository: 'rollhook-e2e/hello',
       ref: 'refs/heads/feature/my-feature',
+      aud: BASE_URL,
     })
     const res = await fetch(`${BASE_URL}/deploy?async=true`, {
       method: 'POST',
@@ -96,14 +97,15 @@ describe('oidc authentication', () => {
       headers: oidcHeaders(token),
       body: JSON.stringify({ image_tag: IMAGE_V2 }),
     })
-    expect(res.status).not.toBe(401)
-    expect(res.status).not.toBe(403)
+    // 200 = deploy accepted (queued). 503 = queue full (also acceptable under load).
+    expect([200, 503]).toContain(res.status)
   })
 
   it('expired OIDC token → 403', async () => {
     const token = await getOIDCToken({
       repository: 'rollhook-e2e/hello',
       ref: 'refs/heads/main',
+      aud: BASE_URL,
       exp_offset: -1, // already expired
     })
     const res = await fetch(`${BASE_URL}/deploy?async=true`, {
@@ -120,8 +122,8 @@ describe('oidc authentication', () => {
       headers: adminHeaders(),
       body: JSON.stringify({ image_tag: `${REGISTRY_HOST}/rollhook-e2e-hello:nonexistent` }),
     })
-    expect(res.status).not.toBe(401)
-    expect(res.status).not.toBe(403)
+    // 200 = deploy accepted (queued). 503 = queue full (also acceptable under load).
+    expect([200, 503]).toContain(res.status)
   })
 
   it('oidc token cannot access admin /jobs endpoint → 403', async () => {
@@ -132,8 +134,7 @@ describe('oidc authentication', () => {
     const res = await fetch(`${BASE_URL}/jobs`, {
       headers: { Authorization: `Bearer ${token}` },
     })
-    // OIDC JWTs are accepted by HumaAuth but they don't match the static secret.
-    // Since /jobs has Security requirement, static-secret check applies → 403.
+    // OIDC JWTs are rejected at operationID check before reaching static-secret comparison.
     expect(res.status).toBe(403)
   })
 })

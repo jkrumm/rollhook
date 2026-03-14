@@ -48,7 +48,10 @@ async function main() {
   })
   if (!res.ok)
     throw new Error(`Failed to fetch jobs: ${res.status}`)
-  const jobs = await res.json() as JobResult[]
+  const allJobs = await res.json() as JobResult[]
+  // Exclude non-terminal jobs — queued/running at teardown time are interrupted artifacts
+  // that would be marked failed on next startup. They add noise to demo data.
+  const jobs = allJobs.filter(j => j.status === 'success' || j.status === 'failed')
 
   const logs: Record<string, string[]> = {}
   for (const job of jobs) {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"strconv"
@@ -111,7 +112,7 @@ func RegisterDeploy(humaAPI huma.API, exec *jobspkg.Executor, store *db.Store, c
 			}
 			disc, err := steps.Discover(ctx, cli, input.Body.ImageTag)
 			if err != nil {
-				fmt.Printf("OIDC service discovery error: %v\n", err)
+				slog.Error("OIDC service discovery failed", "err", err, "image_tag", input.Body.ImageTag)
 				return nil, huma.NewError(http.StatusInternalServerError, "service discovery failed")
 			}
 			if err := checkOIDCLabels(claims, disc.Labels); err != nil {

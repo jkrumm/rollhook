@@ -90,7 +90,11 @@ export async function setup(): Promise<void> {
 
 export async function teardown(): Promise<void> {
   try {
-    execSync(`bun ${E2E_DIR}/export-demo.ts`, { stdio: 'inherit', cwd: ROOT })
+    execSync(`bun ${E2E_DIR}/export-demo.ts`, {
+      stdio: 'inherit',
+      cwd: ROOT,
+      env: { ...process.env, ROLLHOOK_SECRET },
+    })
   }
   catch (err) {
     console.warn('demo export failed (non-fatal):', err)
