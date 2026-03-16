@@ -2,7 +2,7 @@
 
 **Webhook-triggered zero-downtime rolling deployments for Docker Compose.**
 
-[![Docker](https://img.shields.io/badge/docker-registry.jkrumm.com%2Frollhook-blue)](https://registry.jkrumm.com)
+[![Docker](https://img.shields.io/badge/ghcr.io-jkrumm%2Frollhook-blue)](https://github.com/jkrumm/rollhook/pkgs/container/rollhook)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 Receives a deploy webhook from GitHub Actions, pulls the new image, rolls it out one container at a time — each gated on a healthcheck passing — streams logs live to CI. No config files. Stateless auto-discovery from running container labels.

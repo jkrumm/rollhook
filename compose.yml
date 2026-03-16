@@ -32,7 +32,7 @@ services:
     restart: unless-stopped
 
   rollhook:
-    image: registry.jkrumm.com/rollhook:latest
+    image: ghcr.io/jkrumm/rollhook:latest
     environment:
       ROLLHOOK_SECRET: ${ROLLHOOK_SECRET}
       # Set to your public RollHook URL to enable OIDC audience (aud) claim verification.

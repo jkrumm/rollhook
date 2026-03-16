@@ -100,12 +100,22 @@ jobs:
     needs: release
     if: needs.release.outputs.published == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ needs.release.outputs.version }}
 
-      - name: Log in to registry
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log in to private registry
         uses: docker/login-action@v3
         with:
           registry: registry.jkrumm.com
@@ -128,8 +138,8 @@ jobs:
           push: true
           build-args: VERSION=${{ needs.release.outputs.version }}
           tags: |
-            registry.jkrumm.com/rollhook:${{ needs.release.outputs.version }}
-            registry.jkrumm.com/rollhook:latest
+            ghcr.io/jkrumm/rollhook:${{ needs.release.outputs.version }}
+            ghcr.io/jkrumm/rollhook:latest
           labels: |
             org.opencontainers.image.title=RollHook
             org.opencontainers.image.description=Webhook-driven rolling deployment orchestrator for Docker Compose
