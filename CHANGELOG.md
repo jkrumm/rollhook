@@ -1,3 +1,10 @@
+## [1.8.1](https://github.com/jkrumm/rollhook/compare/v1.8.0...v1.8.1) (2026-03-16)
+
+
+### Bug Fixes
+
+* **release:** correct Dockerfile path in docker build step ([fdeb50f](https://github.com/jkrumm/rollhook/commit/fdeb50fb5add2a46e20dd5beb8f70b4ab9a6999a))
+
 # [1.8.0](https://github.com/jkrumm/rollhook/compare/v1.7.0...v1.8.0) (2026-03-16)
 
 
