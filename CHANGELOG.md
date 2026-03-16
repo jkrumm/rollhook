@@ -1,3 +1,49 @@
+# [1.8.0](https://github.com/jkrumm/rollhook/compare/v1.7.0...v1.8.0) (2026-03-16)
+
+
+### Bug Fixes
+
+* address CodeRabbit review findings ([cd58df4](https://github.com/jkrumm/rollhook/commit/cd58df4bf6a58453c2f7b84b5d74b35dba04a6f2))
+* **coderabbit:** address all critical review findings ([1a84af3](https://github.com/jkrumm/rollhook/commit/1a84af392dade9796f2edbf2fcbfa1fe4048f3c9))
+* **dashboard:** handle responsive layout on narrow viewports ([d47bf2c](https://github.com/jkrumm/rollhook/commit/d47bf2cc0c53f884513214f32246a976b73cefd8))
+* **dev:** align demo:export token with dev server and auto-run on startup ([519f0d5](https://github.com/jkrumm/rollhook/commit/519f0d5a1fc973e302d31ea6e50c7f29f91b370c))
+* **dev:** restore demo data and drop harmful dev:demo script ([e129eed](https://github.com/jkrumm/rollhook/commit/e129eedadbc28e681d3aa50b29c4af32fb7e1b6c))
+* **docs:** update README, compose.yml, and mock-oidc for OIDC rollout ([443456a](https://github.com/jkrumm/rollhook/commit/443456a960f5617423349881bbfc4f2ec3b332a1))
+* **examples:** replace stale bun healthcheck with curl ([a3b5224](https://github.com/jkrumm/rollhook/commit/a3b5224182bae7c3f3c3ab1c95ad9486e0727ade))
+* **oidc:** address CodeRabbit follow-up findings ([c64c7c6](https://github.com/jkrumm/rollhook/commit/c64c7c6c5919798deb5f868e03d0cb9a5a05c2fb))
+* **registry:** drop stream-json output format (requires --verbose) ([60b732a](https://github.com/jkrumm/rollhook/commit/60b732a279a350ef2f8169488e70b8b03b160e76))
+* **registry:** fix RALPH runner hanging with empty log ([a1bbdc9](https://github.com/jkrumm/rollhook/commit/a1bbdc9f42b07dd0a254de8e82061012c02728d6))
+* **registry:** resolve E2E test failures with Zot docker2s2 compat and auth fixes ([1b0c41d](https://github.com/jkrumm/rollhook/commit/1b0c41d50e14afbd5cc812b5b0015847aaa45f37))
+* **registry:** use stream-json+verbose for realtime stdout flushing ([e043186](https://github.com/jkrumm/rollhook/commit/e0431861ced86888ab33cd8cf7301cc66a990400))
+* remove WriteTimeout and upgrade Go to 1.24.13 ([6a7b079](https://github.com/jkrumm/rollhook/commit/6a7b079cb2527b0407e37d617d12b96cb323c335))
+* resolve CodeRabbit findings for error handling and context cancellation ([d392040](https://github.com/jkrumm/rollhook/commit/d3920403396d40cff0d083dd6daf1391b4c6c9eb))
+* **rollout:** log each docker compose output line separately ([2a415d6](https://github.com/jkrumm/rollhook/commit/2a415d662d3e581472ab5c46beed0743b7f9643e))
+
+
+### Features
+
+* **auth:** implement GitHub Actions OIDC for RollHook deploys ([c8c8cd1](https://github.com/jkrumm/rollhook/commit/c8c8cd191ce5209f26e9ea5bebd33ca95dd92428))
+* **auth:** replace dual-token model with single ROLLHOOK_SECRET + startup validation ([5acda13](https://github.com/jkrumm/rollhook/commit/5acda13dc582cb87d75ade4aaf81a518125ac8e6))
+* **dashboard,ui:** add RollHook dashboard with shared UI component library ([3a4d027](https://github.com/jkrumm/rollhook/commit/3a4d027ae9c3fb297d03788cb7c640adcf43101c))
+* **dashboard:** add orval API client generation from Go OpenAPI spec ([7d9a7f2](https://github.com/jkrumm/rollhook/commit/7d9a7f29f95dc4d1b9f05103f5456a72df9d545b))
+* **dev:** add dev:server script for local Go development ([b5f008a](https://github.com/jkrumm/rollhook/commit/b5f008a35a25df6ad5de57f4d12a1e08c304d3bb))
+* **go-rewrite:** add 10-group RALPH loop for Go server migration ([6e847cd](https://github.com/jkrumm/rollhook/commit/6e847cd275119ba0b6ec8cd3c7b8bce415b29300))
+* **logging:** reduce noise and add stale job cleanup ([1f0d911](https://github.com/jkrumm/rollhook/commit/1f0d9117bbdb742d1c18b1d160da3705556c9c93))
+* **marketing:** upgrade to Astro 6 with native Fonts API ([2ee0422](https://github.com/jkrumm/rollhook/commit/2ee0422de6f06c1a1cd92fbc35e051bd86a8a6f8))
+* **registry:** add OCI reverse proxy and migrate E2E off registry:2 ([863cc98](https://github.com/jkrumm/rollhook/commit/863cc98e05f5c34515a09e6dcc574e3d13679d6f))
+* **registry:** add Zot binary to Docker image and process manager ([0d2f5ce](https://github.com/jkrumm/rollhook/commit/0d2f5cef11665576fc8a33c199be7d1b003fe4d4))
+* **release:** publish server image to ghcr.io ([e7273a1](https://github.com/jkrumm/rollhook/commit/e7273a117674c0fd9580cff4ba8e85204833166c))
+* **server:** add auth middleware, huma OpenAPI 3.1, and Scalar docs ([14e5515](https://github.com/jkrumm/rollhook/commit/14e5515b2146fd36e5917532b5b77135709dcbd8))
+* **server:** add job queue, service discovery, and compose validation ([15b084a](https://github.com/jkrumm/rollhook/commit/15b084a6a5e24052325e02ef66173ed22db43757))
+* **server:** add SQLite persistence layer and job CRUD ([78ee266](https://github.com/jkrumm/rollhook/commit/78ee26668cd86cd40dc08f7c99491bc2a72118ac))
+* **server:** add Zot process manager and streaming OCI proxy ([0fba52f](https://github.com/jkrumm/rollhook/commit/0fba52f1be7ce91d2e3d10de9011a6a6f08dc4e5))
+* **server:** implement full Go HTTP API surface and wire all components ([8bb0ba7](https://github.com/jkrumm/rollhook/commit/8bb0ba70a7a3e7ec64d450a0bb9d3c81b98f3aaa))
+* **server:** implement pull, rolling deploy, and notification pipeline ([df69e36](https://github.com/jkrumm/rollhook/commit/df69e36fe67e176d94da40f8807519110d4bbc7d))
+* **server:** initialize Go module and project skeleton ([43e6f65](https://github.com/jkrumm/rollhook/commit/43e6f651d0ce5ad72bcbb451118652fcbbd29c88))
+* **server:** initialize Go module and project skeleton ([9222e71](https://github.com/jkrumm/rollhook/commit/9222e71e52905481733f0a55466630f399662fde))
+* **server:** replace hand-rolled Docker HTTP layer with official Go SDK ([43a49f0](https://github.com/jkrumm/rollhook/commit/43a49f0e6dddc134a9ce0f209c0bf06053a3f8d2)), closes [hi#signal](https://github.com/hi/issues/signal)
+* **validate:** enforce deployment validation rules + expand E2E coverage ([7a1786e](https://github.com/jkrumm/rollhook/commit/7a1786e1341147d41e68ccd683eb6094b4b42a40))
+
 # [1.7.0](https://github.com/jkrumm/rollhook/compare/v1.6.0...v1.7.0) (2026-03-01)
 
 
