@@ -7,6 +7,8 @@
 
 Receives a deploy webhook from GitHub Actions, pulls the new image, rolls it out one container at a time — each gated on a healthcheck passing — streams logs live to CI. No config files. Stateless auto-discovery from running container labels.
 
+**Built-in OCI registry** — push your images directly to RollHook, no GHCR or Docker Hub needed. One service, one secret, zero external dependencies.
+
 ---
 
 ## Quick Start
@@ -38,7 +40,7 @@ Four requirements for zero-downtime:
 ```yaml
 services:
   api:
-    image: ${IMAGE_TAG:-registry.example.com/my-api:latest} # 1. IMAGE_TAG var
+    image: ${IMAGE_TAG:-rollhook.example.com/my-api:latest} # 1. IMAGE_TAG var — use RollHook as registry
     healthcheck: # 2. healthcheck required
       test: [CMD, curl, -f, http://localhost:3000/health]
       interval: 5s
@@ -47,6 +49,8 @@ services:
       retries: 5
     # 3. No ports: — proxy routes via Docker DNS, ports: blocks scaling
     # 4. No container_name: — fixed names prevent a second instance from starting
+    labels:
+      - rollhook.allowed_repos=myorg/my-api  # authorize your GitHub repo
     networks:
       - proxy
 
@@ -61,36 +65,45 @@ Start the app manually once so RollHook can discover it from the running contain
 docker compose -f /srv/stacks/my-api/compose.yml up -d
 ```
 
-### 3. Authorize your GitHub repo
+### 3. Trigger deploys from GitHub Actions
 
-Add one label to your app service in compose.yml so RollHook knows which repos may deploy it:
-
-```yaml
-labels:
-  - rollhook.allowed_repos=myorg/myapp
-  # Optional — restrict to specific refs (default: refs/heads/main, refs/heads/master)
-  # - rollhook.allowed_refs=refs/heads/main,refs/heads/prod
-```
-
-### 4. Trigger deploys from GitHub Actions
-
-No secrets needed. GitHub Actions issues a short-lived cryptographic token per run:
+RollHook ships a built-in OCI registry — push your image directly to RollHook, no separate registry needed. Deploys use GitHub Actions OIDC, so no deploy token sits in your CI secrets.
 
 ```yaml
+name: Deploy
+on:
+  push:
+    branches: [main]
+
 permissions:
-  id-token: write # required — allows requesting OIDC token
+  id-token: write   # required for OIDC deploy trigger
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+
+      - name: Build & push to RollHook registry
+        run: |
+          echo "${{ secrets.ROLLHOOK_SECRET }}" | docker login ${{ vars.ROLLHOOK_URL }} -u rollhook --password-stdin
+          docker build -t ${{ vars.ROLLHOOK_URL }}/my-api:${{ github.sha }} .
+          docker push ${{ vars.ROLLHOOK_URL }}/my-api:${{ github.sha }}
+
       - uses: jkrumm/rollhook-action@v1
         with:
           url: ${{ vars.ROLLHOOK_URL }}
-          image_tag: registry.example.com/my-api:${{ github.sha }}
+          image_tag: ${{ vars.ROLLHOOK_URL }}/my-api:${{ github.sha }}
 ```
 
-The action requests an OIDC token automatically, POSTs the deploy, streams SSE logs live to CI, and fails the step on deployment failure. See [jkrumm/rollhook-action](https://github.com/jkrumm/rollhook-action) for full docs.
+**What you need in GitHub:**
+
+| Where | What |
+|-|-|
+| Settings → Variables | `ROLLHOOK_URL` = `https://rollhook.example.com` |
+| Settings → Secrets | `ROLLHOOK_SECRET` (registry push auth only — deploy uses OIDC) |
+
+The action streams SSE logs live to CI and fails the step if the deployment fails. See [jkrumm/rollhook-action](https://github.com/jkrumm/rollhook-action) for full docs.
 
 ---
 
@@ -145,7 +158,7 @@ Interactive docs at `/openapi` on your running instance. Key routes:
 | `GET`  | `/jobs/{id}/logs` | bearer       | SSE log stream                              |
 | `GET`  | `/jobs`           | bearer       | History (`?app=&status=&limit=`)            |
 | `GET`  | `/health`         | none         | `{ status, version }`                       |
-| `GET`  | `/v2/*`           | bearer/basic | OCI registry proxy                          |
+| `*`    | `/v2/*`           | bearer/basic | Built-in OCI registry (push & pull)         |
 
 **Auth:** `POST /deploy` accepts GitHub Actions OIDC JWTs (no secret needed in CI) or `Bearer <ROLLHOOK_SECRET>`. All other routes require `Bearer <ROLLHOOK_SECRET>`.
 
