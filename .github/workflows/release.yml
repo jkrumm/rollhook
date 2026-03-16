@@ -16,6 +16,8 @@ jobs:
       contents: write
       issues: write
       pull-requests: write
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     outputs:
       version: ${{ steps.get_version.outputs.version }}
       published: ${{ steps.get_version.outputs.published }}
@@ -115,13 +117,6 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Log in to private registry
-        uses: docker/login-action@v3
-        with:
-          registry: registry.jkrumm.com
-          username: ${{ secrets.REGISTRY_USERNAME }}
-          password: ${{ secrets.REGISTRY_PASSWORD }}
-
       - uses: docker/setup-buildx-action@v3
 
       - name: Get build metadata
@@ -159,42 +154,3 @@ jobs:
           cache-from: type=gha,scope=server
           cache-to: type=gha,mode=max,scope=server
 
-      - name: Build & push marketing
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: apps/marketing/Dockerfile
-          push: true
-          tags: |
-            registry.jkrumm.com/private/rollhook-marketing:${{ needs.release.outputs.version }}
-            registry.jkrumm.com/private/rollhook-marketing:latest
-          labels: |
-            org.opencontainers.image.title=RollHook Marketing
-            org.opencontainers.image.description=Marketing site for the RollHook deployment orchestrator
-            org.opencontainers.image.url=https://github.com/jkrumm/rollhook
-            org.opencontainers.image.source=https://github.com/jkrumm/rollhook
-            org.opencontainers.image.version=${{ needs.release.outputs.version }}
-            org.opencontainers.image.created=${{ steps.meta.outputs.created }}
-            org.opencontainers.image.revision=${{ steps.meta.outputs.revision }}
-          annotations: |
-            manifest:org.opencontainers.image.title=RollHook Marketing
-            manifest:org.opencontainers.image.description=Marketing site for the RollHook deployment orchestrator
-            manifest:org.opencontainers.image.url=https://github.com/jkrumm/rollhook
-            manifest:org.opencontainers.image.source=https://github.com/jkrumm/rollhook
-            manifest:org.opencontainers.image.version=${{ needs.release.outputs.version }}
-            manifest:org.opencontainers.image.created=${{ steps.meta.outputs.created }}
-            manifest:org.opencontainers.image.revision=${{ steps.meta.outputs.revision }}
-          cache-from: type=gha,scope=marketing
-          cache-to: type=gha,mode=max,scope=marketing
-
-  deploy:
-    name: Deploy Marketing to VPS
-    needs: [release, docker]
-    if: needs.release.outputs.published == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: jkrumm/rollhook-action@v1
-        with:
-          url: https://rollhook-vps.jkrumm.com
-          token: ${{ secrets.ROLLHOOK_SECRET }}
-          image_tag: registry.jkrumm.com/private/rollhook-marketing:${{ needs.release.outputs.version }}
