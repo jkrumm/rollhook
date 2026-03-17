@@ -1,3 +1,10 @@
+# [1.11.0](https://github.com/jkrumm/rollhook/compare/v1.10.0...v1.11.0) (2026-03-17)
+
+
+### Features
+
+* **dashboard:** serve SPA from Go server ([e486a71](https://github.com/jkrumm/rollhook/commit/e486a7143751fd64de07271164b50b2bdad48751))
+
 # [1.10.0](https://github.com/jkrumm/rollhook/compare/v1.9.0...v1.10.0) (2026-03-17)
 
 
