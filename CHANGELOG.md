@@ -1,3 +1,10 @@
+# [1.14.0](https://github.com/jkrumm/rollhook/compare/v1.13.0...v1.14.0) (2026-03-17)
+
+
+### Features
+
+* **deploy:** push marketing to GHCR, deploy via image_tag ([44ef669](https://github.com/jkrumm/rollhook/commit/44ef669039ee30a6f1aaa08d7f1eacd5e4e8d97a))
+
 # [1.13.0](https://github.com/jkrumm/rollhook/compare/v1.12.0...v1.13.0) (2026-03-17)
 
 
