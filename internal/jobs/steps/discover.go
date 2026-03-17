@@ -63,16 +63,28 @@ func ExtractImageName(imageTag string) string {
 	return imageTag[:lastSlash+1+tagStart]
 }
 
-// FindMatchingContainer returns the first container whose Image field exactly
-// matches imageName or starts with imageName followed by a colon (tag separator).
+// FindMatchingContainer returns the first container whose Image field matches
+// imageName. Matching is tried in order: exact name match, then base-name
+// fallback (last path segment) to handle registry-prefixed images when
+// searching by bare name (e.g. "myapp" matches "registry.example.com/myapp").
 func FindMatchingContainer(containers []container.Summary, imageName string) *container.Summary {
+	searchBase := baseName(imageName)
 	for i := range containers {
 		c := &containers[i]
-		if c.Image == imageName || strings.HasPrefix(c.Image, imageName+":") {
+		cName := ExtractImageName(c.Image)
+		if cName == imageName || baseName(cName) == searchBase {
 			return c
 		}
 	}
 	return nil
+}
+
+// baseName returns the last path segment of an image name (after the final slash).
+func baseName(image string) string {
+	if idx := strings.LastIndex(image, "/"); idx >= 0 {
+		return image[idx+1:]
+	}
+	return image
 }
 
 // ExtractComposeInfo reads Docker Compose labels from a container's label map
