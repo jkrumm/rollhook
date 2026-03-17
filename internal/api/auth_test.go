@@ -61,14 +61,9 @@ func newMiddlewareGateTestServer(t *testing.T, claims oidcpkg.Claims) http.Handl
 // If claims is non-nil, any valid Bearer token passes auth and gets those claims
 // injected, bypassing real OIDC JWT verification.
 // If claims is nil, the standard static-secret middleware is used.
-func newAuthTestServer(t *testing.T, claims *oidcpkg.Claims) http.Handler {
+// cli may be nil for tests that return before steps.Discover (auth-only paths).
+func newAuthTestServer(t *testing.T, claims *oidcpkg.Claims, cli *client.Client) http.Handler {
 	t.Helper()
-	cli, err := dockerpkg.NewClient()
-	if err != nil {
-		t.Skipf("skipping test: docker client init failed: %v", err)
-	}
-	requireDockerAvailable(t, cli)
-	t.Cleanup(func() { cli.Close() })
 
 	r := chi.NewRouter()
 	config := huma.DefaultConfig("RollHook", "test")
@@ -98,7 +93,7 @@ func newAuthTestServer(t *testing.T, claims *oidcpkg.Claims) http.Handler {
 }
 
 func TestAuthToken_NoAuth(t *testing.T) {
-	srv := newAuthTestServer(t, nil)
+	srv := newAuthTestServer(t, nil, nil)
 	req := httptest.NewRequest(http.MethodPost, "/auth/token",
 		strings.NewReader(`{"image_name":"myapp"}`))
 	req.Header.Set("Content-Type", "application/json")
@@ -110,7 +105,7 @@ func TestAuthToken_NoAuth(t *testing.T) {
 }
 
 func TestAuthToken_StaticSecretRejected(t *testing.T) {
-	srv := newAuthTestServer(t, nil)
+	srv := newAuthTestServer(t, nil, nil)
 	req := httptest.NewRequest(http.MethodPost, "/auth/token",
 		strings.NewReader(`{"image_name":"myapp"}`))
 	req.Header.Set("Content-Type", "application/json")
@@ -131,7 +126,8 @@ func TestAuthToken_PRRefDenied(t *testing.T) {
 		Ref:        "refs/pull/1/merge",
 		Actor:      "testuser",
 	}
-	srv := newAuthTestServer(t, claims)
+	// nil cli — handler returns 403 on PR ref check before reaching steps.Discover.
+	srv := newAuthTestServer(t, claims, nil)
 	req := httptest.NewRequest(http.MethodPost, "/auth/token",
 		strings.NewReader(`{"image_name":"myapp"}`))
 	req.Header.Set("Content-Type", "application/json")
@@ -147,12 +143,19 @@ func TestAuthToken_PRRefDenied(t *testing.T) {
 }
 
 func TestAuthToken_DiscoverFailsDenied(t *testing.T) {
+	cli, err := dockerpkg.NewClient()
+	if err != nil {
+		t.Skipf("skipping test: docker client init failed: %v", err)
+	}
+	requireDockerAvailable(t, cli)
+	t.Cleanup(func() { cli.Close() })
+
 	claims := &oidcpkg.Claims{
 		Repository: "myorg/myapp",
 		Ref:        "refs/heads/main",
 		Actor:      "testuser",
 	}
-	srv := newAuthTestServer(t, claims)
+	srv := newAuthTestServer(t, claims, cli)
 	req := httptest.NewRequest(http.MethodPost, "/auth/token",
 		strings.NewReader(`{"image_name":"nonexistent-test-app-for-unit-tests"}`))
 	req.Header.Set("Content-Type", "application/json")
