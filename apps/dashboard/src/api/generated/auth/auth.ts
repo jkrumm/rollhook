@@ -6,10 +6,9 @@
  * OpenAPI spec version: 0.1.0
  */
 import type {
-  DeployInputBody,
-  DeployOutputBody,
   ErrorModel,
-  PostDeployParams
+  TokenInputBody,
+  TokenOutputBody
 } from '../models';
 
 import { customInstance } from '../../client';
@@ -50,53 +49,45 @@ export type HTTPStatusCode5xx = 500 | 501 | 502 | 503 | 504 | 505 | 507 | 511;
 export type HTTPStatusCodes = HTTPStatusCode1xx | HTTPStatusCode2xx | HTTPStatusCode3xx | HTTPStatusCode4xx | HTTPStatusCode5xx;
 
 /**
- * Enqueues a zero-downtime rolling deploy for the service matching image_tag. By default blocks until the job reaches a terminal state and returns the result. Pass ?async=true to return immediately with status=queued. The app name is derived from the last path segment of image_tag before the colon (e.g. ghcr.io/org/my-api:sha → my-api). Returns 500 with an error field if the deploy fails.
- * @summary Trigger a rolling deployment
+ * Validates the OIDC token and checks allowed_repos/allowed_refs labels on the running service. Returns the registry password for docker login. PR refs are always denied.
+ * @summary Exchange a GitHub Actions OIDC JWT for a registry credential
  */
-export type postDeployResponse200 = {
-  data: DeployOutputBody
+export type postAuthTokenResponse200 = {
+  data: TokenOutputBody
   status: 200
 }
 
-export type postDeployResponseDefault = {
+export type postAuthTokenResponseDefault = {
   data: ErrorModel
   status: Exclude<HTTPStatusCodes, 200>
 }
 
-export type postDeployResponseSuccess = (postDeployResponse200) & {
+export type postAuthTokenResponseSuccess = (postAuthTokenResponse200) & {
   headers: Headers;
 };
-export type postDeployResponseError = (postDeployResponseDefault) & {
+export type postAuthTokenResponseError = (postAuthTokenResponseDefault) & {
   headers: Headers;
 };
 
-export type postDeployResponse = (postDeployResponseSuccess | postDeployResponseError)
+export type postAuthTokenResponse = (postAuthTokenResponseSuccess | postAuthTokenResponseError)
 
-export const getPostDeployUrl = (params?: PostDeployParams,) => {
-  const normalizedParams = new URLSearchParams();
+export const getPostAuthTokenUrl = () => {
 
-  Object.entries(params || {}).forEach(([key, value]) => {
-    
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? 'null' : value.toString())
-    }
-  });
 
-  const stringifiedParams = normalizedParams.toString();
+  
 
-  return stringifiedParams.length > 0 ? `/deploy?${stringifiedParams}` : `/deploy`
+  return `/auth/token`
 }
 
-export const postDeploy = async (deployInputBody: NonReadonly<DeployInputBody>,
-    params?: PostDeployParams, options?: RequestInit): Promise<postDeployResponse> => {
+export const postAuthToken = async (tokenInputBody: NonReadonly<TokenInputBody>, options?: RequestInit): Promise<postAuthTokenResponse> => {
   
-  return customInstance<postDeployResponse>(getPostDeployUrl(params),
+  return customInstance<postAuthTokenResponse>(getPostAuthTokenUrl(),
   {      
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(
-      deployInputBody,)
+      tokenInputBody,)
   }
 );}
   

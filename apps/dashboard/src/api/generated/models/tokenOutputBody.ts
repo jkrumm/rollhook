@@ -6,9 +6,9 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type PostDeployParams = {
-/**
- * Return immediately with status=queued instead of blocking until completion
- */
-async?: boolean;
-};
+export interface TokenOutputBody {
+  /** A URL to the JSON Schema for this object. */
+  readonly $schema?: string;
+  /** Registry password for docker login */
+  token: string;
+}

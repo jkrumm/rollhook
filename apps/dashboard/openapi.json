@@ -216,6 +216,50 @@
           "updated_at"
         ],
         "type": "object"
+      },
+      "TokenInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/TokenInputBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "image_name": {
+            "description": "Image name (without registry prefix or tag), e.g. myapp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "image_name"
+        ],
+        "type": "object"
+      },
+      "TokenOutputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/TokenOutputBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "token": {
+            "description": "Registry password for docker login",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "type": "object"
       }
     },
     "securitySchemes": {
@@ -232,6 +276,53 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/auth/token": {
+      "post": {
+        "description": "Validates the OIDC token and checks allowed_repos/allowed_refs labels on the running service. Returns the registry password for docker login. PR refs are always denied.",
+        "operationId": "post-auth-token",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TokenInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenOutputBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Exchange a GitHub Actions OIDC JWT for a registry credential",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
     "/deploy": {
       "post": {
         "description": "Enqueues a zero-downtime rolling deploy for the service matching image_tag. By default blocks until the job reaches a terminal state and returns the result. Pass ?async=true to return immediately with status=queued. The app name is derived from the last path segment of image_tag before the colon (e.g. ghcr.io/org/my-api:sha → my-api). Returns 500 with an error field if the deploy fails.",

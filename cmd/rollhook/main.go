@@ -78,7 +78,9 @@ func main() {
 	// Initialize OIDC verifier. Non-fatal on failure — log warning and disable OIDC.
 	// ROLLHOOK_OIDC_ISSUER overrides the default GitHub issuer (for E2E tests).
 	// ROLLHOOK_URL sets the expected audience claim; if unset, aud check is skipped.
-	var oidcVerifier *oidcpkg.Verifier
+	// Initialize OIDC verifier as interface to avoid typed-nil pitfall.
+	// Non-fatal on failure — log warning and disable OIDC.
+	var oidcVerifier oidcpkg.Verifiable
 	if v, err := oidcpkg.New(ctx); err != nil {
 		slog.Warn("OIDC verifier init failed — OIDC tokens will be rejected", "error", err)
 	} else {
@@ -117,6 +119,7 @@ func main() {
 
 	api.RegisterHealth(humaAPI)
 	api.RegisterDeploy(humaAPI, exec, store, cli)
+	api.RegisterAuthToken(humaAPI, secret, cli)
 	api.RegisterJobsAPI(humaAPI, store)
 
 	// SSE log stream — registered directly on Chi to bypass huma's response wrapping.

@@ -25,6 +25,12 @@ type Claims struct {
 	Sub             string `json:"sub"`
 }
 
+// Verifiable is the interface for verifying raw OIDC JWTs.
+// *Verifier satisfies this interface; tests can inject a mock.
+type Verifiable interface {
+	Verify(ctx context.Context, rawToken string) (Claims, error)
+}
+
 // Verifier wraps the go-oidc provider verifier.
 type Verifier struct {
 	inner *coreidc.IDTokenVerifier

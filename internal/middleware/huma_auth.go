@@ -3,6 +3,7 @@ package middleware
 import (
 	"crypto/subtle"
 	"net/http"
+	"reflect"
 	"strings"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -17,8 +18,23 @@ import (
 //   - Missing/malformed Bearer → 401
 //   - Invalid JWT or wrong static secret → 403
 //
+// hasVerifier reports whether v is a non-nil, usable verifier.
+// A plain nil interface and a typed-nil pointer wrapped in an interface both return false.
+func hasVerifier(v oidcpkg.Verifiable) bool {
+	if v == nil {
+		return false
+	}
+	rv := reflect.ValueOf(v)
+	switch rv.Kind() {
+	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice:
+		return !rv.IsNil()
+	default:
+		return true
+	}
+}
+
 // Pass nil as verifier to disable OIDC support (static secret only).
-func HumaAuth(api huma.API, secret string, verifier *oidcpkg.Verifier) func(huma.Context, func(huma.Context)) {
+func HumaAuth(api huma.API, secret string, verifier oidcpkg.Verifiable) func(huma.Context, func(huma.Context)) {
 	return func(ctx huma.Context, next func(huma.Context)) {
 		if len(ctx.Operation().Security) == 0 {
 			next(ctx)
@@ -31,11 +47,11 @@ func HumaAuth(api huma.API, secret string, verifier *oidcpkg.Verifier) func(huma
 			return
 		}
 
-		if verifier != nil && oidcpkg.IsJWT(token) {
-			// OIDC JWTs are only accepted on the deploy endpoint.
+		if hasVerifier(verifier) && oidcpkg.IsJWT(token) {
+			// OIDC JWTs are only accepted on deploy and auth/token endpoints.
 			// Admin/jobs routes require the static ROLLHOOK_SECRET.
-			if ctx.Operation().OperationID != "post-deploy" {
-				_ = huma.WriteErr(api, ctx, http.StatusForbidden, "OIDC tokens are only accepted for POST /deploy")
+			if ctx.Operation().OperationID != "post-deploy" && ctx.Operation().OperationID != "post-auth-token" {
+				_ = huma.WriteErr(api, ctx, http.StatusForbidden, "OIDC tokens are only accepted for POST /deploy and POST /auth/token")
 				return
 			}
 			claims, err := verifier.Verify(ctx.Context(), token)

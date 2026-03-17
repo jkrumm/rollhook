@@ -2,6 +2,7 @@ package steps
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -10,6 +11,10 @@ import (
 
 	dockerpkg "github.com/jkrumm/rollhook/internal/docker"
 )
+
+// ErrServiceNotFound is returned by Discover when no running container matches the image.
+// Callers can use errors.Is to distinguish this from infrastructure errors.
+var ErrServiceNotFound = errors.New("service not found")
 
 // DiscoveryResult holds Compose metadata extracted from a running container.
 type DiscoveryResult struct {
@@ -31,7 +36,7 @@ func Discover(ctx context.Context, cli *client.Client, imageTag string) (*Discov
 
 	match := FindMatchingContainer(containers, imageName)
 	if match == nil {
-		return nil, fmt.Errorf("no running container found matching image: %s", imageName)
+		return nil, fmt.Errorf("%w: no running container found matching image: %s", ErrServiceNotFound, imageName)
 	}
 
 	detail, err := dockerpkg.InspectContainer(ctx, cli, match.ID)
