@@ -161,14 +161,31 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      packages: write
       id-token: write
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ needs.release.outputs.version }}
 
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push marketing image to GHCR
+        run: |
+          docker build \
+            -t ghcr.io/jkrumm/rollhook-marketing:${{ github.sha }} \
+            -t ghcr.io/jkrumm/rollhook-marketing:latest \
+            -f apps/marketing/Dockerfile .
+          docker push ghcr.io/jkrumm/rollhook-marketing:${{ github.sha }}
+          docker push ghcr.io/jkrumm/rollhook-marketing:latest
+
       - uses: jkrumm/rollhook-action@v1
         with:
           url: https://rollhook.jkrumm.com
           image_name: rollhook-marketing
-          dockerfile: apps/marketing/Dockerfile
+          image_tag: ghcr.io/jkrumm/rollhook-marketing:${{ github.sha }}
