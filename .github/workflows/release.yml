@@ -153,3 +153,22 @@ jobs:
             manifest:org.opencontainers.image.revision=${{ steps.meta.outputs.revision }}
           cache-from: type=gha,scope=server
           cache-to: type=gha,mode=max,scope=server
+
+  deploy:
+    name: Deploy Marketing to VPS
+    needs: [release, docker]
+    if: needs.release.outputs.published == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release.outputs.version }}
+
+      - uses: jkrumm/rollhook-action@v1
+        with:
+          url: https://rollhook.jkrumm.com
+          image_name: rollhook-marketing
+          dockerfile: apps/marketing/Dockerfile
