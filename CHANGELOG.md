@@ -1,3 +1,10 @@
+# [1.9.0](https://github.com/jkrumm/rollhook/compare/v1.8.1...v1.9.0) (2026-03-17)
+
+
+### Features
+
+* **api:** add POST /auth/token for OIDC registry credential exchange ([d8c2a2d](https://github.com/jkrumm/rollhook/commit/d8c2a2d8fcf3c0be42ef567f907c56a2e73644da))
+
 ## [1.8.1](https://github.com/jkrumm/rollhook/compare/v1.8.0...v1.8.1) (2026-03-16)
 
 
