@@ -1,16 +1,14 @@
-FROM oven/bun:1.3.9-slim AS builder
+FROM oven/bun:1.3-alpine AS builder
 WORKDIR /app
 
 COPY package.json bun.lock ./
-COPY apps/server/package.json ./apps/server/package.json
-COPY apps/marketing/package.json ./apps/marketing/package.json
-COPY packages/rollhook/package.json ./packages/rollhook/package.json
-COPY e2e/package.json ./e2e/package.json
-RUN --mount=type=cache,target=/root/.bun/install/cache \
-    bun install --frozen-lockfile --ignore-scripts
+COPY apps/marketing/package.json ./apps/marketing/
+COPY apps/dashboard/package.json ./apps/dashboard/
+COPY packages/ui/package.json ./packages/ui/
+COPY e2e/package.json ./e2e/
+RUN bun install --frozen-lockfile --ignore-scripts
 
 COPY tsconfig.json ./
-COPY packages/rollhook ./packages/rollhook
 COPY apps/marketing ./apps/marketing
 
 RUN cd apps/marketing && bun run build
