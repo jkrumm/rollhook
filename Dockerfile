@@ -48,8 +48,8 @@ RUN ZOT_ARCH=$([ "$TARGETARCH" = "arm64" ] && echo "arm64" || echo "amd64") \
 FROM debian:12-slim AS runner
 WORKDIR /app
 
-# Install curl for the HEALTHCHECK — no build tools, no recommends.
-RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+# Install curl (healthcheck) and ca-certificates (OIDC TLS verification).
+RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates && rm -rf /var/lib/apt/lists/*
 
 COPY --from=tool-downloader /usr/local/bin/docker /usr/local/bin/docker
 RUN mkdir -p /usr/local/lib/docker/cli-plugins
