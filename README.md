@@ -50,7 +50,7 @@ services:
     # 3. No ports: — proxy routes via Docker DNS, ports: blocks scaling
     # 4. No container_name: — fixed names prevent a second instance from starting
     labels:
-      - rollhook.allowed_repos=myorg/my-api  # authorize your GitHub repo
+      - rollhook.allowed_repos=myorg/my-api # authorize your GitHub repo
     networks:
       - proxy
 
@@ -76,7 +76,8 @@ on:
     branches: [main]
 
 permissions:
-  id-token: write   # required for OIDC deploy trigger
+  id-token: write # required for OIDC token exchange
+  contents: read # required for actions/checkout
 
 jobs:
   deploy:
@@ -84,24 +85,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build & push to RollHook registry
-        run: |
-          echo "${{ secrets.ROLLHOOK_SECRET }}" | docker login ${{ vars.ROLLHOOK_URL }} -u rollhook --password-stdin
-          docker build -t ${{ vars.ROLLHOOK_URL }}/my-api:${{ github.sha }} .
-          docker push ${{ vars.ROLLHOOK_URL }}/my-api:${{ github.sha }}
-
       - uses: jkrumm/rollhook-action@v1
         with:
           url: ${{ vars.ROLLHOOK_URL }}
-          image_tag: ${{ vars.ROLLHOOK_URL }}/my-api:${{ github.sha }}
+          image_name: my-api
 ```
 
 **What you need in GitHub:**
 
-| Where | What |
-|-|-|
+| Where                | What                                            |
+| -------------------- | ----------------------------------------------- |
 | Settings → Variables | `ROLLHOOK_URL` = `https://rollhook.example.com` |
-| Settings → Secrets | `ROLLHOOK_SECRET` (registry push auth only — deploy uses OIDC) |
+
+No secrets needed. The action exchanges the GitHub Actions OIDC token for a short-lived registry credential automatically.
 
 The action streams SSE logs live to CI and fails the step if the deployment fails. See [jkrumm/rollhook-action](https://github.com/jkrumm/rollhook-action) for full docs.
 

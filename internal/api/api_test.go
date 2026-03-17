@@ -45,7 +45,16 @@ func newTestServer(t *testing.T) (http.Handler, *db.Store, string) {
 		t.Cleanup(func() { cli.Close() })
 	}
 
-	exec := jobs.NewExecutor(context.Background(), store, cli, testSecret, dataDir)
+	ctx, cancel := context.WithCancel(context.Background())
+	exec := jobs.NewExecutor(ctx, store, cli, testSecret, dataDir)
+	// Drain the queue before TempDir cleanup so in-flight jobs close their log
+	// files — otherwise RemoveAll fails on the non-empty logs/ directory.
+	t.Cleanup(func() {
+		cancel()
+		if !exec.Queue().Drain(2 * time.Second) {
+			t.Error("executor queue did not drain before cleanup — TempDir removal may fail")
+		}
+	})
 
 	r := chi.NewRouter()
 	config := huma.DefaultConfig("RollHook", "test")

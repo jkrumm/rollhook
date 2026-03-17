@@ -32,15 +32,82 @@ var hopByHopHeaders = []string{
 // so Docker follows redirects through our proxy, not directly to the loopback address.
 var zotAbsoluteURLPattern = regexp.MustCompile(`(?i)^https?://127\.0\.0\.1:\d+`)
 
-// validateProxyAuth validates an Authorization header against the shared secret.
-// Bearer: token must equal secret.
-// Basic: base64-decoded password (after the first colon) must equal secret — any username accepted.
-func validateProxyAuth(header, secret string) bool {
+// extractRepoFromPath parses the repository name from an OCI distribution API path.
+// Returns "" for the /v2/ ping and any path where the repo cannot be determined.
+//
+// Scans path segments in reverse so that repo names containing OCI operation
+// keywords (e.g. "org/manifests/app") are handled correctly.
+//
+//	/v2/myapp/manifests/latest        → "myapp"
+//	/v2/myorg/myapp/blobs/sha256:abc  → "myorg/myapp"
+//	/v2/                              → ""
+func extractRepoFromPath(urlPath string) string {
+	rest, ok := strings.CutPrefix(urlPath, "/v2/")
+	if !ok || rest == "" {
+		return ""
+	}
+	parts := strings.Split(strings.Trim(rest, "/"), "/")
+	if len(parts) == 0 || parts[0] == "" {
+		return ""
+	}
+	for i := len(parts) - 1; i >= 0; i-- {
+		switch parts[i] {
+		case "manifests", "tags", "referrers":
+			if i == 0 {
+				return ""
+			}
+			return strings.Join(parts[:i], "/")
+		case "blobs":
+			if i == 0 {
+				return ""
+			}
+			return strings.Join(parts[:i], "/")
+		case "uploads":
+			// /v2/<repo>/blobs/uploads[/<uuid>]
+			if i > 0 && parts[i-1] == "blobs" {
+				if i-1 == 0 {
+					return ""
+				}
+				return strings.Join(parts[:i-1], "/")
+			}
+		}
+	}
+	return ""
+}
+
+// validateProxyAuth validates the Authorization header from r against the shared secret.
+// Accepts the static secret (for admin use) or a short-lived HMAC registry token
+// minted by MintRegistryToken (for CI push credentials).
+//
+// For repo-scoped endpoints (/v2/<repo>/...) an HMAC token is only accepted when
+// its bound imageName matches the target repository (scope enforcement).
+// For the /v2/ ping endpoint (no repo in path) any valid HMAC token is accepted.
+//
+// Bearer: token must equal secret or be a valid registry token.
+// Basic: base64-decoded password (after the first colon) must equal secret or valid token — any username accepted.
+func validateProxyAuth(r *http.Request, secret string) bool {
+	header := r.Header.Get("Authorization")
 	if header == "" {
 		return false
 	}
+	repo := extractRepoFromPath(r.URL.Path)
+	isPing := r.URL.Path == "/v2" || r.URL.Path == "/v2/"
+	tokenValid := func(token string) bool {
+		if subtle.ConstantTimeCompare([]byte(token), []byte(secret)) == 1 {
+			return true
+		}
+		if repo != "" {
+			return ValidateRegistryTokenForRepo(secret, token, repo)
+		}
+		// Accept any valid (signed, unexpired) HMAC token on the /v2 ping only.
+		// Unknown or catalog paths require the static secret.
+		if isPing {
+			return ValidateRegistryToken(secret, token)
+		}
+		return false
+	}
 	if bearer, ok := strings.CutPrefix(header, "Bearer "); ok {
-		return subtle.ConstantTimeCompare([]byte(bearer), []byte(secret)) == 1
+		return tokenValid(bearer)
 	}
 	if basic, ok := strings.CutPrefix(header, "Basic "); ok {
 		decoded, err := base64.StdEncoding.DecodeString(basic)
@@ -51,7 +118,7 @@ func validateProxyAuth(header, secret string) bool {
 		if !found {
 			return false
 		}
-		return subtle.ConstantTimeCompare([]byte(password), []byte(secret)) == 1
+		return tokenValid(password)
 	}
 	return false
 }
@@ -95,7 +162,7 @@ func NewProxy(zotAddr, secret string) http.Handler {
 	}
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !validateProxyAuth(r.Header.Get("Authorization"), secret) {
+		if !validateProxyAuth(r, secret) {
 			writeUnauthorized(w)
 			return
 		}

@@ -6,9 +6,9 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface HealthOutputBody {
+export interface TokenInputBody {
   /** A URL to the JSON Schema for this object. */
   readonly $schema?: string;
-  status: string;
-  version: string;
+  /** Image name (without registry prefix or tag), e.g. myapp */
+  image_name: string;
 }

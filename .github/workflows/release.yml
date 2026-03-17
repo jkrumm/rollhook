@@ -153,4 +153,3 @@ jobs:
             manifest:org.opencontainers.image.revision=${{ steps.meta.outputs.revision }}
           cache-from: type=gha,scope=server
           cache-to: type=gha,mode=max,scope=server
-
