@@ -3,11 +3,13 @@ package main
 import (
 	"context"
 	"errors"
+	"io/fs"
 	"log"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -130,6 +132,25 @@ func main() {
 	r.Handle("/v2", proxyHandler)
 	r.Handle("/v2/", proxyHandler)
 	r.Handle("/v2/*", proxyHandler)
+
+	// Dashboard SPA — serve static files from public/, fallback to index.html.
+	// Gracefully skipped if public/ doesn't exist (e.g. local dev without a build).
+	if _, err := os.Stat("public/index.html"); err == nil {
+		publicFS := http.Dir("public")
+		fileServer := http.FileServer(publicFS)
+		r.NotFound(func(w http.ResponseWriter, req *http.Request) {
+			// Serve static asset if it exists on disk.
+			if !strings.Contains(req.URL.Path, ".") {
+				// No file extension — SPA route, serve index.html.
+				req.URL.Path = "/"
+			} else if _, err := fs.Stat(os.DirFS("public"), strings.TrimPrefix(req.URL.Path, "/")); err != nil {
+				// File with extension doesn't exist — also serve index.html.
+				req.URL.Path = "/"
+			}
+			fileServer.ServeHTTP(w, req)
+		})
+		slog.Info("Dashboard enabled", "path", "/")
+	}
 
 	port := os.Getenv("PORT")
 	if port == "" {

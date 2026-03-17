@@ -1,3 +1,15 @@
+FROM oven/bun:1.3-alpine AS dashboard-builder
+WORKDIR /app
+COPY package.json bun.lock tsconfig.json ./
+COPY apps/dashboard/package.json apps/dashboard/
+COPY apps/marketing/package.json apps/marketing/
+COPY packages/ui/package.json packages/ui/
+COPY e2e/package.json e2e/
+RUN bun install --frozen-lockfile --ignore-scripts
+COPY apps/dashboard/ apps/dashboard/
+COPY packages/ui/ packages/ui/
+RUN bun run --filter @rollhook/dashboard build
+
 FROM golang:1.25-alpine AS go-builder
 WORKDIR /app
 COPY go.mod go.sum ./
@@ -44,6 +56,7 @@ RUN mkdir -p /usr/local/lib/docker/cli-plugins
 COPY --from=tool-downloader /usr/local/bin/docker-compose-plugin /usr/local/lib/docker/cli-plugins/docker-compose
 COPY --from=tool-downloader /usr/local/bin/zot /usr/local/bin/zot
 COPY --from=go-builder /rollhook /usr/local/bin/rollhook
+COPY --from=dashboard-builder /app/apps/server/public/ /app/public/
 
 ARG VERSION=dev
 ENV VERSION=$VERSION
