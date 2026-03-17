@@ -39,6 +39,7 @@ examples/bun-hello-world/.env
 *.com-*.json
 
 # Editor
+.idea/
 .vscode/*
 !.vscode/settings.json
 !.vscode/extensions.json

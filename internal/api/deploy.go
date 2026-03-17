@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
 	"net/http"
 	"os"
 	"strconv"
@@ -15,7 +14,6 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/jkrumm/rollhook/internal/db"
 	jobspkg "github.com/jkrumm/rollhook/internal/jobs"
-	"github.com/jkrumm/rollhook/internal/jobs/steps"
 	oidcpkg "github.com/jkrumm/rollhook/internal/oidc"
 )
 
@@ -102,22 +100,6 @@ func RegisterDeploy(humaAPI huma.API, exec *jobspkg.Executor, store *db.Store, c
 	}, func(ctx context.Context, input *DeployInput) (*DeployOutput, error) {
 		if input.Body.ImageTag == "" {
 			return nil, huma.NewError(http.StatusBadRequest, "image_tag is required")
-		}
-
-		// OIDC authorization: validate repository and ref against service labels.
-		if claims, ok := oidcpkg.ClaimsFromContext(ctx); ok {
-			// Hard deny: PR refs cannot deploy regardless of label configuration.
-			if strings.HasPrefix(claims.Ref, "refs/pull/") {
-				return nil, huma.NewError(http.StatusForbidden, "PR ref deploys are not allowed")
-			}
-			disc, err := steps.Discover(ctx, cli, input.Body.ImageTag)
-			if err != nil {
-				slog.Error("OIDC service discovery failed", "err", err, "image_tag", input.Body.ImageTag)
-				return nil, huma.NewError(http.StatusInternalServerError, "service discovery failed")
-			}
-			if err := checkOIDCLabels(claims, disc.Labels); err != nil {
-				return nil, huma.NewError(http.StatusForbidden, err.Error())
-			}
 		}
 
 		job := jobspkg.NewJob(input.Body.ImageTag)

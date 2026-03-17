@@ -22,7 +22,8 @@ type TokenInput struct {
 type TokenOutput struct {
 	Status int
 	Body   struct {
-		Token string `json:"token" doc:"Registry password for docker login"`
+		Token  string `json:"token" doc:"Registry password for docker login"`
+		Secret string `json:"secret" doc:"Bearer token for all subsequent API calls (deploy, jobs, logs)"`
 	}
 }
 
@@ -31,8 +32,8 @@ func RegisterAuthToken(humaAPI huma.API, secret string, cli *client.Client) {
 		OperationID: "post-auth-token",
 		Method:      http.MethodPost,
 		Path:        "/auth/token",
-		Summary:     "Exchange a GitHub Actions OIDC JWT for a registry credential",
-		Description: "Validates the OIDC token and checks allowed_repos/allowed_refs labels on the running service. Returns the registry password for docker login. PR refs are always denied.",
+		Summary:     "Exchange a GitHub Actions OIDC JWT for a registry credential and API secret",
+		Description: "Validates the OIDC token and checks allowed_repos/allowed_refs labels on the running service. Returns the registry password for docker login and the ROLLHOOK_SECRET for all subsequent API calls (deploy, jobs, logs). PR refs are always denied.",
 		Tags:        []string{"Auth"},
 		Security:    []map[string][]string{{"bearer": {}}},
 	}, func(ctx context.Context, input *TokenInput) (*TokenOutput, error) {
@@ -71,6 +72,7 @@ func RegisterAuthToken(humaAPI huma.API, secret string, cli *client.Client) {
 		// Return a short-lived HMAC token scoped to this image — not the static secret.
 		// The registry proxy accepts these tokens alongside the static secret.
 		out.Body.Token = registry.MintRegistryToken(secret, imageName)
+		out.Body.Secret = secret
 		return out, nil
 	})
 }
