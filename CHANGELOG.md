@@ -1,3 +1,10 @@
+# [1.15.0](https://github.com/jkrumm/rollhook/compare/v1.14.0...v1.15.0) (2026-03-17)
+
+
+### Features
+
+* **api:** return secret from /auth/token, restrict OIDC to token exchange ([701c7d7](https://github.com/jkrumm/rollhook/commit/701c7d7ddd576a30d45c334e70841a8d2f8ce5d4))
+
 # [1.14.0](https://github.com/jkrumm/rollhook/compare/v1.13.0...v1.14.0) (2026-03-17)
 
 
