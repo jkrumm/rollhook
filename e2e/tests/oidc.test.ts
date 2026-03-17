@@ -29,7 +29,7 @@ function oidcHeaders(token: string): HeadersInit {
 }
 
 describe('oidc authentication', () => {
-  it('valid OIDC token with allowed repo → deploy accepted', async () => {
+  it('valid OIDC token → 403 (OIDC not accepted on /deploy)', async () => {
     const token = await getOIDCToken({
       repository: 'rollhook-e2e/hello',
       ref: 'refs/heads/main',
@@ -40,8 +40,7 @@ describe('oidc authentication', () => {
       headers: oidcHeaders(token),
       body: JSON.stringify({ image_tag: IMAGE_V2 }),
     })
-    // 200 = deploy accepted (queued). 503 = queue full (also acceptable under load).
-    expect([200, 503]).toContain(res.status)
+    expect(res.status).toBe(403)
   })
 
   it('valid OIDC token but repo not in allowed_repos → 403', async () => {
@@ -86,7 +85,7 @@ describe('oidc authentication', () => {
     expect(res.status).toBe(403)
   })
 
-  it('oidc token with refs/heads/master → deploy accepted', async () => {
+  it('oidc token with refs/heads/master → 403 (OIDC not accepted on /deploy)', async () => {
     const token = await getOIDCToken({
       repository: 'rollhook-e2e/hello',
       ref: 'refs/heads/master',
@@ -97,8 +96,7 @@ describe('oidc authentication', () => {
       headers: oidcHeaders(token),
       body: JSON.stringify({ image_tag: IMAGE_V2 }),
     })
-    // 200 = deploy accepted (queued). 503 = queue full (also acceptable under load).
-    expect([200, 503]).toContain(res.status)
+    expect(res.status).toBe(403)
   })
 
   it('expired OIDC token → 403', async () => {
@@ -124,6 +122,42 @@ describe('oidc authentication', () => {
     })
     // 200 = deploy accepted (queued). 503 = queue full (also acceptable under load).
     expect([200, 503]).toContain(res.status)
+  })
+
+  it('oidc → /auth/token → use secret for /deploy', async () => {
+    const oidcToken = await getOIDCToken({
+      repository: 'rollhook-e2e/hello',
+      ref: 'refs/heads/main',
+      aud: BASE_URL,
+    })
+    // Step 1: Exchange OIDC token for registry token + secret
+    const authRes = await fetch(`${BASE_URL}/auth/token`, {
+      method: 'POST',
+      headers: oidcHeaders(oidcToken),
+      body: JSON.stringify({ image_name: 'rollhook-e2e-hello' }),
+    })
+    expect(authRes.status).toBe(200)
+    const { token, secret } = await authRes.json() as { token: string, secret: string }
+    expect(token).toBeTruthy()
+    expect(secret).toBeTruthy()
+
+    // Step 2: Use secret to deploy (not the OIDC token)
+    const deployRes = await fetch(`${BASE_URL}/deploy?async=true`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${secret}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image_tag: IMAGE_V2 }),
+    })
+    // 200 = deploy accepted (queued). 503 = queue full (also acceptable under load).
+    expect([200, 503]).toContain(deployRes.status)
+  })
+
+  it('invalid bearer token on /deploy → 403', async () => {
+    const res = await fetch(`${BASE_URL}/deploy?async=true`, {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer invalid-secret', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image_tag: IMAGE_V2 }),
+    })
+    expect(res.status).toBe(403)
   })
 
   it('oidc token cannot access admin /jobs endpoint → 403', async () => {

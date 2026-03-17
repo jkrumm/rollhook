@@ -251,13 +251,18 @@
             "readOnly": true,
             "type": "string"
           },
+          "secret": {
+            "description": "Bearer token for all subsequent API calls (deploy, jobs, logs)",
+            "type": "string"
+          },
           "token": {
             "description": "Registry password for docker login",
             "type": "string"
           }
         },
         "required": [
-          "token"
+          "token",
+          "secret"
         ],
         "type": "object"
       }
@@ -278,7 +283,7 @@
   "paths": {
     "/auth/token": {
       "post": {
-        "description": "Validates the OIDC token and checks allowed_repos/allowed_refs labels on the running service. Returns the registry password for docker login. PR refs are always denied.",
+        "description": "Validates the OIDC token and checks allowed_repos/allowed_refs labels on the running service. Returns the registry password for docker login and the ROLLHOOK_SECRET for all subsequent API calls (deploy, jobs, logs). PR refs are always denied.",
         "operationId": "post-auth-token",
         "requestBody": {
           "content": {
@@ -317,7 +322,7 @@
             "bearer": []
           }
         ],
-        "summary": "Exchange a GitHub Actions OIDC JWT for a registry credential",
+        "summary": "Exchange a GitHub Actions OIDC JWT for a registry credential and API secret",
         "tags": [
           "Auth"
         ]

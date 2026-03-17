@@ -48,10 +48,10 @@ func HumaAuth(api huma.API, secret string, verifier oidcpkg.Verifiable) func(hum
 		}
 
 		if hasVerifier(verifier) && oidcpkg.IsJWT(token) {
-			// OIDC JWTs are only accepted on deploy and auth/token endpoints.
-			// Admin/jobs routes require the static ROLLHOOK_SECRET.
-			if ctx.Operation().OperationID != "post-deploy" && ctx.Operation().OperationID != "post-auth-token" {
-				_ = huma.WriteErr(api, ctx, http.StatusForbidden, "OIDC tokens are only accepted for POST /deploy and POST /auth/token")
+			// OIDC JWTs are only accepted on POST /auth/token.
+			// All other routes require the static ROLLHOOK_SECRET.
+			if ctx.Operation().OperationID != "post-auth-token" {
+				_ = huma.WriteErr(api, ctx, http.StatusForbidden, "OIDC tokens are only accepted for POST /auth/token")
 				return
 			}
 			claims, err := verifier.Verify(ctx.Context(), token)

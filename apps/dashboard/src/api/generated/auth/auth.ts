@@ -49,8 +49,8 @@ export type HTTPStatusCode5xx = 500 | 501 | 502 | 503 | 504 | 505 | 507 | 511;
 export type HTTPStatusCodes = HTTPStatusCode1xx | HTTPStatusCode2xx | HTTPStatusCode3xx | HTTPStatusCode4xx | HTTPStatusCode5xx;
 
 /**
- * Validates the OIDC token and checks allowed_repos/allowed_refs labels on the running service. Returns the registry password for docker login. PR refs are always denied.
- * @summary Exchange a GitHub Actions OIDC JWT for a registry credential
+ * Validates the OIDC token and checks allowed_repos/allowed_refs labels on the running service. Returns the registry password for docker login and the ROLLHOOK_SECRET for all subsequent API calls (deploy, jobs, logs). PR refs are always denied.
+ * @summary Exchange a GitHub Actions OIDC JWT for a registry credential and API secret
  */
 export type postAuthTokenResponse200 = {
   data: TokenOutputBody

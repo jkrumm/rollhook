@@ -9,6 +9,8 @@
 export interface TokenOutputBody {
   /** A URL to the JSON Schema for this object. */
   readonly $schema?: string;
+  /** Bearer token for all subsequent API calls (deploy, jobs, logs) */
+  secret: string;
   /** Registry password for docker login */
   token: string;
 }

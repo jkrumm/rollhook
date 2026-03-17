@@ -147,17 +147,17 @@ See [`e2e/hello-world/`](e2e/hello-world/) for a complete reference app.
 
 Interactive docs at `/openapi` on your running instance. Key routes:
 
-| Method | Route             | Auth              | Description                                        |
-| ------ | ----------------- | ----------------- | -------------------------------------------------- |
-| `POST` | `/auth/token`     | OIDC JWT          | Exchange GitHub OIDC token for registry credential |
-| `POST` | `/deploy`         | OIDC JWT / bearer | Trigger deploy (`?async=true` to not block)        |
-| `GET`  | `/jobs/{id}`      | bearer            | Job status + metadata                              |
-| `GET`  | `/jobs/{id}/logs` | bearer            | SSE log stream                                     |
-| `GET`  | `/jobs`           | bearer            | History (`?app=&status=&limit=`)                   |
-| `GET`  | `/health`         | none              | `{ status, version }`                              |
-| `*`    | `/v2/*`           | bearer/basic      | Built-in OCI registry (push & pull)                |
+| Method | Route             | Auth         | Description                                          |
+| ------ | ----------------- | ------------ | ---------------------------------------------------- |
+| `POST` | `/auth/token`     | OIDC JWT     | Exchange OIDC token for registry credential + secret |
+| `POST` | `/deploy`         | bearer       | Trigger deploy (`?async=true` to not block)          |
+| `GET`  | `/jobs/{id}`      | bearer       | Job status + metadata                                |
+| `GET`  | `/jobs/{id}/logs` | bearer       | SSE log stream                                       |
+| `GET`  | `/jobs`           | bearer       | History (`?app=&status=&limit=`)                     |
+| `GET`  | `/health`         | none         | `{ status, version }`                                |
+| `*`    | `/v2/*`           | bearer/basic | Built-in OCI registry (push & pull)                  |
 
-**Auth:** `POST /auth/token` and `POST /deploy` accept GitHub Actions OIDC JWTs — no secret needed in CI. All other routes require `Bearer <ROLLHOOK_SECRET>`.
+**Auth:** `POST /auth/token` accepts GitHub Actions OIDC JWTs and returns `ROLLHOOK_SECRET` for all subsequent API calls. All other routes require `Bearer <ROLLHOOK_SECRET>`.
 
 ---
 
