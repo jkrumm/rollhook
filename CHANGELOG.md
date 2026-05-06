@@ -1,3 +1,10 @@
+# [1.16.0](https://github.com/jkrumm/rollhook/compare/v1.15.0...v1.16.0) (2026-05-06)
+
+
+### Features
+
+* **docker:** inject auth for self-hosted external registry ([dc2b695](https://github.com/jkrumm/rollhook/commit/dc2b69506b75454b8e6b6df5edb28ee14b9bbf3d))
+
 # [1.15.0](https://github.com/jkrumm/rollhook/compare/v1.14.0...v1.15.0) (2026-03-17)
 
 
