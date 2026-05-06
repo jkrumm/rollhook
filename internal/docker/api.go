@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/url"
+	"os"
 	"strings"
 
 	cerrdefs "github.com/containerd/errdefs"
@@ -76,12 +78,14 @@ func RemoveContainer(ctx context.Context, cli *client.Client, id string) error {
 }
 
 // PullImage pulls a Docker image, streaming high-signal log lines to logFn.
-// For localhost registries, registryPassword is used to inject X-Registry-Auth
-// so the Docker daemon can authenticate without relying on its credential store
-// (e.g. on macOS where keychain credentials are inaccessible via the Docker API).
+// For RollHook's own built-in registry — localhost OR the host in ROLLHOOK_URL —
+// registryPassword is used to inject X-Registry-Auth so the Docker daemon can
+// authenticate without relying on its credential store (e.g. on macOS where
+// keychain credentials are inaccessible via the Docker API, or production
+// daemons that don't have docker login state for the self-hosted registry).
 func PullImage(ctx context.Context, cli *client.Client, imageTag string, logFn func(string), registryPassword string) error {
 	opts := image.PullOptions{}
-	if isLocalhost(imageTag) {
+	if isOwnRegistry(imageTag) {
 		auth, err := buildRegistryAuth("rollhook", registryPassword, extractHost(imageTag))
 		if err != nil {
 			return fmt.Errorf("encoding registry auth: %w", err)
@@ -106,6 +110,28 @@ func isLocalhost(imageTag string) bool {
 	}
 	host := imageTag[:slashIdx]
 	return strings.HasPrefix(host, "localhost:") || strings.HasPrefix(host, "127.0.0.1:")
+}
+
+// isOwnRegistry reports whether imageTag references RollHook's own built-in
+// registry — either via a localhost reference or via the public hostname set
+// in ROLLHOOK_URL. The public-hostname case matters for self-hosted setups
+// where compose files reference the registry by its external FQDN (e.g.
+// rollhook.example.com/myapp:latest); the Docker daemon then has no
+// credentials for that host and a `docker pull` would fall back to anonymous
+// and fail.
+func isOwnRegistry(imageTag string) bool {
+	if isLocalhost(imageTag) {
+		return true
+	}
+	rollhookURL := os.Getenv("ROLLHOOK_URL")
+	if rollhookURL == "" {
+		return false
+	}
+	u, err := url.Parse(rollhookURL)
+	if err != nil || u.Host == "" {
+		return false
+	}
+	return extractHost(imageTag) == u.Host
 }
 
 // extractHost returns the registry host portion of an image tag (e.g. "localhost:7700").

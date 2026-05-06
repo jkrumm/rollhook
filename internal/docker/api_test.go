@@ -32,6 +32,49 @@ func TestIsLocalhost(t *testing.T) {
 	}
 }
 
+func TestIsOwnRegistry(t *testing.T) {
+	t.Run("localhost is always own", func(t *testing.T) {
+		t.Setenv("ROLLHOOK_URL", "")
+		if !isOwnRegistry("localhost:7700/app:v1") {
+			t.Error("localhost should be own registry even without ROLLHOOK_URL")
+		}
+	})
+
+	t.Run("matches ROLLHOOK_URL host", func(t *testing.T) {
+		t.Setenv("ROLLHOOK_URL", "https://rollhook.example.com")
+		if !isOwnRegistry("rollhook.example.com/app:v1") {
+			t.Error("expected rollhook.example.com to match its own ROLLHOOK_URL")
+		}
+		if isOwnRegistry("ghcr.io/user/app:v1") {
+			t.Error("ghcr.io must not match a different ROLLHOOK_URL")
+		}
+	})
+
+	t.Run("ROLLHOOK_URL with port matches", func(t *testing.T) {
+		t.Setenv("ROLLHOOK_URL", "https://rollhook.example.com:8443")
+		if !isOwnRegistry("rollhook.example.com:8443/app:v1") {
+			t.Error("expected host:port match")
+		}
+		if isOwnRegistry("rollhook.example.com/app:v1") {
+			t.Error("plain host without port must not match host:port URL")
+		}
+	})
+
+	t.Run("malformed ROLLHOOK_URL is ignored", func(t *testing.T) {
+		t.Setenv("ROLLHOOK_URL", "::not a url::")
+		if isOwnRegistry("rollhook.example.com/app:v1") {
+			t.Error("malformed URL should not match anything")
+		}
+	})
+
+	t.Run("empty ROLLHOOK_URL leaves only localhost matching", func(t *testing.T) {
+		t.Setenv("ROLLHOOK_URL", "")
+		if isOwnRegistry("rollhook.example.com/app:v1") {
+			t.Error("without ROLLHOOK_URL, external hosts must not match")
+		}
+	})
+}
+
 func TestExtractHost(t *testing.T) {
 	cases := []struct {
 		imageTag string
