@@ -131,15 +131,19 @@ See [`e2e/hello-world/`](e2e/hello-world/) for a complete reference app.
 
 ## Environment Variables
 
-| Var                        | Required | Description                                        |
-| -------------------------- | -------- | -------------------------------------------------- |
-| `ROLLHOOK_SECRET`          | yes      | Admin/static bearer token (min 7 chars)            |
-| `ROLLHOOK_URL`             | no       | Public server URL — enables OIDC `aud` claim check |
-| `DOCKER_HOST`              | no       | Docker daemon endpoint (default: local socket)     |
-| `PORT`                     | no       | Listen port (default: `7700`)                      |
-| `PUSHOVER_USER_KEY`        | no       | Pushover mobile notifications                      |
-| `PUSHOVER_APP_TOKEN`       | no       | Pushover mobile notifications                      |
-| `NOTIFICATION_WEBHOOK_URL` | no       | POST full job result JSON on completion            |
+| Var                           | Required | Description                                                           |
+| ----------------------------- | -------- | --------------------------------------------------------------------- |
+| `ROLLHOOK_SECRET`             | yes      | Admin/static bearer token (min 7 chars)                               |
+| `ROLLHOOK_URL`                | no       | Public server URL — enables OIDC `aud` claim check                    |
+| `DOCKER_HOST`                 | no       | Docker daemon endpoint (default: local socket)                        |
+| `PORT`                        | no       | Listen port (default: `7700`)                                         |
+| `PUSHOVER_USER_KEY`           | no       | Pushover mobile notifications                                         |
+| `PUSHOVER_APP_TOKEN`          | no       | Pushover mobile notifications                                         |
+| `NOTIFICATION_WEBHOOK_URL`    | no       | POST full job result JSON on completion                               |
+| `SLACK_WEBHOOK_URL`           | no       | Slack incoming-webhook URL for deploy notifications                   |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | no       | OTLP/HTTP base URL — emits one log per deploy as a marker             |
+| `OTEL_EXPORTER_OTLP_HEADERS`  | no       | Comma-separated `key=value` headers (e.g. `Authorization=Bearer ...`) |
+| `DEPLOY_ENVIRONMENT`          | no       | Sets `deployment.environment` on the OTLP log; omitted if unset       |
 
 ---
 
@@ -165,4 +169,18 @@ Interactive docs at `/openapi` on your running instance. Key routes:
 
 Set `PUSHOVER_USER_KEY` + `PUSHOVER_APP_TOKEN` for mobile push on deploy completion.
 Set `NOTIFICATION_WEBHOOK_URL` to POST the full `JobResult` JSON anywhere.
+Set `SLACK_WEBHOOK_URL` (incoming webhook) for a plain-text deploy summary in Slack.
+Set `OTEL_EXPORTER_OTLP_ENDPOINT` to emit one OTLP/HTTP log per deploy as a deployment marker. Optional `OTEL_EXPORTER_OTLP_HEADERS` (comma-separated `key=value`) for auth, and `DEPLOY_ENVIRONMENT` to set `deployment.environment` on the log.
+
+OTLP attribute schema:
+
+| Attribute                | Value                                        |
+| ------------------------ | -------------------------------------------- |
+| `service.name`           | `rollhook` (the emitter)                     |
+| `deploy.service`         | deployed app name                            |
+| `deploy.image_tag`       | full image reference                         |
+| `deploy.status`          | `success` \| `failed`                        |
+| `deploy.job_id`          | RollHook job ID                              |
+| `deployment.environment` | from `DEPLOY_ENVIRONMENT` (omitted if unset) |
+
 Notification failures are written to the job log — they never affect job status.
