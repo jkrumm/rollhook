@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -144,4 +145,69 @@ func TestNotifier_WebhookError_DoesNotPanic(t *testing.T) {
 
 	// Should complete without panic or fatal.
 	Notify(context.Background(), Config{WebhookURL: ts.URL}, makeJob(db.StatusSuccess, nil))
+}
+
+func TestNotifier_Slack_Success(t *testing.T) {
+	var received map[string]string
+	var contentType string
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		contentType = r.Header.Get("Content-Type")
+		body, _ := io.ReadAll(r.Body)
+		_ = json.Unmarshal(body, &received)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+
+	job := makeJob(db.StatusSuccess, nil)
+	Notify(context.Background(), Config{SlackWebhookURL: ts.URL}, job)
+
+	if contentType != "application/json" {
+		t.Errorf("Content-Type = %q, want application/json", contentType)
+	}
+	text, ok := received["text"]
+	if !ok || text == "" {
+		t.Fatal("slack payload missing text field")
+	}
+	if !strings.Contains(text, "✅ Deployed myapp") {
+		t.Errorf("text = %q, want success indicator", text)
+	}
+	if !strings.Contains(text, "localhost:7700/myapp:v2") {
+		t.Errorf("text = %q, want image tag", text)
+	}
+}
+
+func TestNotifier_Slack_Failure(t *testing.T) {
+	var received map[string]string
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		_ = json.Unmarshal(body, &received)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+
+	errMsg := "compose file not found"
+	job := makeJob(db.StatusFailed, &errMsg)
+	Notify(context.Background(), Config{SlackWebhookURL: ts.URL}, job)
+
+	text := received["text"]
+	if !strings.Contains(text, "❌ Deployment failed: myapp") {
+		t.Errorf("text = %q, want failure indicator", text)
+	}
+	if !strings.Contains(text, "compose file not found") {
+		t.Errorf("text = %q, want error message", text)
+	}
+	if !strings.Contains(text, "Status: failed") {
+		t.Errorf("text = %q, want status line", text)
+	}
+}
+
+func TestNotifier_SlackError_DoesNotPanic(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer ts.Close()
+
+	Notify(context.Background(), Config{SlackWebhookURL: ts.URL}, makeJob(db.StatusSuccess, nil))
 }
