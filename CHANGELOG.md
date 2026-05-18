@@ -1,3 +1,10 @@
+# [1.17.0](https://github.com/jkrumm/rollhook/compare/v1.16.0...v1.17.0) (2026-05-18)
+
+
+### Features
+
+* **notifier:** native Slack + OTLP deploy-marker notifications ([a36d150](https://github.com/jkrumm/rollhook/commit/a36d15029130d57967c9049ec1864e7a5a864e16)), closes [#15](https://github.com/jkrumm/rollhook/issues/15)
+
 # [1.16.0](https://github.com/jkrumm/rollhook/compare/v1.15.0...v1.16.0) (2026-05-06)
 
 
