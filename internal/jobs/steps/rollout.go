@@ -19,6 +19,7 @@ import (
 const (
 	defaultHealthTimeoutMS = 60_000
 	pollIntervalMS         = 1_000
+	defaultImageKeepCount  = 5
 )
 
 // Rollout performs a zero-downtime rolling deploy:

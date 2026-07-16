@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -34,6 +35,27 @@ const scalarHTML = `<!doctype html>
 <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference"></script>
 </body>
 </html>`
+
+// envInt reads an integer env var, returning defaultVal if unset, unparseable,
+// or negative. Zero is a valid, meaningful value (the documented "disable" escape
+// hatch for both log retention and image pruning) — only negative/unparseable
+// values are treated as configuration mistakes.
+func envInt(key string, defaultVal int) int {
+	v := os.Getenv(key)
+	if v == "" {
+		return defaultVal
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil {
+		slog.Warn("invalid integer env var, using default", "var", key, "value", v, "default", defaultVal)
+		return defaultVal
+	}
+	if n < 0 {
+		slog.Warn("negative env var not allowed, using default", "var", key, "value", n, "default", defaultVal)
+		return defaultVal
+	}
+	return n
+}
 
 func main() {
 	secret := os.Getenv("ROLLHOOK_SECRET")
@@ -62,6 +84,30 @@ func main() {
 	}
 	store := db.NewStore(sqlDB)
 	store.MarkInterruptedJobsFailed()
+
+	// Job log reaper — startup sweep, then every 24h for the process lifetime.
+	logRetentionDays := envInt("ROLLHOOK_LOG_RETENTION_DAYS", 30)
+	pruneLogs := func() {
+		removed, pruneErr := db.PruneLogs(dataDir, logRetentionDays)
+		if pruneErr != nil {
+			slog.Warn("log retention: prune failed", "error", pruneErr)
+		} else if removed > 0 {
+			slog.Info("log retention: pruned old job logs", "removed", removed)
+		}
+	}
+	pruneLogs()
+	go func() {
+		ticker := time.NewTicker(24 * time.Hour)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				pruneLogs()
+			}
+		}
+	}()
 
 	// Docker client
 	cli, err := dockerpkg.NewClient()

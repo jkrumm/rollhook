@@ -93,6 +93,21 @@ If both the watcher goroutine and `Stop()` call `Wait()`, the second call errors
 Zot needs: SIGTERM → wait for clean exit → SIGKILL if stuck.
 **Fix:** use `exec.Command` and manage lifecycle manually in `Stop()`.
 
+### `storage.gc: true` by default only collects UNTAGGED blobs — retention is the missing piece
+Zot's `storage.gc` defaults to true, but GC only reclaims orphaned/untagged blobs. Every tag RollHook pushes stays tagged forever, so GC alone reclaims nothing. A `storage.retention` policy is required to untag old pushes before GC has anything to collect.
+
+### Retention requires `gc: true` to actually free disk
+`storage.retention` on its own only untags blobs — it does not delete them. Without `gc: true`, untagged blobs accumulate exactly as before, just no longer referenced by a tag.
+
+### `repositories` is glob, `keepTags.patterns` is regex
+Easy to mix up: `storage.retention.policies[].repositories` matches with glob syntax (`"**"` for all repos), while `keepTags[].patterns` matches with regex (`".*"` for all tags). Using glob syntax in `patterns` (e.g. `"*"`) silently matches nothing.
+
+### No config hot-reload
+Zot re-reads its config only on process start — there's no SIGHUP or file-watch reload. A config change (e.g. `ROLLHOOK_REGISTRY_KEEP_TAGS`) only takes effect after Zot restarts, which RollHook does by writing a fresh config on every `Manager.Start`.
+
+### `reference` filter never matches untagged images
+Docker's `ImageList` `reference` filter only matches images that still carry a matching `RepoTag`. `All: true` does not change this — it surfaces stopped-container images, not dangling ones. An app deployed with a moving tag (e.g. `:latest`) untags its predecessor on every pull, leaving `<none>:<none>` images; a reference-filtered `ImageList` is structurally blind to them, so a pruner built on it (`internal/docker.PruneImages`) never sees them. Deliberately not fixed by widening the filter to dangling images — that would prune images RollHook doesn't own on a shared host. Documented as a known limitation instead (see README's "Disk usage & retention").
+
 ### `httputil.ReverseProxy.Director` override — capture original first
 `httputil.NewSingleHostReverseProxy(target)` sets a `Director` that rewrites the request URL. Overriding `proxy.Director` without capturing and calling the original means the URL is never rewritten → all proxied requests hit the wrong host.
 **Fix:**

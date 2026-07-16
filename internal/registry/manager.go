@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"sync"
 	"syscall"
 	"time"
@@ -41,6 +42,27 @@ func NewManager(dataDir, secret string) *Manager {
 	return &Manager{dataDir: dataDir, secret: secret}
 }
 
+// envInt reads an integer env var, returning defaultVal if unset, unparseable,
+// or negative. Zero is a valid, meaningful value (the documented "keep every
+// pushed tag forever" escape hatch) — only negative/unparseable values are
+// treated as configuration mistakes.
+func envInt(key string, defaultVal int) int {
+	v := os.Getenv(key)
+	if v == "" {
+		return defaultVal
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil {
+		slog.Warn("invalid integer env var, using default", "var", key, "value", v, "default", defaultVal)
+		return defaultVal
+	}
+	if n < 0 {
+		slog.Warn("negative env var not allowed, using default", "var", key, "value", n, "default", defaultVal)
+		return defaultVal
+	}
+	return n
+}
+
 // Start writes Zot config + htpasswd, launches the Zot subprocess,
 // pipes its stdout/stderr line-by-line, and polls until ready or ctx deadline.
 // After Start returns, a background watcher goroutine restarts Zot on unexpected exits.
@@ -53,7 +75,10 @@ func (m *Manager) Start(ctx context.Context) error {
 	m.configPath = filepath.Join(registryDir, "config.json")
 	htpasswdPath := filepath.Join(registryDir, ".htpasswd")
 
-	configJSON := GenerateZotConfig(registryDir, htpasswdPath, zotPort)
+	keepTags := envInt("ROLLHOOK_REGISTRY_KEEP_TAGS", DefaultKeepTags)
+	slog.Info("registry retention configured", "keepTags", keepTags, "source", "zot")
+
+	configJSON := GenerateZotConfig(registryDir, htpasswdPath, zotPort, keepTags)
 	if err := os.WriteFile(m.configPath, []byte(configJSON), 0o600); err != nil {
 		return fmt.Errorf("write zot config: %w", err)
 	}

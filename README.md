@@ -131,19 +131,22 @@ See [`e2e/hello-world/`](e2e/hello-world/) for a complete reference app.
 
 ## Environment Variables
 
-| Var                           | Required | Description                                                           |
-| ----------------------------- | -------- | --------------------------------------------------------------------- |
-| `ROLLHOOK_SECRET`             | yes      | Admin/static bearer token (min 7 chars)                               |
-| `ROLLHOOK_URL`                | no       | Public server URL — enables OIDC `aud` claim check                    |
-| `DOCKER_HOST`                 | no       | Docker daemon endpoint (default: local socket)                        |
-| `PORT`                        | no       | Listen port (default: `7700`)                                         |
-| `PUSHOVER_USER_KEY`           | no       | Pushover mobile notifications                                         |
-| `PUSHOVER_APP_TOKEN`          | no       | Pushover mobile notifications                                         |
-| `NOTIFICATION_WEBHOOK_URL`    | no       | POST full job result JSON on completion                               |
-| `SLACK_WEBHOOK_URL`           | no       | Slack incoming-webhook URL for deploy notifications                   |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | no       | OTLP/HTTP base URL — emits one log per deploy as a marker             |
-| `OTEL_EXPORTER_OTLP_HEADERS`  | no       | Comma-separated `key=value` headers (e.g. `Authorization=Bearer ...`) |
-| `DEPLOY_ENVIRONMENT`          | no       | Sets `deployment.environment` on the OTLP log; omitted if unset       |
+| Var                           | Required | Description                                                                   |
+| ----------------------------- | -------- | ----------------------------------------------------------------------------- |
+| `ROLLHOOK_SECRET`             | yes      | Admin/static bearer token (min 7 chars)                                       |
+| `ROLLHOOK_URL`                | no       | Public server URL — enables OIDC `aud` claim check                            |
+| `DOCKER_HOST`                 | no       | Docker daemon endpoint (default: local socket)                                |
+| `PORT`                        | no       | Listen port (default: `7700`)                                                 |
+| `PUSHOVER_USER_KEY`           | no       | Pushover mobile notifications                                                 |
+| `PUSHOVER_APP_TOKEN`          | no       | Pushover mobile notifications                                                 |
+| `NOTIFICATION_WEBHOOK_URL`    | no       | POST full job result JSON on completion                                       |
+| `SLACK_WEBHOOK_URL`           | no       | Slack incoming-webhook URL for deploy notifications                           |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | no       | OTLP/HTTP base URL — emits one log per deploy as a marker                     |
+| `OTEL_EXPORTER_OTLP_HEADERS`  | no       | Comma-separated `key=value` headers (e.g. `Authorization=Bearer ...`)         |
+| `DEPLOY_ENVIRONMENT`          | no       | Sets `deployment.environment` on the OTLP log; omitted if unset               |
+| `ROLLHOOK_REGISTRY_KEEP_TAGS` | no       | Tags kept per repo in the built-in registry (default `5`, `0` = keep forever) |
+| `ROLLHOOK_IMAGE_KEEP_COUNT`   | no       | Docker images kept per app on the host (default `5`, `0` = disable pruning)   |
+| `ROLLHOOK_LOG_RETENTION_DAYS` | no       | Days a job log file is kept (default `30`, `0` = disable pruning)             |
 
 ---
 
@@ -184,3 +187,15 @@ OTLP attribute schema:
 | `deployment.environment` | from `DEPLOY_ENVIRONMENT` (omitted if unset) |
 
 Notification failures are written to the job log — they never affect job status.
+
+---
+
+## Disk usage & retention
+
+RollHook bounds disk growth on three fronts, all on by default and all configurable via env var:
+
+- `ROLLHOOK_REGISTRY_KEEP_TAGS` (default `5`) — the built-in OCI registry keeps only the `N` most-recently-pushed tags per repository; older tags are untagged and their blobs reclaimed by garbage collection. Set to `0` to keep every pushed tag forever.
+- `ROLLHOOK_IMAGE_KEEP_COUNT` (default `5`) — after each successful deploy, RollHook prunes Docker images for the deployed app on the host, keeping the `N` most recent plus the just-deployed image. Images backing any container — running or stopped — are never removed. Set to `0` to disable image pruning. This only applies to images that still carry a repo tag: apps deployed with a unique/immutable tag per build (the recommended pattern) are pruned as described above, but apps that reuse a moving tag like `:latest` leave the predecessor's layers untagged (`<none>:<none>`) on every pull, which RollHook's reference-filtered prune structurally cannot see. Run `docker image prune` yourself for those.
+- `ROLLHOOK_LOG_RETENTION_DAYS` (default `30`) — job log files older than `N` days are deleted on a daily sweep. Set to `0` to disable log pruning.
+
+Pruning is best-effort: failures are logged but never fail a deploy.

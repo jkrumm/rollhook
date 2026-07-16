@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/url"
 	"os"
+	"sort"
 	"strings"
 
 	cerrdefs "github.com/containerd/errdefs"
@@ -188,6 +189,125 @@ func parsePullStream(r io.Reader, logFn func(string)) error {
 		}
 	}
 	return scanner.Err()
+}
+
+// PruneImages removes stale images for the repository backing imageTag,
+// keeping the newest `keep` images (by creation time) plus the just-deployed
+// imageTag itself, regardless of its position. Never removes an image
+// backing any container, running or stopped. keep <= 0 is a no-op — the
+// escape hatch for "keep every pulled image forever".
+func PruneImages(ctx context.Context, cli *client.Client, imageTag string, keep int, logFn func(string)) error {
+	if keep <= 0 {
+		return nil
+	}
+
+	repo := RepoFromRef(imageTag)
+	if repo == "" {
+		return nil
+	}
+
+	f := filters.NewArgs()
+	f.Add("reference", repo)
+	images, err := cli.ImageList(ctx, image.ListOptions{All: true, Filters: f})
+	if err != nil {
+		return fmt.Errorf("listing images for %s: %w", repo, err)
+	}
+
+	inUse, err := inUseImageIDs(ctx, cli)
+	if err != nil {
+		return fmt.Errorf("listing containers for prune: %w", err)
+	}
+
+	candidates := make([]image.Summary, 0, len(images))
+	for _, img := range images {
+		if _, used := inUse[img.ID]; !used {
+			candidates = append(candidates, img)
+		}
+	}
+	sort.Slice(candidates, func(i, j int) bool {
+		return candidates[i].Created > candidates[j].Created
+	})
+
+	for i, img := range candidates {
+		if i < keep || hasTag(img, imageTag) {
+			continue
+		}
+		removeImage(ctx, cli, img, logFn)
+	}
+	return nil
+}
+
+// inUseImageIDs returns the set of image IDs backing any container, running
+// or stopped — these must never be pruned.
+func inUseImageIDs(ctx context.Context, cli *client.Client) (map[string]struct{}, error) {
+	containers, err := cli.ContainerList(ctx, container.ListOptions{All: true})
+	if err != nil {
+		return nil, err
+	}
+	ids := make(map[string]struct{}, len(containers))
+	for _, c := range containers {
+		ids[c.ImageID] = struct{}{}
+	}
+	return ids, nil
+}
+
+// removeImage removes a single image, logging the outcome. Force is
+// intentionally false — an in-use conflict should be skipped, not forced.
+func removeImage(ctx context.Context, cli *client.Client, img image.Summary, logFn func(string)) {
+	label := imageLabel(img)
+	_, err := cli.ImageRemove(ctx, img.ID, image.RemoveOptions{PruneChildren: true})
+	if err == nil {
+		logFn(fmt.Sprintf("[prune] Removed image %s", label))
+		return
+	}
+	if cerrdefs.IsNotFound(err) || cerrdefs.IsConflict(err) {
+		logFn(fmt.Sprintf("[prune] Skipped image %s: %s", label, err))
+		return
+	}
+	logFn(fmt.Sprintf("[prune] Warning: failed to remove image %s: %s", label, err))
+}
+
+// hasTag reports whether img is tagged as tag.
+func hasTag(img image.Summary, tag string) bool {
+	for _, t := range img.RepoTags {
+		if t == tag {
+			return true
+		}
+	}
+	return false
+}
+
+// imageLabel returns a human-readable identifier for logging: the first repo
+// tag if present, otherwise the short image ID.
+func imageLabel(img image.Summary) string {
+	if len(img.RepoTags) > 0 {
+		return img.RepoTags[0]
+	}
+	return shortID(img.ID)
+}
+
+// RepoFromRef returns the repository portion of an image reference, stripping
+// any digest and tag while preserving registry host:port prefixes. This is
+// the canonical image-reference parser — both docker.PruneImages and
+// steps.ExtractImageName use it, so registry-port and digest handling never
+// drifts between the two call sites.
+//
+//	"registry.example.com:5000/app:v1" → "registry.example.com:5000/app"
+//	"registry.example.com:5000/app@sha256:deadbeef" → "registry.example.com:5000/app"
+//	"app@sha256:deadbeef" → "app"
+//	"nginx:latest" → "nginx"
+//	"nginx" → "nginx"
+func RepoFromRef(ref string) string {
+	if atIdx := strings.Index(ref, "@"); atIdx >= 0 {
+		ref = ref[:atIdx]
+	}
+	lastSlash := strings.LastIndex(ref, "/")
+	afterLastSlash := ref[lastSlash+1:]
+	tagStart := strings.Index(afterLastSlash, ":")
+	if tagStart < 0 {
+		return ref
+	}
+	return ref[:lastSlash+1+tagStart]
 }
 
 func shortID(id string) string {

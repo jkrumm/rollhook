@@ -319,6 +319,47 @@ func TestStreamLogs_TerminalJob(t *testing.T) {
 	}
 }
 
+func TestStreamLogs_TerminalJobLogReaped(t *testing.T) {
+	_, store, dataDir := newTestServer(t)
+
+	// Insert a terminal job but never write its log file — simulates a job
+	// whose log was already removed by the retention reaper (db.PruneLogs
+	// deletes log files but keeps the job row).
+	j := db.Job{ID: "reaped-job", App: "reapedapp", Status: db.StatusSuccess, ImageTag: "reg/reapedapp:v1",
+		CreatedAt: time.Now(), UpdatedAt: time.Now()}
+	_ = store.Insert(j)
+
+	r := chi.NewRouter()
+	r.With(middleware.RequireAuth(testSecret)).Get("/jobs/{id}/logs", api.StreamLogsHandler(store, dataDir))
+
+	req := httptest.NewRequest(http.MethodGet, "/jobs/reaped-job/logs", nil)
+	req.Header.Set("Authorization", authHeader())
+
+	// No retry loop should fire for a terminal job with no log file, so this
+	// must complete well within the 20x100ms retry budget the queued/running
+	// path would otherwise pay.
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+	req = req.WithContext(ctx)
+
+	start := time.Now()
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	elapsed := time.Since(start)
+
+	if elapsed >= 1*time.Second {
+		t.Errorf("expected immediate response for reaped log, took %s", elapsed)
+	}
+
+	body := w.Body.String()
+	if !strings.Contains(body, "retention") {
+		t.Errorf("expected retention explanation in SSE stream, got: %q", body)
+	}
+	if !strings.Contains(body, "data: [DONE]") {
+		t.Errorf("expected [DONE] terminator in SSE stream, got: %q", body)
+	}
+}
+
 func TestStreamLogs_Unauthorized(t *testing.T) {
 	srv, _, _ := newTestServer(t)
 	// Insert a job so the handler doesn't 404.
