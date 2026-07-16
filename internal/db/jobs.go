@@ -228,3 +228,44 @@ func AppendLog(logPath, line string) error {
 	defer f.Close()
 	return AppendLogLine(f, line)
 }
+
+// PruneLogs removes *.log files under $DATA_DIR/logs whose ModTime is older
+// than maxAgeDays. maxAgeDays <= 0 is a no-op. A missing logs dir is not an
+// error — nothing to prune. Per-file errors are logged and skipped rather
+// than aborting the sweep. The SQLite jobs table is untouched — rows are
+// tiny and out of scope for this reaper.
+func PruneLogs(dataDir string, maxAgeDays int) (removed int, err error) {
+	if maxAgeDays <= 0 {
+		return 0, nil
+	}
+
+	logsDir := filepath.Join(dataDir, "logs")
+	entries, err := os.ReadDir(logsDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return 0, nil
+		}
+		return 0, fmt.Errorf("read logs dir: %w", err)
+	}
+
+	cutoff := time.Now().Add(-time.Duration(maxAgeDays) * 24 * time.Hour)
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".log") {
+			continue
+		}
+		info, infoErr := entry.Info()
+		if infoErr != nil {
+			slog.Warn("prune logs: stat failed", "file", entry.Name(), "err", infoErr)
+			continue
+		}
+		if info.ModTime().After(cutoff) {
+			continue
+		}
+		if rmErr := os.Remove(filepath.Join(logsDir, entry.Name())); rmErr != nil {
+			slog.Warn("prune logs: remove failed", "file", entry.Name(), "err", rmErr)
+			continue
+		}
+		removed++
+	}
+	return removed, nil
+}

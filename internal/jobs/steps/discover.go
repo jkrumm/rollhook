@@ -47,20 +47,15 @@ func Discover(ctx context.Context, cli *client.Client, imageTag string) (*Discov
 	return ExtractComposeInfo(detail.Config.Labels, containerName(match))
 }
 
-// ExtractImageName strips the tag from an image reference, preserving
-// registry host:port prefixes.
+// ExtractImageName strips the tag (and any digest) from an image reference,
+// preserving registry host:port prefixes. Delegates to the canonical parser
+// in the docker package.
 //
 //	"localhost:5000/app:v1" → "localhost:5000/app"
 //	"nginx:latest" → "nginx"
 //	"nginx" → "nginx"
 func ExtractImageName(imageTag string) string {
-	lastSlash := strings.LastIndex(imageTag, "/")
-	afterLastSlash := imageTag[lastSlash+1:]
-	tagStart := strings.Index(afterLastSlash, ":")
-	if tagStart < 0 {
-		return imageTag
-	}
-	return imageTag[:lastSlash+1+tagStart]
+	return dockerpkg.RepoFromRef(imageTag)
 }
 
 // FindMatchingContainer returns the first container whose Image field matches

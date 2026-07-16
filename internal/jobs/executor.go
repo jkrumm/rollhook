@@ -170,5 +170,11 @@ func (e *Executor) execute(ctx context.Context, job db.Job, log func(string)) er
 		return err
 	}
 
+	// Step 5: Prune — best-effort, never fails a successful deploy.
+	keep := steps.ImageKeepCount()
+	if err := steps.Prune(ctx, e.docker, job.ImageTag, keep, log); err != nil {
+		log(fmt.Sprintf("[prune] WARNING: %s", err))
+	}
+
 	return nil
 }

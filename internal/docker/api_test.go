@@ -210,6 +210,26 @@ func TestParsePullStream(t *testing.T) {
 	})
 }
 
+func TestRepoFromRef(t *testing.T) {
+	cases := []struct {
+		ref  string
+		want string
+	}{
+		{"registry.example.com:5000/app:v1", "registry.example.com:5000/app"},
+		{"registry.example.com:5000/app@sha256:deadbeef", "registry.example.com:5000/app"},
+		{"app@sha256:deadbeef", "app"},
+		{"nginx:latest", "nginx"},
+		{"nginx", "nginx"},
+		{"localhost:5000/app", "localhost:5000/app"},
+	}
+	for _, tc := range cases {
+		got := RepoFromRef(tc.ref)
+		if got != tc.want {
+			t.Errorf("RepoFromRef(%q) = %q, want %q", tc.ref, got, tc.want)
+		}
+	}
+}
+
 // --- Integration tests (require a running Docker daemon) ---
 
 func TestListRunningContainers_Integration(t *testing.T) {

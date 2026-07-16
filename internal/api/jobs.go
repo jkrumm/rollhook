@@ -118,20 +118,29 @@ func StreamLogsHandler(store *db.Store, dataDir string) http.HandlerFunc {
 
 		logPath := db.LogPath(dataDir, id)
 
+		f, err := os.Open(logPath)
+		if err != nil && isTerminal(job.Status) {
+			// Job already finished and its log is gone — the retention reaper
+			// removes log files but keeps job rows, so this is not transient.
+			// Retrying would just burn 2s holding the connection open.
+			fmt.Fprintf(w, "data: [log removed by retention policy — see ROLLHOOK_LOG_RETENTION_DAYS]\n\n")
+			flusher.Flush()
+			fmt.Fprintf(w, "data: [DONE]\n\n")
+			flusher.Flush()
+			return
+		}
+
 		// The executor writes the first log line synchronously in Submit before
 		// returning the job_id to the client. Still retry briefly in case of
-		// filesystem latency or a queued job that hasn't started yet.
-		var f *os.File
-		for i := 0; i < 20; i++ {
-			f, err = os.Open(logPath)
-			if err == nil {
-				break
-			}
+		// filesystem latency or a queued job that hasn't started yet. The first
+		// attempt above already counts toward the 20, so this covers the rest.
+		for i := 1; err != nil && i < 20; i++ {
 			select {
 			case <-r.Context().Done():
 				return
 			case <-time.After(100 * time.Millisecond):
 			}
+			f, err = os.Open(logPath)
 		}
 		if err != nil {
 			// Log file never appeared — send [DONE] so clients don't hang.
