@@ -96,6 +96,11 @@ Zot needs: SIGTERM → wait for clean exit → SIGKILL if stuck.
 ### `storage.gc: true` by default only collects UNTAGGED blobs — retention is the missing piece
 Zot's `storage.gc` defaults to true, but GC only reclaims orphaned/untagged blobs. Every tag RollHook pushes stays tagged forever, so GC alone reclaims nothing. A `storage.retention` policy is required to untag old pushes before GC has anything to collect.
 
+### Retention applies at startup — `gcDelay` does not delay it
+The docs imply retention runs as part of the GC cycle, i.e. first pass after `gcDelay`. It does not.
+Retention evaluates and deletes tags within ~2 s of Zot starting, and frees their blobs immediately — verified in production: container up at 11:41:23, `165 delete vs 5 keep` logged at 11:41:25, volume fully converged (9.0 G → 2.2 G) within 45 s, with `gcDelay: "2h"` set.
+`gcDelay` gates the *orphaned-blob sweep*, not retention. **There is no grace period after a restart** — a wrong `ROLLHOOK_REGISTRY_KEEP_TAGS` takes effect instantly and is unrecoverable. Set it before restarting, not after.
+
 ### Retention requires `gc: true` to actually free disk
 `storage.retention` on its own only untags blobs — it does not delete them. Without `gc: true`, untagged blobs accumulate exactly as before, just no longer referenced by a tag.
 
