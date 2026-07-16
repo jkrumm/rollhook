@@ -1,3 +1,10 @@
+# [1.18.0](https://github.com/jkrumm/rollhook/compare/v1.17.0...v1.18.0) (2026-07-16)
+
+
+### Features
+
+* **retention:** bound registry, image, and log disk growth ([7880aa5](https://github.com/jkrumm/rollhook/commit/7880aa5772cdeedb65b0e1f92478e491890ee073))
+
 # [1.17.0](https://github.com/jkrumm/rollhook/compare/v1.16.0...v1.17.0) (2026-05-18)
 
 
