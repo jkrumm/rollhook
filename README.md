@@ -199,3 +199,8 @@ RollHook bounds disk growth on three fronts, all on by default and all configura
 - `ROLLHOOK_LOG_RETENTION_DAYS` (default `30`) — job log files older than `N` days are deleted on a daily sweep. Set to `0` to disable log pruning.
 
 Pruning is best-effort: failures are logged but never fail a deploy.
+
+Two scope notes worth knowing:
+
+- **Registry retention applies at startup, with no grace period.** Tags beyond `ROLLHOOK_REGISTRY_KEEP_TAGS` are removed within seconds of RollHook starting, and the artifacts are unrecoverable. `gcDelay` does not delay this. Set the value before restarting an instance with existing history.
+- **Host image pruning is deploy-triggered and repo-scoped.** It only prunes an app's images when that app deploys, so an app that stops deploying keeps its images indefinitely. Existing accumulation from before this feature is not swept either — run `docker image prune -af` once to reclaim it.
