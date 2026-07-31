@@ -1,3 +1,10 @@
+## [1.19.1](https://github.com/jkrumm/rollhook/compare/v1.19.0...v1.19.1) (2026-07-31)
+
+
+### Bug Fixes
+
+* **health:** keep container HEALTHCHECK on liveness, not Docker readiness ([cfa783f](https://github.com/jkrumm/rollhook/commit/cfa783f4c4fe3b672dcc4b126534caef1b40eada))
+
 # [1.19.0](https://github.com/jkrumm/rollhook/compare/v1.18.0...v1.19.0) (2026-07-31)
 
 
