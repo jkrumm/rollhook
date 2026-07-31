@@ -69,13 +69,17 @@ var dockerUnreachable atomic.Bool
 
 // RegisterReady registers GET /ready — the readiness probe, distinct from the
 // liveness probe at /health. /health only reflects whether the HTTP process is
-// up and accepting connections (used by Traefik's loadbalancer healthcheck so
-// it keeps routing traffic here even during a Docker-side fault, which is what
-// lets this diagnostic error reach the caller instead of an opaque proxy
-// error). /ready additionally verifies the Docker daemon is actually reachable
-// — this is the endpoint container healthchecks (Dockerfile HEALTHCHECK) and
-// uptime monitoring should target, so an unreachable daemon is visible as
-// "unhealthy" instead of hiding behind a 200 from /health.
+// up and accepting connections; that is what both the image's HEALTHCHECK and
+// the reverse proxy poll. /ready additionally verifies the Docker daemon is
+// actually reachable, and is the endpoint uptime monitoring should target, so
+// an unreachable daemon pages someone instead of hiding behind a 200 from
+// /health.
+//
+// Deliberately NOT the container healthcheck: Traefik's Docker provider drops
+// containers whose Docker health status is not "healthy" from its dynamic
+// configuration entirely, so a daemon blip would 404 every route on this host —
+// including the bundled registry at /v2/*, which does not need the daemon — and
+// suppress the very 503 this handler exists to serve. See docs/GO_GOTCHAS.md.
 //
 // The endpoint is public — a probe that needs a credential is a probe that
 // silently stops probing — so the status fields are always returned but
@@ -89,7 +93,7 @@ func RegisterReady(api huma.API, cli *client.Client, secret string) {
 		Method:      http.MethodGet,
 		Path:        "/ready",
 		Summary:     "Readiness check",
-		Description: "Reports whether the Docker daemon is reachable, in addition to the liveness signal /health provides. Unlike /health, this returns 503 whenever the Docker API cannot be reached (wrong DOCKER_HOST, socket proxy gone, socket not mounted) — the fault that caused every deploy to fail while /health kept reporting 200. Target this endpoint from container healthchecks and uptime monitoring; keep load balancer healthchecks on /health.",
+		Description: "Reports whether the Docker daemon is reachable, in addition to the liveness signal /health provides. Unlike /health, this returns 503 whenever the Docker API cannot be reached (wrong DOCKER_HOST, socket proxy gone, socket not mounted) — the fault that caused every deploy to fail while /health kept reporting 200. Target this endpoint from uptime monitoring and alerting; keep container and load balancer healthchecks on /health, so a daemon fault does not deregister the instance that is trying to report it.",
 		Tags:        []string{"Health"},
 	}, func(ctx context.Context, input *readyInput) (*readyOutput, error) {
 		out := &readyOutput{}

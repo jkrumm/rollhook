@@ -65,11 +65,13 @@ RUN mkdir -p /app/data \
   && useradd --system --home-dir /app --shell /usr/sbin/nologin rollhook \
   && chown -R rollhook:rollhook /app
 
-# Readiness probe (Docker daemon reachability), not liveness — so `docker ps`
-# reports unhealthy when RollHook cannot reach Docker, instead of masking a
-# total outage behind a 200 from the plain liveness check.
+# Liveness only — deliberately /health, NOT /ready. Do not "fix" this.
+# Traefik's Docker provider drops unhealthy containers from its config entirely,
+# so probing a dependency here 404s every route on the host, registry included.
+# See docs/GO_GOTCHAS.md → "Traefik (reference stack)".
+# Point monitoring (Uptime Kuma, Prometheus, …) at /ready instead.
 HEALTHCHECK --interval=10s --timeout=5s --start-period=15s --retries=5 \
-  CMD curl -sf http://localhost:7700/ready || exit 1
+  CMD curl -sf http://localhost:7700/health || exit 1
 
 EXPOSE 7700
 USER rollhook

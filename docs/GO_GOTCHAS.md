@@ -194,6 +194,32 @@ Similarly: `huma/v2@v2.36.0` is the last version compatible with Go 1.24 (v2.37+
 
 ---
 
+## Traefik (reference stack)
+
+### A failing Docker HEALTHCHECK deregisters the container — 404, not 503
+Traefik v3's Docker provider filters containers by their **Docker health status** before building dynamic configuration. `keepContainer()` in `pkg/provider/docker/config.go`:
+
+```go
+if !p.AllowEmptyServices && container.Health != "" && container.Health != containertypes.Healthy {
+    logger.Debug().Msg("Filtering unhealthy or starting container")
+    return false
+}
+```
+
+The router, service and servers are never published, so clients get a **404 from Traefik**, not a response from the app. This is independent of any `loadbalancer.healthcheck.path` label — that label configures Traefik's *own* probe, which never runs because the container is gone from the config — and it is not mentioned on the Docker-provider docs page. Note `container.Health != ""`: only containers that actually declare a `HEALTHCHECK` are subject to this, which is why adding one can take a working route down.
+
+Consequences for a container that serves more than one concern:
+- Every route on that host 404s, including ones unrelated to what the healthcheck probes — RollHook's bundled registry at `/v2/*` has no Docker-daemon dependency, but it dies with the rest.
+- The container can no longer serve its own diagnostic error, which is usually the whole reason the probe was pointed at a dependency.
+
+Two knobs change the failure shape; neither makes a dependency-driven healthcheck safe:
+- **`providers.docker.allowEmptyServices=true`** (static provider option, `Shared.AllowEmptyServices`) — short-circuits the filter above, so the service stays in the configuration. `buildServiceConfiguration()` still returns early on a non-`healthy` container ("Keep an empty server load-balancer for unhealthy containers"), so the server pool is empty → **503** instead of 404. Different status, still not the app's response.
+- **`traefik.docker.allowNonRunning=true`** — a per-**container label**, not a provider option (decoded via `label.Decode(labels, &conf, "traefik.docker.", "traefik.enable")` in `shared_labels.go`; added by traefik/traefik#10645, merged 2025-10-24, shipped in v3.6). It returns `true` from `keepContainer()` before the status *and* health checks, so routers are published — but the same `buildServiceConfiguration()` early return leaves zero servers → 503 again.
+
+**Fix:** container `HEALTHCHECK` answers "is this process alive?" only — probe a pure liveness endpoint (`/health`). Dependency health belongs in monitoring, which polls the readiness endpoint (`/ready`) out of band and pages a human without taking the routing layer down. See the comments in `Dockerfile` and `compose.yml`.
+
+---
+
 ## Dockerfile
 
 ### Multi-stage: tool-downloader can stay Alpine, runner must be Debian
