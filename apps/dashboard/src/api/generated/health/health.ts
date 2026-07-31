@@ -65,7 +65,7 @@ export const getHealth = async ( options?: RequestInit): Promise<getHealthRespon
   
 
 /**
- * Reports whether the Docker daemon is reachable, in addition to the liveness signal /health provides. Unlike /health, this returns 503 whenever the Docker API cannot be reached (wrong DOCKER_HOST, socket proxy gone, socket not mounted) — the fault that caused every deploy to fail while /health kept reporting 200. Target this endpoint from container healthchecks and uptime monitoring; keep load balancer healthchecks on /health.
+ * Reports whether the Docker daemon is reachable, in addition to the liveness signal /health provides. Unlike /health, this returns 503 whenever the Docker API cannot be reached (wrong DOCKER_HOST, socket proxy gone, socket not mounted) — the fault that caused every deploy to fail while /health kept reporting 200. Target this endpoint from uptime monitoring and alerting; keep container and load balancer healthchecks on /health, so a daemon fault does not deregister the instance that is trying to report it.
  * @summary Readiness check
  */
 export type getReadyResponse200 = {

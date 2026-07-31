@@ -48,10 +48,11 @@ services:
       - ${COMPOSE_DIR}:${COMPOSE_DIR}:ro
       - rollhook-data:/data
     stop_grace_period: 3m
-    # Healthcheck split by design: the image's own HEALTHCHECK polls /ready, so
-    # `docker ps` reports unhealthy when the Docker daemon is unreachable, while
-    # Traefik's healthcheck below stays on /health so the service keeps serving
-    # its diagnostic error instead of being deregistered from the proxy.
+    # Health probes are split, and the split is load-bearing:
+    #   /health  liveness — the image's HEALTHCHECK and the Traefik label below.
+    #   /ready   readiness — also pings the Docker daemon; 503 when unreachable.
+    # Point your MONITORING at /ready; keep both healthchecks on /health.
+    # Why: docs/GO_GOTCHAS.md → "Traefik (reference stack)".
     labels:
       - traefik.enable=true
       - traefik.http.routers.rollhook.rule=Host(`rollhook.example.com`)
