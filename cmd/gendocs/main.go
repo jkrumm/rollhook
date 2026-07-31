@@ -36,6 +36,7 @@ func main() {
 
 	// Register all operations — nil deps are safe here since no requests are made.
 	api.RegisterHealth(humaAPI)
+	api.RegisterReady(humaAPI, nil, "")
 	api.RegisterDeploy(humaAPI, nil, nil, nil)
 	api.RegisterAuthToken(humaAPI, "", nil)
 	api.RegisterJobsAPI(humaAPI, nil)

@@ -7,7 +7,8 @@
  */
 import type {
   ErrorModel,
-  HealthOutputBody
+  HealthOutputBody,
+  ReadyOutputBody
 } from '../models';
 
 import { customInstance } from '../../client';
@@ -54,6 +55,49 @@ export const getGetHealthUrl = () => {
 export const getHealth = async ( options?: RequestInit): Promise<getHealthResponse> => {
   
   return customInstance<getHealthResponse>(getGetHealthUrl(),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+);}
+  
+
+/**
+ * Reports whether the Docker daemon is reachable, in addition to the liveness signal /health provides. Unlike /health, this returns 503 whenever the Docker API cannot be reached (wrong DOCKER_HOST, socket proxy gone, socket not mounted) — the fault that caused every deploy to fail while /health kept reporting 200. Target this endpoint from container healthchecks and uptime monitoring; keep load balancer healthchecks on /health.
+ * @summary Readiness check
+ */
+export type getReadyResponse200 = {
+  data: ReadyOutputBody
+  status: 200
+}
+
+export type getReadyResponseDefault = {
+  data: ErrorModel
+  status: Exclude<HTTPStatusCodes, 200>
+}
+
+export type getReadyResponseSuccess = (getReadyResponse200) & {
+  headers: Headers;
+};
+export type getReadyResponseError = (getReadyResponseDefault) & {
+  headers: Headers;
+};
+
+export type getReadyResponse = (getReadyResponseSuccess | getReadyResponseError)
+
+export const getGetReadyUrl = () => {
+
+
+  
+
+  return `/ready`
+}
+
+export const getReady = async ( options?: RequestInit): Promise<getReadyResponse> => {
+  
+  return customInstance<getReadyResponse>(getGetReadyUrl(),
   {      
     ...options,
     method: 'GET'

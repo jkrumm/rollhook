@@ -217,6 +217,41 @@
         ],
         "type": "object"
       },
+      "ReadyOutputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "https://example.com/schemas/ReadyOutputBody.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "detail": {
+            "description": "Underlying connection error. Authenticated callers only.",
+            "type": "string"
+          },
+          "docker": {
+            "description": "ok, unreachable, or unknown (not probed during shutdown)",
+            "type": "string"
+          },
+          "docker_host": {
+            "description": "Docker API endpoint being dialled. Authenticated callers only.",
+            "type": "string"
+          },
+          "status": {
+            "description": "ready, docker_unreachable, or shutting_down",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "docker"
+        ],
+        "type": "object"
+      },
       "TokenInputBody": {
         "additionalProperties": false,
         "properties": {
@@ -579,6 +614,49 @@
         "summary": "Stream job logs",
         "tags": [
           "Jobs"
+        ]
+      }
+    },
+    "/ready": {
+      "get": {
+        "description": "Reports whether the Docker daemon is reachable, in addition to the liveness signal /health provides. Unlike /health, this returns 503 whenever the Docker API cannot be reached (wrong DOCKER_HOST, socket proxy gone, socket not mounted) — the fault that caused every deploy to fail while /health kept reporting 200. Target this endpoint from container healthchecks and uptime monitoring; keep load balancer healthchecks on /health.",
+        "operationId": "get-ready",
+        "parameters": [
+          {
+            "description": "Optional. A valid bearer token widens the response to include docker_host and detail.",
+            "in": "header",
+            "name": "Authorization",
+            "schema": {
+              "description": "Optional. A valid bearer token widens the response to include docker_host and detail.",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadyOutputBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Readiness check",
+        "tags": [
+          "Health"
         ]
       }
     }

@@ -30,6 +30,18 @@ func RequireAuth(secret string) func(http.Handler) http.Handler {
 	}
 }
 
+// MatchesSecret reports whether a raw Authorization header value carries the
+// static secret. Unlike RequireAuth it never rejects — it answers "is this
+// caller trusted?", which is what public endpoints need when they widen their
+// response for operators without gating access to it.
+func MatchesSecret(authHeader, secret string) bool {
+	token, ok := strings.CutPrefix(authHeader, "Bearer ")
+	if !ok {
+		return false
+	}
+	return subtle.ConstantTimeCompare([]byte(token), []byte(secret)) == 1
+}
+
 func writeJSON(w http.ResponseWriter, status int, msg string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
