@@ -1,3 +1,10 @@
+# [1.19.0](https://github.com/jkrumm/rollhook/compare/v1.18.0...v1.19.0) (2026-07-31)
+
+
+### Features
+
+* **health:** report Docker daemon reachability ([58c1160](https://github.com/jkrumm/rollhook/commit/58c11603a4136e1e5b8e4b71e72a8d17a78e28a9))
+
 # [1.18.0](https://github.com/jkrumm/rollhook/compare/v1.17.0...v1.18.0) (2026-07-16)
 
 
