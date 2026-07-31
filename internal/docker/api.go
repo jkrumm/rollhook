@@ -29,7 +29,7 @@ var pullLogPrefixes = []string{
 func ListRunningContainers(ctx context.Context, cli *client.Client) ([]container.Summary, error) {
 	containers, err := cli.ContainerList(ctx, container.ListOptions{})
 	if err != nil {
-		return nil, fmt.Errorf("listing running containers: %w", err)
+		return nil, fmt.Errorf("listing running containers: %w", wrapConnErr(cli, err))
 	}
 	return containers, nil
 }
@@ -46,7 +46,7 @@ func ListServiceContainers(ctx context.Context, cli *client.Client, project, ser
 		Filters: f,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("listing service containers for %s/%s: %w", project, service, err)
+		return nil, fmt.Errorf("listing service containers for %s/%s: %w", project, service, wrapConnErr(cli, err))
 	}
 	return containers, nil
 }
@@ -55,7 +55,7 @@ func ListServiceContainers(ctx context.Context, cli *client.Client, project, ser
 func InspectContainer(ctx context.Context, cli *client.Client, id string) (container.InspectResponse, error) {
 	resp, err := cli.ContainerInspect(ctx, id)
 	if err != nil {
-		return container.InspectResponse{}, fmt.Errorf("inspecting container %s: %w", shortID(id), err)
+		return container.InspectResponse{}, fmt.Errorf("inspecting container %s: %w", shortID(id), wrapConnErr(cli, err))
 	}
 	return resp, nil
 }

@@ -14,5 +14,6 @@ export * from './getJobsParams';
 export * from './healthOutputBody';
 export * from './job';
 export * from './postDeployParams';
+export * from './readyOutputBody';
 export * from './tokenInputBody';
 export * from './tokenOutputBody';

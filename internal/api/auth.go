@@ -3,11 +3,14 @@ package api
 import (
 	"context"
 	"errors"
+	"fmt"
+	"log/slog"
 	"net/http"
 	"strings"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/docker/docker/client"
+	dockerpkg "github.com/jkrumm/rollhook/internal/docker"
 	"github.com/jkrumm/rollhook/internal/jobs/steps"
 	oidcpkg "github.com/jkrumm/rollhook/internal/oidc"
 	"github.com/jkrumm/rollhook/internal/registry"
@@ -58,10 +61,21 @@ func RegisterAuthToken(humaAPI huma.API, secret string, cli *client.Client) {
 		// Fail-secure: if no container is running (first deploy), deny.
 		disc, err := steps.Discover(ctx, cli, imageName+":latest")
 		if err != nil {
-			if errors.Is(err, steps.ErrServiceNotFound) {
+			switch {
+			case errors.Is(err, dockerpkg.ErrDaemonUnreachable):
+				slog.Error("docker daemon unreachable during service discovery",
+					"docker_host", cli.DaemonHost(), "error", err)
+				return nil, huma.NewError(http.StatusServiceUnavailable, fmt.Sprintf(
+					"RollHook cannot reach the Docker daemon at %s — host-side fault (check DOCKER_HOST and the Docker socket / socket proxy), not a problem with the calling workflow",
+					cli.DaemonHost()))
+			case errors.Is(err, steps.ErrServiceNotFound):
+				// Fail-secure authorization denial: no running container means
+				// allowed_repos cannot be verified, so this is deliberately a 403,
+				// not a lookup-miss status.
 				return nil, huma.NewError(http.StatusForbidden, "service not found — ensure the app is running before requesting a registry credential")
+			default:
+				return nil, huma.NewError(http.StatusInternalServerError, "service discovery failed: "+err.Error())
 			}
-			return nil, huma.NewError(http.StatusInternalServerError, "service discovery failed")
 		}
 		if err := checkOIDCLabels(claims, disc.Labels); err != nil {
 			return nil, huma.NewError(http.StatusForbidden, err.Error())

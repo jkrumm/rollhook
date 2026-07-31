@@ -48,6 +48,10 @@ services:
       - ${COMPOSE_DIR}:${COMPOSE_DIR}:ro
       - rollhook-data:/data
     stop_grace_period: 3m
+    # Healthcheck split by design: the image's own HEALTHCHECK polls /ready, so
+    # `docker ps` reports unhealthy when the Docker daemon is unreachable, while
+    # Traefik's healthcheck below stays on /health so the service keeps serving
+    # its diagnostic error instead of being deregistered from the proxy.
     labels:
       - traefik.enable=true
       - traefik.http.routers.rollhook.rule=Host(`rollhook.example.com`)

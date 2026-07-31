@@ -161,10 +161,13 @@ Interactive docs at `/openapi` on your running instance. Key routes:
 | `GET`  | `/jobs/{id}`      | bearer       | Job status + metadata                                |
 | `GET`  | `/jobs/{id}/logs` | bearer       | SSE log stream                                       |
 | `GET`  | `/jobs`           | bearer       | History (`?app=&status=&limit=`)                     |
-| `GET`  | `/health`         | none         | `{ status, version }`                                |
+| `GET`  | `/health`         | none         | Liveness — `{ status, version }`                     |
+| `GET`  | `/ready`          | none         | Readiness — `{ status, docker }`                     |
 | `*`    | `/v2/*`           | bearer/basic | Built-in OCI registry (push & pull)                  |
 
 **Auth:** `POST /auth/token` accepts GitHub Actions OIDC JWTs and returns `ROLLHOOK_SECRET` for all subsequent API calls. All other routes require `Bearer <ROLLHOOK_SECRET>`.
+
+**Liveness vs readiness:** `/health` reports only that the process is up; `/ready` also verifies the Docker daemon is reachable and returns `503` when it is not. Point container healthchecks and uptime monitoring at `/ready` — a RollHook that cannot reach Docker will fail every deploy, so it should not report healthy. Keep reverse-proxy healthchecks on `/health`, so the instance keeps serving its diagnostic error instead of being deregistered. Anonymous callers get the status fields only; a bearer token adds `docker_host` and the underlying `detail`, which are also always written to stderr.
 
 ---
 

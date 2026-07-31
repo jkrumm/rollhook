@@ -116,6 +116,17 @@ func main() {
 	}
 	defer cli.Close()
 
+	// Startup connectivity check — non-fatal so the process stays up and /ready
+	// can report why, instead of the container never becoming healthy at all.
+	startupPingCtx, cancelStartupPing := context.WithTimeout(ctx, 5*time.Second)
+	if pingErr := dockerpkg.Ping(startupPingCtx, cli); pingErr != nil {
+		slog.Error("docker daemon unreachable at startup — deploys will fail until this is fixed",
+			"docker_host", cli.DaemonHost(), "error", pingErr)
+	} else {
+		slog.Info("docker daemon reachable", "docker_host", cli.DaemonHost())
+	}
+	cancelStartupPing()
+
 	// jobCtx is decoupled from the signal context so SIGTERM does not immediately
 	// cancel in-flight deploys. It is cancelled only if Drain times out (safety valve).
 	jobCtx, cancelJobs := context.WithCancel(context.Background())
@@ -166,6 +177,7 @@ func main() {
 	})
 
 	api.RegisterHealth(humaAPI)
+	api.RegisterReady(humaAPI, cli, secret)
 	api.RegisterDeploy(humaAPI, exec, store, cli)
 	api.RegisterAuthToken(humaAPI, secret, cli)
 	api.RegisterJobsAPI(humaAPI, store)

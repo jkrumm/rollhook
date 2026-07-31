@@ -33,3 +33,30 @@ describe('/health endpoint', () => {
     expect(res.status).toBe(200)
   })
 })
+
+describe('/ready endpoint', () => {
+  it('returns 200 with no auth when Docker is reachable', async () => {
+    const res = await fetch(`${BASE_URL}/ready`)
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body).toMatchObject({ status: 'ready', docker: 'ok' })
+  })
+
+  // The probe is public so it never stops probing, but the proxy routes every
+  // path here — the internal Docker endpoint must not reach an anonymous
+  // caller. Asserted explicitly: toMatchObject alone would pass if it leaked.
+  it('withholds docker_host and detail from anonymous callers', async () => {
+    const res = await fetch(`${BASE_URL}/ready`)
+    const body = await res.json() as { docker_host?: string, detail?: string }
+    expect(body.docker_host).toBeUndefined()
+    expect(body.detail).toBeUndefined()
+  })
+
+  it('returns docker_host to authenticated callers', async () => {
+    const res = await fetch(`${BASE_URL}/ready`, { headers: adminHeaders() })
+    expect(res.status).toBe(200)
+    const body = await res.json() as { docker_host?: string }
+    expect(typeof body.docker_host).toBe('string')
+    expect(body.docker_host).toBeTruthy()
+  })
+})
