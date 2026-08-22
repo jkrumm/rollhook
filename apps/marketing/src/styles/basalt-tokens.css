@@ -1,3 +1,5 @@
+/* @generated basalt-ui — do not edit; regenerate with the command on the next line */
+/* basalt-ui 1.20.0 — `basalt-ui tokens:css --selector-class dark --only core --no-legacy-aliases --out src/styles/basalt-tokens.css` */
 :root {
   --vx-radius-card: 7px;
   --vx-radius-ctrl: 6px;
@@ -59,7 +61,7 @@
   --vx-warn-ref: color-mix(in srgb, var(--vx-warn-solid) 20%, transparent);
 }
 :root,
-:root[data-mantine-color-scheme='dark'] {
+:root.dark {
   --vx-status-excellent: #43bf4d;
   --vx-status-good: #52c07c;
   --vx-status-warn: #e6a53d;
@@ -71,17 +73,17 @@
   --vx-neutral: #d4d4d8;
   --vx-line: #e4e4e7;
   --vx-line2: #a1a1aa;
-  --vx-axis: rgba(255,255,255,0.6);
-  --vx-axis-stroke: rgba(255,255,255,0.12);
-  --vx-grid: rgba(255,255,255,0.06);
-  --vx-crosshair: rgba(255,255,255,0.42);
+  --vx-axis: rgba(255, 255, 255, 0.6);
+  --vx-axis-stroke: rgba(255, 255, 255, 0.12);
+  --vx-grid: rgba(255, 255, 255, 0.06);
+  --vx-crosshair: rgba(255, 255, 255, 0.42);
   --vx-dot-stroke: #27272a;
-  --vx-tooltip-bg: rgba(39,39,42,0.96);
-  --vx-tooltip-text: rgba(255,255,255,0.88);
-  --vx-tooltip-muted: rgba(255,255,255,0.5);
+  --vx-tooltip-bg: rgba(39, 39, 42, 0.96);
+  --vx-tooltip-text: rgba(255, 255, 255, 0.88);
+  --vx-tooltip-muted: rgba(255, 255, 255, 0.5);
   --vx-tooltip-border: none;
-  --vx-tooltip-shadow: 0 2px 8px rgba(0,0,0,0.35);
-  --vx-legend-text: rgba(255,255,255,0.92);
+  --vx-tooltip-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  --vx-legend-text: rgba(255, 255, 255, 0.92);
   --vx-ink: #e5e5e9;
   --vx-ink2: #dddde1;
   --vx-muted: #d4d4d8;
@@ -92,10 +94,10 @@
   --vx-accent-fill-hover: #3c6895;
   --vx-on-accent: #ffffff;
   --vx-divider: color-mix(in srgb, #ffffff 6%, transparent);
-  --vx-shadow-card: 0 1px 3px rgba(0,0,0,0.4), inset 0 0 0 1px color-mix(in srgb, #ffffff 4%, transparent);
-  --vx-shadow-ctrl: 0 1px 2px rgba(0,0,0,0.35);
-  --vx-shadow-raised: 0 1px 2px rgba(0,0,0,0.35), inset 0 0 0 1px color-mix(in srgb, #ffffff 8%, transparent);
-  --vx-shadow-overlay: 0 8px 24px rgba(0,0,0,0.5);
+  --vx-shadow-card: 0 1px 3px rgba(0, 0, 0, 0.4), inset 0 0 0 1px color-mix(in srgb, #ffffff 4%, transparent);
+  --vx-shadow-ctrl: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --vx-shadow-raised: 0 1px 2px rgba(0, 0, 0, 0.35), inset 0 0 0 1px color-mix(in srgb, #ffffff 8%, transparent);
+  --vx-shadow-overlay: 0 8px 24px rgba(0, 0, 0, 0.5);
   --vx-surface-bg: #27272a;
   --vx-surface-panel: #2b2b2e;
   --vx-surface-panel-hover: #38383b;
@@ -106,7 +108,7 @@
   --vx-surface-border: #444447;
   --vx-surface-hairline: #4e4e51;
 }
-:root[data-mantine-color-scheme='light'] {
+:root.light {
   --vx-status-excellent: #29a634;
   --vx-status-good: #327a4d;
   --vx-status-warn: #b07808;
@@ -139,10 +141,10 @@
   --vx-accent-fill-hover: #3c6895;
   --vx-on-accent: #ffffff;
   --vx-divider: color-mix(in srgb, #e5e5e5 65%, transparent);
-  --vx-shadow-card: 0 1px 2px rgba(28,25,23,0.05), 0 0 0 1px var(--vx-surface-hairline);
-  --vx-shadow-ctrl: 0 1px 2px rgba(28,25,23,0.12);
-  --vx-shadow-raised: 0 1px 2px rgba(28,25,23,0.10);
-  --vx-shadow-overlay: 0 8px 24px rgba(28,25,23,0.10);
+  --vx-shadow-card: 0 1px 2px rgba(28, 25, 23, 0.05), 0 0 0 1px var(--vx-surface-hairline);
+  --vx-shadow-ctrl: 0 1px 2px rgba(28, 25, 23, 0.12);
+  --vx-shadow-raised: 0 1px 2px rgba(28, 25, 23, 0.10);
+  --vx-shadow-overlay: 0 8px 24px rgba(28, 25, 23, 0.10);
   --vx-surface-bg: #f2f2f5;
   --vx-surface-panel: #fafafd;
   --vx-surface-panel-hover: #ffffff;

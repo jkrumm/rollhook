@@ -1,9 +1,10 @@
 @import 'tailwindcss';
 @import './basalt-tokens.css';
 
-/* basalt-tokens.css is emitted by `bun run tokens` (basalt-ui tokens:css) and
-   committed — basalt-ui is a devDependency and ships nothing at runtime.
-   Regenerate after a basalt-ui bump. */
+/* basalt-tokens.css is emitted by `bun run tokens` (basalt-ui tokens:css
+   --selector-class dark) and committed — basalt-ui is a devDependency and ships
+   nothing at runtime. Regenerate after a basalt-ui bump; `bun run check:basalt`
+   fails CI if the committed copy drifts. */
 @theme inline {
   --font-sans: var(--font-instrument-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;

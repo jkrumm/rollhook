@@ -26,6 +26,7 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run lint
       - run: bun run typecheck
+      - run: bun run check:basalt
 
   go-checks:
     name: Go Build, Test & OpenAPI Drift
