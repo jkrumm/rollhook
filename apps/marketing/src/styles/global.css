@@ -1,1 +1,44 @@
-@import 'basalt-ui/css';
+@import 'tailwindcss';
+@import './basalt-tokens.css';
+
+/* basalt-tokens.css is emitted by `bun run tokens` (basalt-ui tokens:css) and
+   committed — basalt-ui is a devDependency and ships nothing at runtime.
+   Regenerate after a basalt-ui bump. */
+@theme inline {
+  --font-sans: var(--font-instrument-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
+
+  --color-background: var(--vx-surface-bg);
+  --color-foreground: var(--vx-ink);
+  --color-muted: var(--vx-surface-elevated);
+  --color-muted-foreground: var(--vx-muted);
+  --color-border: var(--vx-surface-border);
+  --color-accent: var(--vx-accent);
+  --color-status-good: var(--vx-status-good);
+
+  --radius-sm: var(--vx-radius-fine);
+  --radius-md: var(--vx-radius-ctrl);
+  --radius-lg: var(--vx-radius-card);
+  --radius-full: var(--vx-radius-pill);
+}
+
+@layer base {
+  *,
+  ::before,
+  ::after {
+    border-color: var(--color-border);
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    line-height: 1.5;
+    color: var(--vx-ink);
+    background-color: var(--vx-surface-bg);
+  }
+}

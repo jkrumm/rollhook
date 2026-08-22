@@ -11,6 +11,9 @@ export default antfu({
     '**/node_modules/**',
     'apps/marketing/.astro/**',
     'apps/dashboard/src/api/generated/**',
+    // Emitted by `bun run --filter @rollhook/marketing tokens` — basalt-ui's
+    // tokens:css output is not prettier-formatted and has no trailing newline.
+    'apps/marketing/src/styles/basalt-tokens.css',
     'docs/**',
     'e2e/fixtures/validate/invalid.yml',
   ],

@@ -33,6 +33,15 @@ CI runs Go natively (`go build ./...`, `go vet ./...`, `go test ./...`).
 
 **Types shared between packages** (`JobResult`, `JobStatus`) live in `packages/ui/src/types.ts`, exported from `@rollhook/ui`.
 
+**Styling: Tailwind v4 + basalt-ui tokens only.** basalt-ui 1.x is a Mantine/React framework; both apps consume only its `--vx-*` token layer and stay on Tailwind. Never import `basalt-ui/css` (dropped in 1.0) or `basalt-ui/styles.css` (needs Mantine).
+
+| App              | Route                                                                                  | Wiring                                       |
+| ---------------- | -------------------------------------------------------------------------------------- | -------------------------------------------- |
+| `apps/dashboard` | `@import 'basalt-ui/tokens.css'` (runtime dep, Vite resolves it)                       | `src/styles/global.css`                      |
+| `apps/marketing` | committed emit — `bun run --filter @rollhook/marketing tokens` (devDep, nothing ships) | `src/styles/basalt-tokens.css`, lint-ignored |
+
+Each `global.css` maps `--vx-*` onto Tailwind's `@theme inline` namespaces (`--color-*`, `--radius-*`, `--font-*`); use those utilities, not raw hex. Both apps are dark-only — the token file puts the dark scheme on bare `:root`. basalt-ui's `doctor` / `check-theme` assume a Mantine app; don't wire them in here.
+
 ---
 
 ## Known Pitfalls
