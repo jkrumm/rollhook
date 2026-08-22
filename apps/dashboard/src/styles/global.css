@@ -7,8 +7,10 @@
 
 /* basalt-ui ships --vx-* values only. Tailwind's theme namespaces are mapped
    here so the utility classes this app already uses resolve to basalt tokens.
-   Dark-only app: tokens.css puts the dark scheme on the bare :root and keys
-   light off [data-mantine-color-scheme='light'], which is never set. */
+   Dark-only app: the prebuilt tokens.css subpath puts the dark scheme on the
+   bare :root and keys light off [data-mantine-color-scheme='light'], which is
+   never set — tokens:css --selector-class is not reachable on this route.
+   The two --font-* stacks are RollHook's own; basalt 1.x ships different faces. */
 @theme inline {
   --font-sans: 'Instrument Sans Variable', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'JetBrains Mono Variable', ui-monospace, monospace;

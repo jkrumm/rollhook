@@ -17,6 +17,9 @@ data/
 /rollhook
 /rollhook-go
 
+# Dashboard build output (vite outDir; copied into the image by the Dockerfile)
+apps/server/public/
+
 # OS
 .DS_Store
 *.pem

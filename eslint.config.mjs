@@ -8,11 +8,13 @@ export default antfu({
   ignores: [
     '**/dist/**',
     '**/.output/**',
+    'apps/server/public/**',
     '**/node_modules/**',
     'apps/marketing/.astro/**',
     'apps/dashboard/src/api/generated/**',
-    // Emitted by `bun run --filter @rollhook/marketing tokens` — basalt-ui's
-    // tokens:css output is not prettier-formatted and has no trailing newline.
+    // Emitted by `bun run --filter @rollhook/marketing tokens`. 1.20.0 made the
+    // output commit-clean except for two `rgba(..., 0.10)` alphas prettier wants
+    // as `0.1` — and --fix would put the file straight into `tokens:check` drift.
     'apps/marketing/src/styles/basalt-tokens.css',
     'docs/**',
     'e2e/fixtures/validate/invalid.yml',
