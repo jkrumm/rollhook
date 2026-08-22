@@ -13,6 +13,7 @@
     "tokens:check": "basalt-ui tokens:css --selector-class dark --only core --no-legacy-aliases --out src/styles/basalt-tokens.css --check",
     "typecheck": "astro check && tsc --noEmit",
     "check:theme": "basalt-ui check-theme && basalt-ui check-theme --audit-allows",
+    "check:sync": "basalt-ui sync --check",
     "astro": "astro"
   },
   "dependencies": {
@@ -32,7 +33,7 @@
     "@tailwindcss/vite": "^4.2.1",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "basalt-ui": "1.22.0",
+    "basalt-ui": "1.23.0",
     "tailwindcss": "^4.2.1",
     "typescript": "^5.9.3",
     "vite": "^7.3.1"
