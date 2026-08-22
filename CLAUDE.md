@@ -42,11 +42,11 @@ CI runs Go natively (`go build ./...`, `go vet ./...`, `go test ./...`).
 
 Each `global.css` maps `--vx-*` onto Tailwind's `@theme inline` namespaces (`--color-*`, `--radius-*`, `--font-*`); use those utilities, not raw hex. Both apps are `<html class="dark">` and dark-only. The marketing emit uses `--selector-class dark` (`:root, :root.dark`); the dashboard's prebuilt subpath can't take that flag and relies on the emitter's default of parking dark on bare `:root`.
 
-**CI gate: `bun run check:basalt`** — `tokens:css --check` (the committed emit must match what the pinned CLI emits) + `check-theme` in both apps. Bump `basalt-ui` and re-run `bun run --filter @rollhook/marketing tokens` in the same commit.
+**CI gate: `bun run check:basalt`** — `tokens:css --check` (the committed emit must match what the pinned CLI emits) + `check-theme` and `check-theme --audit-allows` in both apps. Bump `basalt-ui` and re-run `bun run --filter @rollhook/marketing tokens` in the same commit.
 
 **Fonts stay ours.** RollHook is Instrument Sans + JetBrains Mono (`@fontsource-variable` in the dashboard, `astro:fonts` in `astro.config.mjs`). basalt-ui 1.x ships Nunito Sans + Hubot Sans, so `basalt-ui fonts:css` would rebrand both apps — do not adopt it.
 
-`apps/marketing/src/styles/basalt-tokens.css` stays eslint-ignored: two `rgba(…, 0.10)` alphas fail `format/prettier`, and `--fix` would put the file into `tokens:check` drift. `public/site.webmanifest`'s `theme_color` must be kept equal to `--vx-surface-bg` dark (`#27272a`) by hand — JSON carries no `theme-allow` comment, so it is silenced via `basalt.exemptRules`.
+`apps/marketing/src/styles/basalt-tokens.css` is no longer eslint-ignored: 1.21.0's emitter writes `0.1` rather than `0.10`, so the sheet lints clean. `public/site.webmanifest`'s `theme_color`/`background_color` must be kept equal to `--vx-surface-bg` dark (`#27272a`) by hand; the file declares its own exception with a `"basalt:theme-allow-file"` member on line 2 — no `basalt.exemptRules` anywhere. `check-theme --audit-allows` proves every waiver still suppresses something and exits 1 when one does not.
 
 ---
 
