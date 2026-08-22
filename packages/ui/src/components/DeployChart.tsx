@@ -40,18 +40,18 @@ export function DeployChart({ data, selectedDay, onDayClick }: DeployChartProps)
         />
         <Tooltip
           contentStyle={{
-            background: 'var(--color-card)',
-            border: '1px solid var(--color-border)',
+            background: 'var(--vx-tooltip-bg)',
+            border: '1px solid var(--vx-tooltip-border)',
             borderRadius: 4,
             fontSize: 11,
             fontFamily: 'monospace',
           }}
-          cursor={{ fill: 'var(--color-accent)' }}
+          cursor={{ fill: 'var(--vx-grid)' }}
         />
         <Bar
           dataKey="success"
           stackId="a"
-          fill="var(--color-status-success)"
+          fill="var(--vx-status-good)"
           radius={[0, 0, 2, 2]}
           name="success"
           opacity={selectedDay ? 0.5 : 1}
@@ -59,7 +59,7 @@ export function DeployChart({ data, selectedDay, onDayClick }: DeployChartProps)
         <Bar
           dataKey="failed"
           stackId="a"
-          fill="var(--color-status-failed)"
+          fill="var(--vx-status-bad)"
           radius={[2, 2, 0, 0]}
           name="failed"
           opacity={selectedDay ? 0.5 : 1}

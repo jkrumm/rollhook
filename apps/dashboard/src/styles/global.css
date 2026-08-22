@@ -1,21 +1,73 @@
 @import '@fontsource-variable/instrument-sans';
 @import '@fontsource-variable/jetbrains-mono';
-@import 'basalt-ui/css';
+@import 'tailwindcss';
+@import 'basalt-ui/tokens.css';
+
 @source "../../../../packages/ui/src";
 
-/* Status indicator colors — higher-chroma OKLCH for vivid visual signals.
-   Basalt-ui's semantic colors (--green, --red) are intentionally low-chroma
-   for text/backgrounds. These are specifically for borders and chart bars. */
-:root {
-  --status-success: oklch(0.68 0.16 131);
-  --status-failed: oklch(0.6 0.18 15);
-  --status-running: oklch(0.65 0.14 249);
-  --status-queued: oklch(0.8 0.14 84);
+/* basalt-ui ships --vx-* values only. Tailwind's theme namespaces are mapped
+   here so the utility classes this app already uses resolve to basalt tokens.
+   Dark-only app: tokens.css puts the dark scheme on the bare :root and keys
+   light off [data-mantine-color-scheme='light'], which is never set. */
+@theme inline {
+  --font-sans: 'Instrument Sans Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, monospace;
+
+  --color-background: var(--vx-surface-bg);
+  --color-foreground: var(--vx-ink);
+  --color-card: var(--vx-surface-panel);
+  --color-muted: var(--vx-surface-elevated);
+  --color-muted-foreground: var(--vx-muted);
+  --color-border: var(--vx-surface-border);
+  --color-input: var(--vx-surface-field);
+  --color-accent: var(--vx-surface-panel-hover);
+  --color-primary: var(--vx-accent-fill);
+  --color-primary-foreground: var(--vx-on-accent);
+  --color-destructive: var(--vx-status-bad);
+  --color-ring: var(--vx-accent);
+
+  /* Job status signals. --vx-status-* replaces the hand-rolled OKLCH ramp;
+     "running" has no status token (neutral is gray) and rides the accent. */
+  --color-status-success: var(--vx-status-good);
+  --color-status-failed: var(--vx-status-bad);
+  --color-status-queued: var(--vx-status-warn);
+  --color-status-running: var(--vx-accent);
+
+  /* Log stage tags. No text-tier hue ramp in basalt-ui: --vx-fill-* is tuned
+     for chart marks and is too dark for text on --vx-surface-bg. */
+  --color-tag-discover: var(--vx-accent);
+  --color-tag-validate: var(--vx-status-warn);
+  --color-tag-rollout: var(--vx-status-good);
+  --color-tag-pull: color-mix(in srgb, var(--vx-fill-violet) 45%, var(--vx-ink));
+
+  --radius-sm: var(--vx-radius-fine);
+  --radius-md: var(--vx-radius-ctrl);
+  --radius-lg: var(--vx-radius-card);
+  --radius-xl: var(--vx-radius-floating);
+  --radius-full: var(--vx-radius-pill);
 }
 
-@theme inline {
-  --color-status-success: var(--status-success);
-  --color-status-failed: var(--status-failed);
-  --color-status-running: var(--status-running);
-  --color-status-queued: var(--status-queued);
+@layer base {
+  *,
+  ::before,
+  ::after {
+    border-color: var(--color-border);
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    line-height: 1.5;
+    color: var(--vx-ink);
+    background-color: var(--vx-surface-bg);
+  }
+
+  .recharts-text.recharts-cartesian-axis-tick-value {
+    fill: var(--vx-axis);
+  }
 }

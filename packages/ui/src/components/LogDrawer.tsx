@@ -6,10 +6,10 @@ export interface LogLine {
 }
 
 const TAG_COLORS: Record<string, string> = {
-  '[discover]': 'text-blue',
-  '[validate]': 'text-yellow',
-  '[pull]': 'text-purple',
-  '[rollout]': 'text-green',
+  '[discover]': 'text-tag-discover',
+  '[validate]': 'text-tag-validate',
+  '[pull]': 'text-tag-pull',
+  '[rollout]': 'text-tag-rollout',
 }
 
 function parseLine(text: string): { tag: string | null, rest: string } {
