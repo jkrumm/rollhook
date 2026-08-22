@@ -18,7 +18,7 @@
     "typecheck": "bun run --filter '*' typecheck",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "check:basalt": "bun run --filter @rollhook/marketing tokens:check && bun run --filter '*' check:theme",
+    "check:basalt": "bun run --filter @rollhook/marketing tokens:check && bun run --filter '*' check:theme && bun run --filter '*' check:sync",
     "test:e2e": "bun --filter @rollhook/e2e test",
     "e2e:up": "docker compose -f e2e/compose.e2e.yml up -d",
     "e2e:down": "docker compose -f e2e/compose.e2e.yml down -v",
