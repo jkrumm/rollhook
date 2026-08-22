@@ -1,5 +1,5 @@
 /* @generated basalt-ui — do not edit; regenerate with the command on the next line */
-/* basalt-ui 1.20.0 — `basalt-ui tokens:css --selector-class dark --only core --no-legacy-aliases --out src/styles/basalt-tokens.css` */
+/* basalt-ui 1.21.0 — `basalt-ui tokens:css --selector-class dark --only core --no-legacy-aliases --out src/styles/basalt-tokens.css` */
 :root {
   --vx-radius-card: 7px;
   --vx-radius-ctrl: 6px;
@@ -41,6 +41,7 @@
   --vx-fill-hover-lime: color-mix(in srgb, var(--vx-fill-lime) 88%, #000);
   --vx-fill-hover-yellow: color-mix(in srgb, var(--vx-fill-yellow) 88%, #000);
   --vx-fill-hover-orange: color-mix(in srgb, var(--vx-fill-orange) 88%, #000);
+  --vx-text-nano: 10px;
   --vx-text-micro: 11px;
   --vx-text-xs: 12.5px;
   --vx-text-sm: 13.5px;
@@ -50,6 +51,7 @@
   --vx-text-h2: 21px;
   --vx-text-kpi: 24px;
   --vx-text-h1: 26px;
+  --vx-text-display: 30px;
   --vx-area-top: 22%;
   --vx-area-bottom: 1%;
   --vx-good: color-mix(in srgb, var(--vx-good-solid) 18%, transparent);
@@ -143,8 +145,8 @@
   --vx-divider: color-mix(in srgb, #e5e5e5 65%, transparent);
   --vx-shadow-card: 0 1px 2px rgba(28, 25, 23, 0.05), 0 0 0 1px var(--vx-surface-hairline);
   --vx-shadow-ctrl: 0 1px 2px rgba(28, 25, 23, 0.12);
-  --vx-shadow-raised: 0 1px 2px rgba(28, 25, 23, 0.10);
-  --vx-shadow-overlay: 0 8px 24px rgba(28, 25, 23, 0.10);
+  --vx-shadow-raised: 0 1px 2px rgba(28, 25, 23, 0.1);
+  --vx-shadow-overlay: 0 8px 24px rgba(28, 25, 23, 0.1);
   --vx-surface-bg: #f2f2f5;
   --vx-surface-panel: #fafafd;
   --vx-surface-panel-hover: #ffffff;

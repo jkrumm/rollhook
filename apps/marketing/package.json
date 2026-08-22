@@ -3,10 +3,7 @@
   "type": "module",
   "version": "0.0.1",
   "basalt": {
-    "profile": "tokens-only",
-    "exemptRules": {
-      "raw-hex": ["site.webmanifest"]
-    }
+    "profile": "tokens-only"
   },
   "scripts": {
     "dev": "astro dev",
@@ -15,7 +12,7 @@
     "tokens": "basalt-ui tokens:css --selector-class dark --only core --no-legacy-aliases --out src/styles/basalt-tokens.css",
     "tokens:check": "basalt-ui tokens:css --selector-class dark --only core --no-legacy-aliases --out src/styles/basalt-tokens.css --check",
     "typecheck": "astro check && tsc --noEmit",
-    "check:theme": "basalt-ui check-theme",
+    "check:theme": "basalt-ui check-theme && basalt-ui check-theme --audit-allows",
     "astro": "astro"
   },
   "dependencies": {
@@ -35,7 +32,7 @@
     "@tailwindcss/vite": "^4.2.1",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "basalt-ui": "1.20.0",
+    "basalt-ui": "1.21.0",
     "tailwindcss": "^4.2.1",
     "typescript": "^5.9.3",
     "vite": "^7.3.1"

@@ -1,4 +1,5 @@
 {
+  "basalt:theme-allow-file": "raw-hex — a web manifest is JSON: theme_color and background_color must be literal hex, and no var() is expressible here. basaltAppPlugin cannot emit this file — this is an Astro site with no single index.html, and rollhook consumes basalt tokens-only (no basalt JS, no Mantine). Both values are --vx-surface-bg dark; re-derive from src/styles/basalt-tokens.css, never invent.",
   "name": "RollHook",
   "short_name": "RollHook",
   "icons": [
