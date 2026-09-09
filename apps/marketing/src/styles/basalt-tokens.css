@@ -1,5 +1,5 @@
 /* @generated basalt-ui — do not edit; regenerate with the command on the next line */
-/* basalt-ui 1.29.2 — `basalt-ui tokens:css --selector-class dark --only core --no-legacy-aliases --out src/styles/basalt-tokens.css` */
+/* basalt-ui 1.30.0 — `basalt-ui tokens:css --selector-class dark --only core --no-legacy-aliases --out src/styles/basalt-tokens.css` */
 :root {
   --vx-radius-card: 7px;
   --vx-radius-ctrl: 6px;
@@ -14,7 +14,7 @@
   --vx-space-control-height: 2.625rem;
   --vx-space-control-height-tag: 1.25rem;
   --vx-space-control-height-widget: 1.5rem;
-  --vx-space-control-height-ctl: 1.875rem;
+  --vx-space-control-height-ctl: 2rem;
   --vx-space-touch-control-height: 2.25rem;
   --vx-space-stack-xs: 4px;
   --vx-space-stack-sm: 8px;
