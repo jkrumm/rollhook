@@ -1,5 +1,5 @@
 /* @generated basalt-ui — do not edit; regenerate with the command on the next line */
-/* basalt-ui 1.23.0 — `basalt-ui tokens:css --selector-class dark --only core --no-legacy-aliases --out src/styles/basalt-tokens.css` */
+/* basalt-ui 1.29.2 — `basalt-ui tokens:css --selector-class dark --only core --no-legacy-aliases --out src/styles/basalt-tokens.css` */
 :root {
   --vx-radius-card: 7px;
   --vx-radius-ctrl: 6px;
@@ -7,10 +7,15 @@
   --vx-radius-fine: 4px;
   --vx-radius-floating: 8px;
   --vx-radius-pill: 9999px;
+  --vx-space-touch-target: 44px;
   --vx-space-row-inset-x: 10px;
   --vx-space-row-inset-y: 6px;
   --vx-space-input-height: 2.625rem;
   --vx-space-control-height: 2.625rem;
+  --vx-space-control-height-tag: 1.25rem;
+  --vx-space-control-height-widget: 1.5rem;
+  --vx-space-control-height-ctl: 1.875rem;
+  --vx-space-touch-control-height: 2.25rem;
   --vx-space-stack-xs: 4px;
   --vx-space-stack-sm: 8px;
   --vx-space-stack-md: 12px;
@@ -95,7 +100,7 @@
   --vx-accent-fill: #4374a6;
   --vx-accent-fill-hover: #3c6895;
   --vx-on-accent: #ffffff;
-  --vx-divider: color-mix(in srgb, #ffffff 6%, transparent);
+  --vx-divider: rgba(255, 255, 255, 0.08);
   --vx-shadow-card: 0 1px 3px rgba(0, 0, 0, 0.4), inset 0 0 0 1px color-mix(in srgb, #ffffff 4%, transparent);
   --vx-shadow-ctrl: 0 1px 2px rgba(0, 0, 0, 0.35);
   --vx-shadow-raised: 0 1px 2px rgba(0, 0, 0, 0.35), inset 0 0 0 1px color-mix(in srgb, #ffffff 8%, transparent);
@@ -142,7 +147,7 @@
   --vx-accent-fill: #4374a6;
   --vx-accent-fill-hover: #3c6895;
   --vx-on-accent: #ffffff;
-  --vx-divider: color-mix(in srgb, #e5e5e5 65%, transparent);
+  --vx-divider: rgba(38, 38, 41, 0.09);
   --vx-shadow-card: 0 1px 2px rgba(28, 25, 23, 0.05), 0 0 0 1px var(--vx-surface-hairline);
   --vx-shadow-ctrl: 0 1px 2px rgba(28, 25, 23, 0.12);
   --vx-shadow-raised: 0 1px 2px rgba(28, 25, 23, 0.1);

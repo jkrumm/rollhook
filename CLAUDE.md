@@ -33,7 +33,7 @@ CI runs Go natively (`go build ./...`, `go vet ./...`, `go test ./...`).
 
 **Types shared between packages** (`JobResult`, `JobStatus`) live in `packages/ui/src/types.ts`, exported from `@rollhook/ui`.
 
-**Styling: Tailwind v4 + basalt-ui tokens only.** basalt-ui 1.x is a Mantine/React framework; both apps consume only its `--vx-*` token layer and stay on Tailwind. Never import `basalt-ui/css` (dropped in 1.0) or `basalt-ui/styles.css` (needs Mantine). Both apps declare `"basalt": { "profile": "tokens-only" }` — without it `check-theme` reports 17 Mantine-only kinds (e.g. "use `TextInput` from `@mantine/core`") against apps that have no React chrome.
+**Styling: Tailwind v4 + basalt-ui tokens only.** basalt-ui 1.x is a Mantine/React framework; both apps consume only its `--vx-*` token layer and stay on Tailwind. Never import `basalt-ui/css` (dropped in 1.0) or `basalt-ui/styles.css` (needs Mantine). Both apps declare `"basalt": { "profile": "tokens-only" }` — without it `check-theme` reports 18 Mantine-only kinds (e.g. "use `TextInput` from `@mantine/core`") against apps that have no React chrome.
 
 | App              | Route                                                                                  | Wiring                         |
 | ---------------- | -------------------------------------------------------------------------------------- | ------------------------------ |
