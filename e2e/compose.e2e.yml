@@ -1,6 +1,6 @@
 services:
   traefik:
-    image: traefik:v3.3
+    image: traefik:v3.6
     command:
       - --providers.docker=true
       - --providers.docker.exposedbydefault=false
@@ -19,7 +19,7 @@ services:
     image: oven/bun:1
     command: bun run /mock-oidc/server.ts
     ports:
-      - '8080:8080'
+      - '18080:8080'
     volumes:
       - type: bind
         source: ${PROJECT_ROOT}/e2e/mock-oidc

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { adminHeaders, BASE_URL, REGISTRY_HOST } from '../setup/fixtures.ts'
 
-const MOCK_OIDC_URL = 'http://localhost:8080'
+const MOCK_OIDC_URL = 'http://localhost:18080'
 const IMAGE_V2 = `${REGISTRY_HOST}/rollhook-e2e-hello:v2`
 
 /**
