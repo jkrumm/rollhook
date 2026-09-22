@@ -19,7 +19,7 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "check:basalt": "bun run --filter @rollhook/marketing tokens:check && bun run --filter '*' check:theme && bun run --filter '*' check:sync",
-    "test:e2e": "bun --filter @rollhook/e2e e2e",
+    "test:e2e": "bun --filter @rollhook/e2e test",
     "e2e:up": "docker compose -f e2e/compose.e2e.yml up -d",
     "e2e:down": "docker compose -f e2e/compose.e2e.yml down -v",
     "e2e:build": "docker build -t rollhook-e2e-hello:v1 --build-arg BUILD_VERSION=v1 e2e/hello-world && docker build -t rollhook-e2e-hello:v2 --build-arg BUILD_VERSION=v2 e2e/hello-world",
