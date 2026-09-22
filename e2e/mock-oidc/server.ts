@@ -8,7 +8,7 @@
  *
  * The issuer URL is http://mock-oidc:8080 (Docker service name).
  * RollHook is configured with ROLLHOOK_OIDC_ISSUER=http://mock-oidc:8080.
- * E2E tests call POST http://localhost:8080/token to get tokens.
+ * E2E tests call POST http://localhost:18080/token to get tokens.
  */
 import process from 'node:process'
 
