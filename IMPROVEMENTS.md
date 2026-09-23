@@ -15,7 +15,7 @@ Status legend: ✅ Done | 📝 Notes added below | ⏳ Pending
 
 **Fix applied:** `jobCtx` decoupled from signal context. Jobs get a `context.Background()`-derived
 context, cancelled only if `Drain(5 * time.Minute)` times out. `cancelJobs()` is the safety valve.
-`stop_grace_period: 3m` note added to CLAUDE.md for production compose.
+`stop_grace_period: 3m` note added to AGENTS.md for production compose.
 
 ---
 
