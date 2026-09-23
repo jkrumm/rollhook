@@ -13,13 +13,13 @@
     "react-dom": "^19.0.0"
   },
   "dependencies": {
-    "@tanstack/react-virtual": "3.13.22",
+    "@tanstack/react-virtual": "3.14.13",
     "clsx": "2.1.1",
     "lucide-react": "0.577.0",
-    "recharts": "3.8.0",
-    "tailwind-merge": "3.5.0"
+    "recharts": "3.10.1",
+    "tailwind-merge": "3.7.0"
   },
   "devDependencies": {
-    "@types/react": "19.2.14"
+    "@types/react": "19.3.0"
   }
 }
