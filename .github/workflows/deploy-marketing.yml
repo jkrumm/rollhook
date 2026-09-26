@@ -1,0 +1,65 @@
+name: Deploy Marketing
+
+# rollhook.com → VPS via RollHook, then purge the hostname from Cloudflare's
+# edge. Decoupled from Make Release: the marketing site ships on every push to
+# master that touches it, independent of when (or whether) the RollHook server
+# itself cuts a release — otherwise a marketing-only change could never ship.
+#
+# Auth: GitHub OIDC → RollHook exchanges for short-lived registry creds, zero
+# long-lived deploy secret. The only secret here is the Cloudflare token —
+# Zone:Read + Cache Purge, nothing else. Edge-cache pattern:
+# vps/docs/edge-cache.md.
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - apps/marketing/**
+      - package.json
+      - bun.lock
+      - tsconfig.json
+      - packages/ui/**
+      - .github/workflows/deploy-marketing.yml
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-marketing
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+
+jobs:
+  deploy:
+    name: Deploy Marketing to VPS
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push marketing image to GHCR
+        run: |
+          docker build \
+            -t ghcr.io/jkrumm/rollhook-marketing:${{ github.sha }} \
+            -t ghcr.io/jkrumm/rollhook-marketing:latest \
+            -f apps/marketing/Dockerfile .
+          docker push ghcr.io/jkrumm/rollhook-marketing:${{ github.sha }}
+          docker push ghcr.io/jkrumm/rollhook-marketing:latest
+
+      - uses: jkrumm/rollhook-action@v1
+        with:
+          url: https://rollhook.jkrumm.com
+          image_name: rollhook-marketing
+          image_tag: ghcr.io/jkrumm/rollhook-marketing:${{ github.sha }}
+          cloudflare_purge_hosts: rollhook.com
+          cloudflare_api_token: ${{ secrets.CLOUDFLARE_PURGE_TOKEN }}
