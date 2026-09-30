@@ -1,5 +1,5 @@
 /* @generated basalt-ui — do not edit; regenerate with the command on the next line */
-/* basalt-ui 1.30.2 — `basalt-ui tokens:css --selector-class dark --only core --no-legacy-aliases --out src/styles/basalt-tokens.css` */
+/* basalt-ui 1.32.0 — `basalt-ui tokens:css --selector-class dark --only core --no-legacy-aliases --out src/styles/basalt-tokens.css` */
 :root {
   --vx-radius-card: 7px;
   --vx-radius-ctrl: 6px;
@@ -7,7 +7,7 @@
   --vx-radius-fine: 4px;
   --vx-radius-floating: 8px;
   --vx-radius-pill: 9999px;
-  --vx-space-touch-target: 44px;
+  --vx-hit: 24px;
   --vx-space-row-inset-x: 10px;
   --vx-space-row-inset-y: 6px;
   --vx-space-input-height: 2.625rem;
@@ -15,7 +15,6 @@
   --vx-space-control-height-tag: 1.25rem;
   --vx-space-control-height-widget: 1.5rem;
   --vx-space-control-height-ctl: 2rem;
-  --vx-space-touch-control-height: 2.25rem;
   --vx-space-stack-xs: 4px;
   --vx-space-stack-sm: 8px;
   --vx-space-stack-md: 12px;
@@ -66,6 +65,11 @@
   --vx-good-ref: color-mix(in srgb, var(--vx-good-solid) 30%, transparent);
   --vx-bad-ref: color-mix(in srgb, var(--vx-bad-solid) 30%, transparent);
   --vx-warn-ref: color-mix(in srgb, var(--vx-warn-solid) 20%, transparent);
+}
+@media (pointer: coarse) {
+  :root {
+    --vx-hit: 44px;
+  }
 }
 :root,
 :root.dark {
