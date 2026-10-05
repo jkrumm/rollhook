@@ -47,7 +47,7 @@ The marketing site (`rollhook.com`) is separate: `.github/workflows/deploy-marke
 - **Readiness — `https://<rollhook-domain>/ready`:** also pings the Docker daemon; 503 with `"docker":"unreachable"` when it is not. **Point monitoring at `/ready`, not `/health`.**
 - **Uptime Kuma** monitors (exact names, `~/SourceRoot/homelab/uptime-kuma/monitors.yaml`): `RollHook - HTTP` (type http, `/health`) and `RollHook - Ready - HTTP` (type keyword, `/ready`, keyword `"docker":"ok"`).
 - **OTel `service.name`:** `rollhook` (`internal/notifier/otlp.go`), exported over OTLP to ClickStack with `DEPLOY_ENVIRONMENT=prod`.
-- `make verify` probes `/ready` at `$ROLLHOOK_URL` (base URL, e.g. `https://<rollhook-domain>`); `make logs` tails the last 200 lines of the production container over ssh to `$ROLLHOOK_SSH_HOST`. Both exit 2 with a message when the variable is unset — this repo is public, so no production host is tracked.
+- `make verify` probes `/ready` at `$ROLLHOOK_URL` (base URL, e.g. `https://<rollhook-domain>`); `make logs` tails the last 200 lines of the production container over ssh to `$ROLLHOOK_SSH_HOST`. Both variables have defaults in the Makefile (the public prod domain and the `vps` ssh alias), so plain `make verify` / `make logs` work with no env; set the variable to override.
 
 ---
 

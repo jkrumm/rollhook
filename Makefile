@@ -8,9 +8,9 @@ GO_IMAGE   := golang:1.25-alpine
 GO_RUN     := docker run --rm -v "$(CURDIR)":/workspace -w /workspace $(GO_IMAGE)
 LINT_IMAGE := golangci/golangci-lint:v2.10.1
 
-# Production coordinates come from the environment: this repo is public, so no hostnames are tracked.
-ROLLHOOK_URL      ?=
-ROLLHOOK_SSH_HOST ?=
+# Production coordinates: the public prod domain and an ssh alias; the environment overrides both.
+ROLLHOOK_URL      ?= https://rollhook.jkrumm.com
+ROLLHOOK_SSH_HOST ?= vps
 
 .PHONY: help check deploy verify logs
 
@@ -32,12 +32,10 @@ check: ## Run exactly the local validation CI runs (lint, typecheck, basalt, Go 
 deploy: ## CI-deployed: the server image ships via the manual Make Release workflow, the marketing site on push
 	@echo "deployed by CI on push (marketing site); the server image ships via the manual 'Make Release' workflow and the VPS pulls :latest - see AGENTS.md section Deploy. Nothing to run here."
 
-verify: ## Probe production readiness at ROLLHOOK_URL (base URL, e.g. https://<rollhook-domain>); exit 0 = live and healthy
-	@[ -n "$(ROLLHOOK_URL)" ] || { echo "verify: set ROLLHOOK_URL to the production base URL (https://<rollhook-domain>); the host is not tracked in this public repo"; exit 2; }
+verify: ## Probe production readiness at ROLLHOOK_URL (default: the public prod domain); exit 0 = live and healthy
 	@curl -fsS --max-time 20 "$(ROLLHOOK_URL)/ready" | grep -q '"docker":"ok"' \
 		&& echo "rollhook: healthy" \
 		|| { echo "rollhook: UNHEALTHY ($(ROLLHOOK_URL)/ready)"; exit 1; }
 
-logs: ## Bounded 200-line tail of production logs over ssh to ROLLHOOK_SSH_HOST, then exits (no follow)
-	@[ -n "$(ROLLHOOK_SSH_HOST)" ] || { echo "logs: set ROLLHOOK_SSH_HOST to the ssh host running RollHook; the host is not tracked in this public repo"; exit 2; }
+logs: ## Bounded 200-line tail of production logs over ssh to ROLLHOOK_SSH_HOST (default: the vps alias), then exits (no follow)
 	@ssh "$(ROLLHOOK_SSH_HOST)" 'docker logs --tail 200 $$(docker ps -q --filter "label=com.docker.compose.service=rollhook" | head -n1)'
