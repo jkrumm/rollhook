@@ -1,6 +1,8 @@
 # RollHook — Project Configuration
 
-## Critical Commands
+## Validate
+
+`make check` runs exactly the local gates CI runs (`.github/workflows/ci.yml`): `bun install --frozen-lockfile`, `bun run lint`, `bun run typecheck`, `bun run check:basalt`, then Go `build` / `vet` / `test` and `golangci-lint` in Docker, then the OpenAPI drift check.
 
 **Go is not installed locally.** All Go commands run via Docker:
 
@@ -19,9 +21,53 @@ docker run --rm -v "$(pwd)":/workspace -w /workspace golang:1.25-alpine \
 bun run --filter @rollhook/dashboard generate:api
 ```
 
-CI runs Go natively (`go build ./...`, `go vet ./...`, `go test ./...`).
+CI runs Go natively (`go build ./...`, `go vet ./...`, `go test ./...`, `golangci-lint`).
+
+**Not covered by `make check`:** the E2E suite (`bun run test:e2e`, CI job `e2e-test`) — it builds and starts Docker containers and runs ~12 min; run it separately.
 
 **OpenAPI generation chain:** huma operations → `cmd/gendocs` → `openapi.json` → orval → `src/api/generated/`. Commit `openapi.json` + `src/api/generated/` together.
+
+---
+
+## Deploy
+
+**The server image ships through CI, not from a checkout.** `.github/workflows/release.yml` (the **Make Release** workflow, manual `workflow_dispatch`) runs semantic-release on `master`, then builds and pushes `ghcr.io/jkrumm/rollhook:<version>` and `:latest` to GHCR. The VPS runs `ghcr.io/jkrumm/rollhook:latest`; Watchtower pulls it at the 04:00 sweep, and `make rollhook-update` in `~/SourceRoot/vps` takes a fresh release immediately. RollHook cannot deploy itself.
+
+`make deploy` ships nothing: it prints `deployed by CI on push` (plus a note that the server image goes through the manual release workflow) and exits 0.
+
+The marketing site (`rollhook.com`) is separate: `.github/workflows/deploy-marketing.yml` deploys it on every push to `master` that touches it, via `jkrumm/rollhook-action@v1`.
+
+**Rollback:** pushed image tags are immutable. Roll the server back by pointing the VPS at the previous tag (or reverting the commit and cutting a new release). Revert a marketing change and push — the workflow redeploys it.
+
+---
+
+## Verify & Monitor
+
+- **Liveness — `https://<rollhook-domain>/health`:** 200 while the HTTP process is up, 503 during graceful shutdown. Container and Traefik healthchecks target this.
+- **Readiness — `https://<rollhook-domain>/ready`:** also pings the Docker daemon; 503 with `"docker":"unreachable"` when it is not. **Point monitoring at `/ready`, not `/health`.**
+- **Uptime Kuma** monitors (exact names, `~/SourceRoot/homelab/uptime-kuma/monitors.yaml`): `RollHook - HTTP` (type http, `/health`) and `RollHook - Ready - HTTP` (type keyword, `/ready`, keyword `"docker":"ok"`).
+- **OTel `service.name`:** `rollhook` (`internal/notifier/otlp.go`), exported over OTLP to ClickStack with `DEPLOY_ENVIRONMENT=prod`.
+- `make verify` probes `/ready` at `$ROLLHOOK_URL` (base URL, e.g. `https://<rollhook-domain>`); `make logs` tails the last 200 lines of the production container over ssh to `$ROLLHOOK_SSH_HOST`. Both exit 2 with a message when the variable is unset — this repo is public, so no production host is tracked.
+
+---
+
+## Gotchas
+
+**huma response status:** always set `out.Status = http.StatusOK` immediately after `out := &FooOutput{}`. Zero value → `WriteHeader(0)` → panic.
+
+**RollHook compose `stop_grace_period: 3m`** — Docker's default 10 s SIGKILLs the process mid-deploy. Required in production:
+
+```yaml
+services:
+  rollhook:
+    stop_grace_period: 3m
+```
+
+**SQLite:** `SetMaxOpenConns(1)` is the fix for `SQLITE_BUSY`, not `busy_timeout`. `busy_timeout` is per-connection and new pool connections don't inherit it.
+
+**`bun run X --cwd Y` recurses infinitely** in package.json scripts. Use `bun run --filter @pkg X` instead.
+
+**`/ready` must stay off the container healthcheck.** Traefik's Docker provider drops containers whose Docker health status is not `healthy`, so routing a daemon blip through it would 404 every route on this host — including the bundled registry at `/v2/*`. Keep container and load-balancer healthchecks on `/health`; point uptime monitoring at `/ready`. Details: `docs/GO_GOTCHAS.md`.
 
 ---
 
@@ -47,24 +93,6 @@ Each `global.css` maps `--vx-*` onto Tailwind's `@theme inline` namespaces (`--c
 **Fonts stay ours.** RollHook is Instrument Sans + JetBrains Mono (`@fontsource-variable` in the dashboard, `astro:fonts` in `astro.config.mjs`). basalt-ui 1.x ships Nunito Sans + Hubot Sans, so `basalt-ui fonts:css` would rebrand both apps — do not adopt it.
 
 `apps/marketing/src/styles/basalt-tokens.css` is no longer eslint-ignored: 1.21.0's emitter writes `0.1` rather than `0.10`, so the sheet lints clean. `public/site.webmanifest`'s `theme_color`/`background_color` must be kept equal to `--vx-surface-bg` dark (`#27272a`) by hand; the file declares its own exception with a `"basalt:theme-allow-file"` member on line 2 — no `basalt.exemptRules` anywhere. `check-theme --audit-allows` proves every waiver still suppresses something and exits 1 when one does not.
-
----
-
-## Known Pitfalls
-
-**huma response status:** always set `out.Status = http.StatusOK` immediately after `out := &FooOutput{}`. Zero value → `WriteHeader(0)` → panic.
-
-**RollHook compose `stop_grace_period: 3m`** — Docker's default 10 s SIGKILLs the process mid-deploy. Required in production:
-
-```yaml
-services:
-  rollhook:
-    stop_grace_period: 3m
-```
-
-**SQLite:** `SetMaxOpenConns(1)` is the fix for `SQLITE_BUSY`, not `busy_timeout`. `busy_timeout` is per-connection and new pool connections don't inherit it.
-
-**`bun run X --cwd Y` recurses infinitely** in package.json scripts. Use `bun run --filter @pkg X` instead.
 
 ---
 
