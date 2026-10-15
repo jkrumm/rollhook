@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Dashboard } from './components/Dashboard'
 import { TokenGate } from './components/TokenGate'
-import { configureApi } from './lib/api'
+import { endSession, restoreSession, startSession } from './lib/session'
 
 const IS_DEMO = import.meta.env.DEV || import.meta.env.MODE === 'demo'
 
@@ -9,20 +9,16 @@ export function App() {
   const [token, setToken] = useState(() => {
     if (IS_DEMO)
       return 'demo'
-    return sessionStorage.getItem('rh_token') ?? ''
+    return restoreSession()
   })
 
-  useEffect(() => {
-    configureApi(token)
-  }, [token])
-
   function handleToken(t: string) {
-    sessionStorage.setItem('rh_token', t)
+    startSession(t)
     setToken(t)
   }
 
   function handleLogout() {
-    sessionStorage.removeItem('rh_token')
+    endSession()
     setToken('')
   }
 
