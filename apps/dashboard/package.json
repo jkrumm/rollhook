@@ -11,7 +11,7 @@
     "build": "vite build",
     "typecheck": "tsc --noEmit",
     "tokens": "basalt-ui tokens:css --selector-class dark --only core --no-legacy-aliases --out src/styles/basalt-tokens.css",
-    "tokens:check": "basalt-ui tokens:css --selector-class dark --only core --no-legacy-aliases --out src/styles/basalt-tokens.css --check",
+    "tokens:check": "bun run tokens --check",
     "check:theme": "basalt-ui check-theme && basalt-ui check-theme --audit-allows",
     "check:sync": "basalt-ui sync --check",
     "generate:api": "orval"
