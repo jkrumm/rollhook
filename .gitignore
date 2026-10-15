@@ -53,3 +53,6 @@ examples/bun-hello-world/.env
 .ralph-go-tasks.json
 .ralph-go-logs/
 docs/go-rewrite/RALPH_REPORT.md
+
+# Wave baseline screenshots (names + hashes live in docs/waves/evidence)
+docs/waves/evidence/shots/
