@@ -1,3 +1,27 @@
+# [1.20.0](https://github.com/jkrumm/rollhook/compare/v1.19.1...v1.20.0) (2026-10-15)
+
+
+### Bug Fixes
+
+* **deps:** pin direct deps to exact versions, typescript beta→5.9.3 ([3b1e4d3](https://github.com/jkrumm/rollhook/commit/3b1e4d349199c614a1c97073b34ec02682b3d144))
+* drop regenerated demo data and derive tokens:check from tokens ([a6f576b](https://github.com/jkrumm/rollhook/commit/a6f576b8c56466eb628af76c88bdbfd8e350c960))
+* **e2e:** bump traefik to v3.6 and move mock-oidc off host port 8080 ([4609808](https://github.com/jkrumm/rollhook/commit/4609808062ff38071fa18a2a9a7241b61817bc8e))
+* **e2e:** rename e2e test script to dodge check's 180s cap ([b11569f](https://github.com/jkrumm/rollhook/commit/b11569fc153303aaea661cd151077e59fbc3459f))
+* **e2e:** update stale localhost:8080 comment to 18080 ([d43dbb2](https://github.com/jkrumm/rollhook/commit/d43dbb27edabd60d507896c52e530da2b9a68645))
+
+
+### Features
+
+* bump basalt-ui to 2.8.0 and emit dashboard tokens via tokens:css ([38c4cd7](https://github.com/jkrumm/rollhook/commit/38c4cd79b645e3fe755d0f5e57eef924fa40d1c1))
+* migrate both apps to basalt-ui 1.19.1 framework-free tokens ([f2c078b](https://github.com/jkrumm/rollhook/commit/f2c078bf70badbd9f3e1c83ee70fcf9a5943b708))
+* upgrade basalt-ui to 1.20.0 and gate the token layer in CI ([dfd83a8](https://github.com/jkrumm/rollhook/commit/dfd83a82d5efb3e35ff9a5fd97f5c5217ce0c20a)), closes [#27272a](https://github.com/jkrumm/rollhook/issues/27272a)
+* upgrade basalt-ui to 1.21.0 and retire both blanket exemptions ([0fcc161](https://github.com/jkrumm/rollhook/commit/0fcc161f5acbf8343703cc825bf3866fa3647e09))
+
+
+### Reverts
+
+* Revert "fix(e2e): rename e2e test script to dodge check's 180s cap" ([ecec910](https://github.com/jkrumm/rollhook/commit/ecec910ff24545d577a61a348e620ffffb0aa815))
+
 ## [1.19.1](https://github.com/jkrumm/rollhook/compare/v1.19.0...v1.19.1) (2026-07-31)
 
 
