@@ -69,7 +69,9 @@ re-emitted tokens (checked in Wave 3 by the visual diff).
 - Wave 2 pins **2.8.0** (Target line). MIGRATING was read from the 2.8.0 tarball; Appendix A confirmed unchanged.
 - **basalt friction** (orchestrator files as `rollhook W1` in `argo-friction.md`): `--vx-faint` light `#737376 → #69696c` has no MIGRATING row 1.36.1 → 2.8.0 (Appendix C #2, confirmed). Appendix C #1 is fixed in 2.8.0.
 
-## Wave 2 — Atomic bump to 2.8.0 (plan text says 2.7.3; the Target line above overrides) <!-- status: active -->
+## Wave 2 — Atomic bump to 2.8.0 <!-- status: active -->
+
+> The Target line above overrides every `2.7.3` written below: pin 2.8.0.
 
 Sized from the probe (Appendix B): 0 tsc errors in either app, `check:theme`/`sync --check` green, lint
 0 errors — the only failures are the **dashboard build** (missing `./tokens.css` specifier) and

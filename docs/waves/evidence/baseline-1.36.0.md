@@ -6,7 +6,7 @@ Recorded 2026-10-15 on `master` @ `0f65457`, before any bump. Both apps pinned `
 
 `make check`: **green** (exit 0, 2m35s). Lint, typecheck, `check:basalt`, Go build/vet/test, golangci-lint (0 issues), OpenAPI drift (no diff).
 
-## Bundle bytes (gzip -9)
+## Bundle bytes (`gzip -9` on the built file)
 
 | Artifact | Raw | Gzip |
 |-|-|-|
@@ -16,7 +16,7 @@ Recorded 2026-10-15 on `master` @ `0f65457`, before any bump. Both apps pinned `
 | marketing `_astro/client.MHp4qZIg.js` | 222,900 | 69,246 |
 | marketing `index.html` | 26,444 | 6,349 |
 
-Vite's own report for the dashboard: CSS 36.54 kB (9.95 kB gz), JS 669.53 kB (204.84 kB gz). The Appendix B probe on 2.7.3 + committed emit measured CSS 30.28 kB (8.78 kB gz), JS unchanged (669.53 kB): expect a ~6 kB CSS drop in Wave 3 (the 2.x emit omits what the 1.x subpath shipped), not a regression.
+Vite's own report uses a different gzip level, so its figures differ slightly from the table; Wave 3 must use the table's `gzip -9` method. Vite's report for the dashboard: CSS 36.54 kB (9.95 kB gz), JS 669.53 kB (204.84 kB gz). The Appendix B probe on 2.7.3 + committed emit measured CSS 30.28 kB (8.78 kB gz), JS unchanged (669.53 kB): expect a ~6 kB CSS drop in Wave 3 (the 2.x emit omits what the 1.x subpath shipped), not a regression.
 
 ## Screenshots
 
@@ -43,10 +43,13 @@ Hashes identify the baseline files only; Wave 3 re-captures with the same URLs a
 
 ## Computed values
 
-Captured via `evaluate_script` (`getComputedStyle(:root)`), not `get_css_styles`: one call yields every declared `--vx-*` rather than one element per usage.
+Captured via `evaluate_script` (`getComputedStyle`) rather than `get_css_styles` per element: one call yields every declared `--vx-*`, and every rendered element.
 
-- `vx-dashboard-1.36.0.json` — `vars`: all 249 `--vx-*` custom properties resolved on `:root`; `elements`: 58 unique `tag.class` elements from the job-detail view with `color`, `background-color`, `border-top-color`, `box-shadow`, `border-top-left-radius`, `font-family`, `font-size`.
-- `vx-marketing-1.36.0.json` — `vars`: 109 `--vx-*` on `:root` of the marketing home page.
-- `--vx-faint`: dashboard computed `#a1a1a4` (dark). Marketing emit holds `#a1a1a4` (dark block, line 101) and `#737376` (light block, line 148) — the latter is the value the 2.7.3 probe saw change to `#69696c`.
+Both files: `{ vars, declaredOnSelectors, elements }`.
 
-Wave 3 diffs both JSONs key by key after the bump; the dashboard will gain/lose names because D1 switches to `--only core --no-legacy-aliases` (249 → fewer), so compare the names the apps reference, not the whole set.
+- `vars` — every `--vx-*` custom property resolved on `:root` (dashboard 249, marketing 109).
+- `declaredOnSelectors` — every selector that declares a `--vx-*`: only `:root`, the dark scope and the light scope (dashboard `html[data-mantine-color-scheme=…]`, marketing `:root.dark`/`:root.light`). No element-level override exists, so `:root` values plus the resolved element styles below cover every usage.
+- `elements` — every `body *` element keyed by its DOM path (`body > div:nth-child(1) > …`, reproducible on the same demo build/URL), with computed `color`, `background-color`, `border-top-color`, `box-shadow`, `border-top-left-radius`, `font-family`, `font-size` (dashboard 381 from the job-detail view, marketing 249 from `/`).
+- `--vx-faint`: dashboard computed `#a1a1a4` (dark). Marketing emit holds `#a1a1a4` (dark block, line 101) and `#737376` (light block, line 148); the latter is the value the 2.7.3 probe saw change to `#69696c`.
+
+Wave 3 diffs both files key by key after the bump. The dashboard `vars` set will shrink because D1 switches to `--only core --no-legacy-aliases`; compare the names the apps reference, not the whole set.
