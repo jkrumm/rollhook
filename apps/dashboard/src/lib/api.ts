@@ -1,15 +1,8 @@
 import type { JobResult, JobStatus } from '@rollhook/ui'
-import { setApiToken } from '../api/client'
+import { getApiToken } from '../api/client'
 import { getJobs } from '../api/generated/jobs/jobs'
 
 const IS_DEMO = import.meta.env.DEV || import.meta.env.MODE === 'demo'
-
-let _token = ''
-
-export function configureApi(token: string) {
-  _token = token
-  setApiToken(token)
-}
 
 async function getDemoData() {
   if (!IS_DEMO)
@@ -53,7 +46,7 @@ export function streamLogs(jobId: string, onLine: (line: string) => void, signal
       })
     })
   }
-  return fetch(`/jobs/${jobId}/logs`, { headers: { Authorization: `Bearer ${_token}` }, signal })
+  return fetch(`/jobs/${jobId}/logs`, { headers: { Authorization: `Bearer ${getApiToken()}` }, signal })
     .then((res) => {
       if (!res.ok)
         throw new Error(`${res.status}`)

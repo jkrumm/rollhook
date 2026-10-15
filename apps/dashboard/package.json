@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "test": "bun test",
     "typecheck": "tsc --noEmit",
     "tokens": "basalt-ui tokens:css --selector-class dark --only core --no-legacy-aliases --out src/styles/basalt-tokens.css",
     "tokens:check": "bun run tokens --check",

@@ -1,9 +1,13 @@
 // Custom fetch instance for orval-generated API clients.
-// Call setApiToken(token) once after the user authenticates (see TokenGate.tsx).
+// Token is set synchronously by lib/session.ts, before any component can fetch.
 let _token = ''
 
 export function setApiToken(token: string) {
   _token = token
+}
+
+export function getApiToken() {
+  return _token
 }
 
 // Signature matches what orval's fetch client generator expects:

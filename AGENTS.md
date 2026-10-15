@@ -2,7 +2,7 @@
 
 ## Validate
 
-`make check` runs exactly the local gates CI runs (`.github/workflows/ci.yml`): `bun install --frozen-lockfile`, `bun run lint`, `bun run typecheck`, `bun run check:basalt`, then Go `build` / `vet` / `test` and `golangci-lint` in Docker, then the OpenAPI drift check.
+`make check` runs exactly the local gates CI runs (`.github/workflows/ci.yml`): `bun install --frozen-lockfile`, `bun run lint`, `bun run typecheck`, `bun run check:basalt`, `bun run test:unit` (dashboard `bun test`), then Go `build` / `vet` / `test` and `golangci-lint` in Docker, then the OpenAPI drift check.
 
 **Go is not installed locally.** All Go commands run via Docker:
 

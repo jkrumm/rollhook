@@ -27,6 +27,7 @@ jobs:
       - run: bun run lint
       - run: bun run typecheck
       - run: bun run check:basalt
+      - run: bun run test:unit
 
   go-checks:
     name: Go Build, Test & OpenAPI Drift
