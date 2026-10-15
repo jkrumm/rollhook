@@ -61,7 +61,7 @@ re-emitted tokens (checked in Wave 3 by the visual diff).
       filtered states; marketing `/` (hero, code block, how-it-works, CTA). Raw PNGs gitignored; the file
       lists names + hashes.
 - [x] Capture computed values for the probe-flagged token: `--vx-faint`, plus the ~21 `--vx-*` names the apps
-      reference, via `get_css_styles` on one element per usage, to diff in Wave 3.
+      reference, via `evaluate_script` over all `body *` (one call, root `vars` + per-element computed styles; see `baseline-1.36.0.md`), to diff in Wave 3.
 - [x] Commit `docs/waves/evidence/baseline-1.36.0.md` + `w1.md`. PR → `/review` → merge. No source change.
 
 **Left behind:** full detail in `evidence/baseline-1.36.0.md` and `evidence/w1.md` (§ Findings for Wave 2).
