@@ -1,3 +1,12 @@
+## [1.20.1](https://github.com/jkrumm/rollhook/compare/v1.20.0...v1.20.1) (2026-10-15)
+
+
+### Bug Fixes
+
+* configure the API client before any child can fetch ([30422ba](https://github.com/jkrumm/rollhook/commit/30422bad8d193928fca553c2b0a105a9f8274094))
+* configure the demo session through the same path and harden the session test ([93dd4b9](https://github.com/jkrumm/rollhook/commit/93dd4b9b988b51d9f17937b6d80fc11601cf0600))
+* match Headers trimming in the session test ([d3cdcc4](https://github.com/jkrumm/rollhook/commit/d3cdcc4251dc7574d29d343660817d605feeafc7))
+
 # [1.20.0](https://github.com/jkrumm/rollhook/compare/v1.19.1...v1.20.0) (2026-10-15)
 
 
