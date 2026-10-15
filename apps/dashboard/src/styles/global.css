@@ -5,7 +5,7 @@
 
 @source "../../../../packages/ui/src";
 
-/* basalt-ui ships --vx-* values only (committed emit, `bun run tokens`).
+/* basalt-ui ships --vx-* values only (committed emit, `bun run --filter @rollhook/dashboard tokens`).
    Tailwind's theme namespaces are mapped here so the utility classes this app
    already uses resolve to basalt tokens. Dark-only app: the emit uses
    --selector-class dark, so dark lands on :root and :root.dark.

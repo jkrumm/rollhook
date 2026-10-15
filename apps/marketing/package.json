@@ -10,7 +10,7 @@
     "build": "astro build",
     "preview": "astro preview",
     "tokens": "basalt-ui tokens:css --selector-class dark --only core --no-legacy-aliases --out src/styles/basalt-tokens.css",
-    "tokens:check": "basalt-ui tokens:css --selector-class dark --only core --no-legacy-aliases --out src/styles/basalt-tokens.css --check",
+    "tokens:check": "bun run tokens --check",
     "typecheck": "astro check && tsc --noEmit",
     "check:theme": "basalt-ui check-theme && basalt-ui check-theme --audit-allows",
     "check:sync": "basalt-ui sync --check",
