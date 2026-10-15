@@ -64,14 +64,12 @@ re-emitted tokens (checked in Wave 3 by the visual diff).
       reference, via `get_css_styles` on one element per usage, to diff in Wave 3.
 - [x] Commit `docs/waves/evidence/baseline-1.36.0.md` + `w1.md`. PR → `/review` → merge. No source change.
 
-**Left behind:**
-- Evidence: `evidence/baseline-1.36.0.md` (numbers, screenshot hashes, URLs), `evidence/w1.md` (MIGRATING read), `evidence/vx-{dashboard,marketing}-1.36.0.json` (computed values: all `--vx-*` on `:root`, plus 58 dashboard elements). Raw PNGs are in the gitignored `evidence/shots/` on the mini (12 files); Wave 3 re-captures with the same URLs/viewports. `make check` was green on 1.36.0.
-- MIGRATING was read from the `basalt-ui@2.8.0` tarball, not `node_modules` (1.36.0's copy has no 2.x). Appendix A map confirmed unchanged. Wave 2 pins **2.8.0** per the plan header.
-- Dashboard CSS expectation: 36.54 kB (9.95 gz) → ~30.3 kB (8.8 gz) per the probe; a drop is not a regression.
-- 2.8.0's `doctor` now fails on `@import 'basalt-ui/tokens.css'` (CSS scan), so Wave 2 can use `doctor` as a before/after check for D1. `basalt.app` may matter: two workspace packages depend on basalt-ui (MIGRATING § 2.0.2); check `doctor` from root and each app.
-- **basalt friction** (orchestrator files as `rollhook W1` rows in `argo-friction.md`): `--vx-faint` light value changed `#737376 → #69696c` with no MIGRATING row anywhere 1.36.1 → 2.8.0 (Appendix C candidate 2, confirmed). Candidate 1 (`tokens.css` removal invisible to `doctor`) is already fixed in 2.8.0.
+**Left behind:** full detail in `evidence/baseline-1.36.0.md` and `evidence/w1.md` (§ Findings for Wave 2).
+- `make check` green on 1.36.0; numbers, screenshot hashes and computed-value JSONs (`evidence/vx-*-1.36.0.json`, shape `{vars, elements?}`) are committed; raw PNGs live in gitignored `evidence/shots/` on the mini.
+- Wave 2 pins **2.8.0** (Target line). MIGRATING was read from the 2.8.0 tarball; Appendix A confirmed unchanged.
+- **basalt friction** (orchestrator files as `rollhook W1` in `argo-friction.md`): `--vx-faint` light `#737376 → #69696c` has no MIGRATING row 1.36.1 → 2.8.0 (Appendix C #2, confirmed). Appendix C #1 is fixed in 2.8.0.
 
-## Wave 2 — Atomic bump to 2.7.3 <!-- status: active -->
+## Wave 2 — Atomic bump to 2.8.0 (plan text says 2.7.3; the Target line above overrides) <!-- status: active -->
 
 Sized from the probe (Appendix B): 0 tsc errors in either app, `check:theme`/`sync --check` green, lint
 0 errors — the only failures are the **dashboard build** (missing `./tokens.css` specifier) and
