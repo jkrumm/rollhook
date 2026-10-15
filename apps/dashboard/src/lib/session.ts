@@ -19,3 +19,8 @@ export function endSession() {
   sessionStorage.removeItem(STORAGE_KEY)
   setApiToken('')
 }
+
+export function startDemoSession(): string {
+  setApiToken('demo')
+  return 'demo'
+}
