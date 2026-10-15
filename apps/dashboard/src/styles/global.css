@@ -1,16 +1,15 @@
 @import '@fontsource-variable/instrument-sans';
 @import '@fontsource-variable/jetbrains-mono';
 @import 'tailwindcss';
-@import 'basalt-ui/tokens.css';
+@import './basalt-tokens.css';
 
 @source "../../../../packages/ui/src";
 
-/* basalt-ui ships --vx-* values only. Tailwind's theme namespaces are mapped
-   here so the utility classes this app already uses resolve to basalt tokens.
-   Dark-only app: the prebuilt tokens.css subpath puts the dark scheme on the
-   bare :root and keys light off [data-mantine-color-scheme='light'], which is
-   never set — tokens:css --selector-class is not reachable on this route.
-   The two --font-* stacks are RollHook's own; basalt 1.x ships different faces. */
+/* basalt-ui ships --vx-* values only (committed emit, `bun run tokens`).
+   Tailwind's theme namespaces are mapped here so the utility classes this app
+   already uses resolve to basalt tokens. Dark-only app: the emit uses
+   --selector-class dark, so dark lands on :root and :root.dark.
+   The two --font-* stacks are RollHook's own; basalt ships different faces. */
 @theme inline {
   --font-sans: 'Instrument Sans Variable', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'JetBrains Mono Variable', ui-monospace, monospace;

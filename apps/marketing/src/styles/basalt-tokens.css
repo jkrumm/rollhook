@@ -1,5 +1,5 @@
 /* @generated basalt-ui — do not edit; regenerate with the command on the next line */
-/* basalt-ui 1.36.0 — `basalt-ui tokens:css --selector-class dark --only core --no-legacy-aliases --out src/styles/basalt-tokens.css` */
+/* basalt-ui 2.8.0 — `basalt-ui tokens:css --selector-class dark --only core --no-legacy-aliases --out src/styles/basalt-tokens.css` */
 :root {
   --vx-radius-card: 7px;
   --vx-radius-ctrl: 6px;
@@ -145,7 +145,7 @@
   --vx-ink: #262629;
   --vx-ink2: #404043;
   --vx-muted: #525255;
-  --vx-faint: #737376;
+  --vx-faint: #69696c;
   --vx-accent: #4374a6;
   --vx-accent-hover: #3c6895;
   --vx-accent-fill: #4374a6;

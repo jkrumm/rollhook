@@ -79,18 +79,18 @@ services:
 
 **Types shared between packages** (`JobResult`, `JobStatus`) live in `packages/ui/src/types.ts`, exported from `@rollhook/ui`.
 
-**Styling: Tailwind v4 + basalt-ui tokens only.** basalt-ui 1.x is a Mantine/React framework; both apps consume only its `--vx-*` token layer and stay on Tailwind. Never import `basalt-ui/css` (dropped in 1.0) or `basalt-ui/styles.css` (needs Mantine). Both apps declare `"basalt": { "profile": "tokens-only" }` — without it `check-theme` reports 18 Mantine-only kinds (e.g. "use `TextInput` from `@mantine/core`") against apps that have no React chrome.
+**Styling: Tailwind v4 + basalt-ui tokens only.** basalt-ui 2.x is a Mantine/React framework; both apps consume only its `--vx-*` token layer, via the `basalt-ui tokens:css` committed emit, and stay on Tailwind. Never import `basalt-ui/css` (dropped in 1.0), `basalt-ui/tokens.css` (dropped in 2.0) or `basalt-ui/styles.css` (needs Mantine). Both apps declare `"basalt": { "profile": "tokens-only" }` — without it `check-theme` reports 16 Mantine-only kinds (e.g. "use `TextInput` from `@mantine/core`") against apps that have no React chrome.
 
-| App              | Route                                                                                  | Wiring                         |
-| ---------------- | -------------------------------------------------------------------------------------- | ------------------------------ |
-| `apps/dashboard` | `@import 'basalt-ui/tokens.css'` (runtime dep, Vite resolves it)                       | `src/styles/global.css`        |
-| `apps/marketing` | committed emit — `bun run --filter @rollhook/marketing tokens` (devDep, nothing ships) | `src/styles/basalt-tokens.css` |
+| App              | Route                                                                                    | Wiring                         |
+| ---------------- | ---------------------------------------------------------------------------------------- | ------------------------------ |
+| `apps/dashboard` | committed emit — `bun run --filter @rollhook/dashboard tokens` (devDep, build-time only) | `src/styles/basalt-tokens.css` |
+| `apps/marketing` | committed emit — `bun run --filter @rollhook/marketing tokens` (devDep, nothing ships)   | `src/styles/basalt-tokens.css` |
 
-Each `global.css` maps `--vx-*` onto Tailwind's `@theme inline` namespaces (`--color-*`, `--radius-*`, `--font-*`); use those utilities, not raw hex. Both apps are `<html class="dark">` and dark-only. The marketing emit uses `--selector-class dark` (`:root, :root.dark`); the dashboard's prebuilt subpath can't take that flag and relies on the emitter's default of parking dark on bare `:root`.
+Each `global.css` maps `--vx-*` onto Tailwind's `@theme inline` namespaces (`--color-*`, `--radius-*`, `--font-*`); use those utilities, not raw hex. Both apps are `<html class="dark">` and dark-only. Both emits use `--selector-class dark --only core --no-legacy-aliases` (`:root, :root.dark`).
 
-**CI gate: `bun run check:basalt`** — `tokens:css --check` (the committed emit must match what the pinned CLI emits) + `check-theme` and `check-theme --audit-allows` in both apps. Bump `basalt-ui` and re-run `bun run --filter @rollhook/marketing tokens` in the same commit.
+**CI gate: `bun run check:basalt`** — `tokens:css --check` in both apps (the committed emit must match what the pinned CLI emits) + `check-theme` and `check-theme --audit-allows` in both apps. Bump `basalt-ui` and re-run `bun run --filter '*' tokens` in the same commit.
 
-**Fonts stay ours.** RollHook is Instrument Sans + JetBrains Mono (`@fontsource-variable` in the dashboard, `astro:fonts` in `astro.config.mjs`). basalt-ui 1.x ships Nunito Sans + Hubot Sans, so `basalt-ui fonts:css` would rebrand both apps — do not adopt it.
+**Fonts stay ours.** RollHook is Instrument Sans + JetBrains Mono (`@fontsource-variable` in the dashboard, `astro:fonts` in `astro.config.mjs`). basalt-ui 2.x ships Nunito Sans + Hubot Sans, so `basalt-ui fonts:css` would rebrand both apps — do not adopt it.
 
 `apps/marketing/src/styles/basalt-tokens.css` is no longer eslint-ignored: 1.21.0's emitter writes `0.1` rather than `0.10`, so the sheet lints clean. `public/site.webmanifest`'s `theme_color`/`background_color` must be kept equal to `--vx-surface-bg` dark (`#27272a`) by hand; the file declares its own exception with a `"basalt:theme-allow-file"` member on line 2 — no `basalt.exemptRules` anywhere. `check-theme --audit-allows` proves every waiver still suppresses something and exits 1 when one does not.
 
