@@ -98,18 +98,26 @@ Sized from the probe (Appendix B): 0 tsc errors in either app, `check:theme`/`sy
 - Wave 3 note: `bun.lock` gained Mantine 9.7.2 peer entries from basalt-ui 2.x; nothing imports them.
 - **basalt friction:** Appendix C #1 (the `tokens.css` removal is invisible to `doctor`/`check-theme`/`sync --check`, only `vite build` fails) reproduced as written on the 1.36 → 2.8.0 bump; no new rows. Filing as `rollhook W2` is the orchestrator's.
 
-## Wave 3 — Visual check against the baseline (before any release) <!-- status: active -->
+## Wave 3 — Visual check against the baseline (before any release) <!-- status: done -->
 
-- [ ] Rebuild both apps on the merged bump; capture the Wave 1 screenshot matrix and the computed-value
+- [x] Rebuild both apps on the merged bump; capture the Wave 1 screenshot matrix and the computed-value
       list; diff pixel-wise / by value.
-- [ ] Expected deltas: marketing `--vx-faint` light-scheme `#737376 → #69696c` (not rendered in a
+- [x] Expected deltas: marketing `--vx-faint` light-scheme `#737376 → #69696c` (not rendered in a
       dark-only site) — everything else must be identical. Any other delta is either explained against
       MIGRATING.md or becomes a fix PR / friction row.
-- [ ] Check the `.recharts-text…` override and `DeployChart` still read correctly (recharts is out of
+- [x] Check the `.recharts-text…` override and `DeployChart` still read correctly (recharts is out of
       scope, its token inputs are not).
-- [ ] Bundle bytes vs baseline (dashboard CSS/JS gzip, marketing). Write `evidence/w3.md`; PR → `/review` → merge.
+- [x] Bundle bytes vs baseline (dashboard CSS/JS gzip, marketing). Write `evidence/w3.md`; PR → `/review` → merge.
 
-## Wave 4 — Live verify <!-- status: pending -->
+**Left behind:** full detail in `evidence/w3.md`.
+- No unexpected delta: 11/12 screenshots pixel-identical, the 12th (`dash-list-390`) differs by 1 flaky pixel; 381 + 249 element computed values identical; all 109 referenced `--vx-*` names present and equal.
+- Dashboard CSS 9,916 → 8,746 B gz (−1,170); JS and all marketing bytes identical. Dashboard `vars` 249 → 109 = dropped legacy aliases, none referenced.
+- Recharts tick text still resolves (`--vx-axis`); chart renders.
+- Captured via headless Chrome 155 + `puppeteer-core` (chrome-devtools MCP unreachable); baseline 390px shots are really 500px wide (Chrome min width).
+- Wave 4 starts from the merged Wave 3; marketing already deployed with Wave 2 (D3), the dashboard still needs Make Release.
+- **basalt friction:** none new; Appendix C #1 stays open as ledger row 74, not worked around.
+
+## Wave 4 — Live verify <!-- status: active -->
 
 - [ ] Marketing: confirm the `deploy-marketing.yml` run from Wave 2 succeeded; load `rollhook.com`, compare
       against the baseline screenshots.
