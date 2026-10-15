@@ -86,13 +86,13 @@ services:
 | `apps/dashboard` | committed emit — `bun run --filter @rollhook/dashboard tokens` (devDep, build-time only) | `src/styles/basalt-tokens.css` |
 | `apps/marketing` | committed emit — `bun run --filter @rollhook/marketing tokens` (devDep, nothing ships)   | `src/styles/basalt-tokens.css` |
 
-Each `global.css` maps `--vx-*` onto Tailwind's `@theme inline` namespaces (`--color-*`, `--radius-*`, `--font-*`); use those utilities, not raw hex. Both apps are `<html class="dark">` and dark-only. Both emits use `--selector-class dark --only core --no-legacy-aliases` (`:root, :root.dark`).
+Each `global.css` maps `--vx-*` onto Tailwind's `@theme inline` namespaces (`--color-*`, `--radius-*`, `--font-*`); use those utilities (`text-muted-foreground`, `bg-status-success`, `border-border` …; the full vocabulary is that `@theme` block), not raw hex. Both apps are `<html class="dark">` and dark-only. Both emits use `--selector-class dark --only core --no-legacy-aliases` (`:root, :root.dark`).
 
 **CI gate: `bun run check:basalt`** — `tokens:css --check` in both apps (the committed emit must match what the pinned CLI emits) + `check-theme` and `check-theme --audit-allows` in both apps. Bump `basalt-ui` and re-run `bun run --filter '*' tokens` in the same commit.
 
 **Fonts stay ours.** RollHook is Instrument Sans + JetBrains Mono (`@fontsource-variable` in the dashboard, `astro:fonts` in `astro.config.mjs`). basalt-ui 2.x ships Nunito Sans + Hubot Sans, so `basalt-ui fonts:css` would rebrand both apps — do not adopt it.
 
-`apps/marketing/src/styles/basalt-tokens.css` is no longer eslint-ignored: 1.21.0's emitter writes `0.1` rather than `0.10`, so the sheet lints clean. `public/site.webmanifest`'s `theme_color`/`background_color` must be kept equal to `--vx-surface-bg` dark (`#27272a`) by hand; the file declares its own exception with a `"basalt:theme-allow-file"` member on line 2 — no `basalt.exemptRules` anywhere. `check-theme --audit-allows` proves every waiver still suppresses something and exits 1 when one does not.
+`apps/marketing/src/styles/basalt-tokens.css` is not eslint-ignored: the emitter writes `0.1` rather than `0.10`, so the sheet lints clean. `public/site.webmanifest`'s `theme_color`/`background_color` must be kept equal to `--vx-surface-bg` dark (`#27272a`) by hand; the file declares its own exception with a `"basalt:theme-allow-file"` member on line 2 — no `basalt.exemptRules` anywhere. `check-theme --audit-allows` proves every waiver still suppresses something and exits 1 when one does not.
 
 ---
 

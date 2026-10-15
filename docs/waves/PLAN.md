@@ -135,14 +135,18 @@ Sized from the probe (Appendix B): 0 tsc errors in either app, `check:theme`/`sy
 - OTel has no trace spans for `rollhook`, logs only; pre-existing.
 - **basalt friction:** none new.
 
-## Wave 5 — Fresh-agent DX trial <!-- status: active -->
+## Wave 5 — Fresh-agent DX trial <!-- status: done -->
 
-- [ ] A fresh agent (no migration context) adds a new dashboard view (e.g. a deploy-history panel) styled
-      only with basalt tokens + Tailwind, and a new marketing section, following `AGENTS.md` alone.
-- [ ] It runs `make check`; record every basalt-rooted wrong turn (stale AGENTS.md text, token name
-      guesses, `check-theme` messages) as a `rollhook W5` row in basalt-ui `argo-friction.md`.
-- [ ] Fix rollhook-side doc drift in `AGENTS.md`; do not merge the trial feature. PR for doc fixes →
-      `/review` → merge; `evidence/w5.md`.
+- [x] First, the Wave 4 fix as its own PR (#43): API token configured synchronously before any child fetches, regression test, `/review`, merged, released v1.20.1, deployed; live first load after login shows zero 401s.
+- [x] A fresh agent (no migration context, neutral brief) added a dashboard deploy-history panel and a marketing section, following `AGENTS.md` alone.
+- [x] It ran `make check` (green); no basalt-rooted wrong turn, so no `rollhook W5` row.
+- [x] Rollhook-side doc drift fixed in `AGENTS.md`; the trial feature is not merged (local branch `trial/deploy-history`). `evidence/w5.md`.
+
+**Left behind:** full detail in `evidence/w5.md`.
+- v1.20.1 live; the empty-`Bearer` 401 is fixed (3× `/jobs` 200 on a real login), `bun run test:unit` is now in `make check` and CI.
+- DX trial: the agent styled only with the `@theme inline` utilities, hit no `check-theme` message and no stale basalt text; `AGENTS.md` now names the utility vocabulary's source. The trial branch is unpushed and unmerged.
+- Not fixed: marketing "Coming Soon" still lists the dashboard as coming soon; the review's non-blocking suggestions (storage try/catch, CI job timeout) were not taken.
+- **basalt friction (prefix rollhook W5):** none.
 
 ---
 
