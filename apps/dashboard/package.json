@@ -11,7 +11,7 @@
     "build": "vite build",
     "test": "bun test",
     "typecheck": "tsc --noEmit",
-    "tokens": "basalt-ui tokens:css --selector-class dark --only core --no-legacy-aliases --out src/styles/basalt-tokens.css",
+    "tokens": "basalt-ui tokens:css --selector-class dark --only core --out src/styles/basalt-tokens.css",
     "tokens:check": "bun run tokens --check",
     "check:theme": "basalt-ui check-theme && basalt-ui check-theme --audit-allows",
     "check:sync": "basalt-ui sync --check",
@@ -30,7 +30,7 @@
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "@vitejs/plugin-react": "5.2.0",
-    "basalt-ui": "2.8.0",
+    "basalt-ui": "2.9.0",
     "orval": "8.33.0",
     "tailwindcss": "4.3.3",
     "vite": "7.3.1"
