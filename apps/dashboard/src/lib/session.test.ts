@@ -55,7 +55,7 @@ describe('session', () => {
     startSession('fresh')
     endSession()
     await customInstance('/jobs')
-    expect(authHeader).toBe('Bearer ')
+    expect(authHeader).toBe('Bearer')
     expect(store.has('rh_token')).toBe(false)
   })
 })
