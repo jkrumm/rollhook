@@ -10,6 +10,8 @@ build/vet/test/golangci-lint, OpenAPI drift); `/review` clean on the diff; the w
 (open, `/review`, fix, merge) — never direct-to-master. The E2E suite (`bun run test:e2e`, ~12 min, not
 in `make check`) runs once, in the bump wave.
 
+**Target:** `basalt-ui@2.8.0` (released 2026-10-15; carries the fleet-probe fixes, ledger rows 61–67). Where this plan pins 2.7.3, pin 2.8.0; claims verified on 2.7.3 stay valid.
+
 **Fleet note:** feeds basalt-ui `docs/waves/argo-friction.md`: a basalt-rooted problem becomes a row
 there, prefixed `rollhook W<n>`; never worked around locally; stay exact-pinned on the 1.x pin until
 Wave 2 runs.
@@ -44,7 +46,7 @@ re-emitted tokens (checked in Wave 3 by the visual diff).
 
 ---
 
-## Wave 1 — Baseline evidence on 1.36.0 <!-- status: pending -->
+## Wave 1 — Baseline evidence on 1.36.0 <!-- status: active -->
 
 - [ ] Read `node_modules/basalt-ui/MIGRATING.md` for **every version 1.36 → 2.7.3** (§ 1.36.1 … § 1.41.0,
       § 2.0.0 – § 2.7.3 and the "What changed, by surface" index), not just § 2.0.0 — rollhook once sat on a
