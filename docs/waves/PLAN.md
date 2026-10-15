@@ -117,18 +117,25 @@ Sized from the probe (Appendix B): 0 tsc errors in either app, `check:theme`/`sy
 - Wave 4 starts from the merged Wave 3; marketing already deployed with Wave 2 (D3), the dashboard still needs Make Release.
 - **basalt friction:** none new; Appendix C #1 stays open as ledger row 74, not worked around.
 
-## Wave 4 — Live verify <!-- status: active -->
+## Wave 4 — Live verify <!-- status: done -->
 
-- [ ] Marketing: confirm the `deploy-marketing.yml` run from Wave 2 succeeded; load `rollhook.com`, compare
+- [x] Marketing: confirm the `deploy-marketing.yml` run from Wave 2 succeeded; load `rollhook.com`, compare
       against the baseline screenshots.
-- [ ] Dashboard: run **Make Release** (`release.yml`, `workflow_dispatch`), then `make rollhook-update` in
+- [x] Dashboard: run **Make Release** (`release.yml`, `workflow_dispatch`), then `make rollhook-update` in
       `~/SourceRoot/vps`. Rollback = previous immutable tag (`AGENTS.md` § Deploy).
-- [ ] `make verify` (`/ready` → `"docker":"ok"`); open the live dashboard with the real token, screenshot
+- [x] `make verify` (`/ready` → `"docker":"ok"`); open the live dashboard with the real token, screenshot
       job list + log view; `make logs` shows no startup errors; OTel `service.name = rollhook` still
       reporting.
-- [ ] `evidence/w4.md`; if verification fails, the next PR fixes forward. Merge the evidence PR.
+- [x] `evidence/w4.md`; if verification fails, the next PR fixes forward. Merge the evidence PR.
 
-## Wave 5 — Fresh-agent DX trial <!-- status: pending -->
+**Left behind:** full detail in `evidence/w4.md`.
+- Released `v1.20.0` (Make Release run 38703761186), deployed with `ssh vps 'cd ~/vps && make rollhook-update ENV=prod'` (from the mini it needs `ENV=prod` and fails on the secrets cache). Previous tag `v1.19.1` was the rollback target; not needed.
+- Live: `/health` `v1.20.0`, `/ready` `"docker":"ok"`, startup logs clean, OTel `rollhook` logging, webhook deploy path proven by two real jobs through the new server. `rollhook.com` is byte-identical to the Wave 3 capture; the live dashboard (real token) renders list, chart and log view correctly.
+- Rollhook-side finding, unfixed: first dashboard load after login sends `Bearer ` with an empty token (`App.tsx` `configureApi` runs in a parent effect after the child's first fetch), one 401 and a few seconds of "Failed to load jobs" until polling recovers. Predates the migration.
+- OTel has no trace spans for `rollhook`, logs only; pre-existing.
+- **basalt friction:** none new.
+
+## Wave 5 — Fresh-agent DX trial <!-- status: active -->
 
 - [ ] A fresh agent (no migration context) adds a new dashboard view (e.g. a deploy-history panel) styled
       only with basalt tokens + Tailwind, and a new marketing section, following `AGENTS.md` alone.
