@@ -1,5 +1,5 @@
 /* @generated basalt-ui — do not edit; regenerate with the command on the next line */
-/* basalt-ui 2.9.0 — `basalt-ui tokens:css --selector-class dark --only core --out src/styles/basalt-tokens.css` */
+/* basalt-ui 2.11.1 — `basalt-ui tokens:css --selector-class dark --only core --out src/styles/basalt-tokens.css` */
 :root {
   --vx-radius-card: 7px;
   --vx-radius-ctrl: 6px;
@@ -62,9 +62,9 @@
   --vx-good-soft: color-mix(in srgb, var(--vx-good-solid) 8%, transparent);
   --vx-bad: color-mix(in srgb, var(--vx-bad-solid) 18%, transparent);
   --vx-warn: color-mix(in srgb, var(--vx-warn-solid) 8%, transparent);
-  --vx-good-ref: color-mix(in srgb, var(--vx-good-solid) 30%, transparent);
-  --vx-bad-ref: color-mix(in srgb, var(--vx-bad-solid) 30%, transparent);
-  --vx-warn-ref: color-mix(in srgb, var(--vx-warn-solid) 20%, transparent);
+  --vx-good-ref: color-mix(in srgb, var(--vx-good-solid) 60%, transparent);
+  --vx-bad-ref: color-mix(in srgb, var(--vx-bad-solid) 60%, transparent);
+  --vx-warn-ref: color-mix(in srgb, var(--vx-warn-solid) 60%, transparent);
 }
 @media (pointer: coarse) {
   :root {
