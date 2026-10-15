@@ -69,7 +69,7 @@ re-emitted tokens (checked in Wave 3 by the visual diff).
 - Wave 2 pins **2.8.0** (Target line). MIGRATING was read from the 2.8.0 tarball; Appendix A confirmed unchanged.
 - **basalt friction** (orchestrator files as `rollhook W1` in `argo-friction.md`): `--vx-faint` light `#737376 → #69696c` has no MIGRATING row 1.36.1 → 2.8.0 (Appendix C #2, confirmed). Appendix C #1 is fixed in 2.8.0.
 
-## Wave 2 — Atomic bump to 2.8.0 <!-- status: active -->
+## Wave 2 — Atomic bump to 2.8.0 <!-- status: done -->
 
 > The Target line above overrides every `2.7.3` written below: pin 2.8.0.
 
@@ -77,20 +77,28 @@ Sized from the probe (Appendix B): 0 tsc errors in either app, `check:theme`/`sy
 0 errors — the only failures are the **dashboard build** (missing `./tokens.css` specifier) and
 `tokens:check` drift. Two files of real change.
 
-- [ ] Pin `basalt-ui` to exactly `2.7.3` in `apps/dashboard/package.json` and `apps/marketing/package.json`;
+- [x] Pin `basalt-ui` to exactly `2.7.3` in `apps/dashboard/package.json` and `apps/marketing/package.json`;
       `bun install`; `basalt-ui sync` in each app (expected: no-op, tokens-only has no scaffold).
-- [ ] Dashboard (D1): add `tokens` / `tokens:check` scripts, emit `src/styles/basalt-tokens.css`, swap the
+- [x] Dashboard (D1): add `tokens` / `tokens:check` scripts, emit `src/styles/basalt-tokens.css`, swap the
       `@import`, rewrite the stale caveat comment in `global.css`. Marketing: `bun run
       --filter @rollhook/marketing tokens`. Extend `check:basalt` to run the dashboard `tokens:check`.
-- [ ] Update `AGENTS.md` in the same commit: "basalt-ui 1.x" → 2.x wording, the Styling table's dashboard
+- [x] Update `AGENTS.md` in the same commit: "basalt-ui 1.x" → 2.x wording, the Styling table's dashboard
       row (`basalt-ui/tokens.css` → committed emit), "`--selector-class` not reachable" sentence, the
       "Never import `basalt-ui/css`/`styles.css`" line (add `basalt-ui/tokens.css`), the `18`→`16`
       Mantine-only kinds figure, "basalt-ui 1.x ships Nunito Sans + Hubot Sans" → still true on 2.x,
       re-verify.
-- [ ] `make check` + `bun run test:e2e` green. PR → `/review` → merge.
-- [ ] Friction rows filed for any basalt-rooted surprise (candidates in Appendix C), prefixed `rollhook W2`.
+- [x] `make check` + `bun run test:e2e` green. PR → `/review` → merge.
+- [x] Friction rows filed for any basalt-rooted surprise (candidates in Appendix C), prefixed `rollhook W2`.
 
-## Wave 3 — Visual check against the baseline (before any release) <!-- status: pending -->
+**Left behind:** full detail in `evidence/w2.md`.
+- Pinned `basalt-ui` 2.8.0 exactly in both apps (dashboard moved to devDependencies); dashboard now uses a committed `basalt-tokens.css` emit, byte-identical to marketing's. `check:basalt` runs `tokens:check` in every app. `AGENTS.md` updated in the same commit.
+- `make check` green; `bun run test:e2e` 89/89 green. Dashboard build: CSS 30.28 kB (8.78 kB gz), JS 669.53 kB (204.84 kB gz); marketing builds.
+- `--vx-faint` light `#737376 → #69696c` confirmed in the emit; dark `#a1a1a4` unchanged; light is not rendered (dark-only). Filed upstream (ledger row 70).
+- Merging deploys marketing (`deploy-marketing.yml`, D3); the dashboard ships only via Make Release (Wave 4).
+- Wave 3 note: `bun.lock` gained Mantine 9.7.2 peer entries from basalt-ui 2.x; nothing imports them.
+- **basalt friction:** Appendix C #1 (the `tokens.css` removal is invisible to `doctor`/`check-theme`/`sync --check`, only `vite build` fails) reproduced as written on the 1.36 → 2.8.0 bump; no new rows. Filing as `rollhook W2` is the orchestrator's.
+
+## Wave 3 — Visual check against the baseline (before any release) <!-- status: active -->
 
 - [ ] Rebuild both apps on the merged bump; capture the Wave 1 screenshot matrix and the computed-value
       list; diff pixel-wise / by value.
