@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { customInstance } from '../api/client'
-import { endSession, restoreSession, startSession } from './session'
+import { endSession, restoreSession, startDemoSession, startSession } from './session'
 
 const store = new Map<string, string>()
 const originalFetch = globalThis.fetch
+const originalStorage = globalThis.sessionStorage
 let authHeader = ''
 
 beforeEach(() => {
@@ -16,7 +17,7 @@ beforeEach(() => {
       removeItem: (k: string) => void store.delete(k),
     },
     fetch: async (_url: string, init: RequestInit) => {
-      authHeader = (init.headers as Record<string, string>).Authorization
+      authHeader = new Headers(init.headers).get('Authorization') ?? ''
       return Response.json([])
     },
   })
@@ -25,6 +26,7 @@ beforeEach(() => {
 
 afterEach(() => {
   globalThis.fetch = originalFetch
+  Object.assign(globalThis, { sessionStorage: originalStorage })
 })
 
 describe('session', () => {
@@ -40,6 +42,13 @@ describe('session', () => {
     await customInstance('/jobs')
     expect(authHeader).toBe('Bearer fresh')
     expect(store.get('rh_token')).toBe('fresh')
+  })
+
+  test('startDemoSession configures the client without touching storage', async () => {
+    expect(startDemoSession()).toBe('demo')
+    await customInstance('/jobs')
+    expect(authHeader).toBe('Bearer demo')
+    expect(store.size).toBe(0)
   })
 
   test('endSession clears client and storage', async () => {
