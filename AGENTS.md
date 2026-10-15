@@ -86,7 +86,7 @@ services:
 | `apps/dashboard` | committed emit — `bun run --filter @rollhook/dashboard tokens` (devDep, build-time only) | `src/styles/basalt-tokens.css` |
 | `apps/marketing` | committed emit — `bun run --filter @rollhook/marketing tokens` (devDep, nothing ships)   | `src/styles/basalt-tokens.css` |
 
-Each `global.css` maps `--vx-*` onto Tailwind's `@theme inline` namespaces (`--color-*`, `--radius-*`, `--font-*`); use those utilities (`text-muted-foreground`, `bg-status-success`, `border-border` …; the full vocabulary is that `@theme` block), not raw hex. Both apps are `<html class="dark">` and dark-only. Both emits use `--selector-class dark --only core --no-legacy-aliases` (`:root, :root.dark`).
+Each `global.css` maps `--vx-*` onto Tailwind's `@theme inline` namespaces (`--color-*`, `--radius-*`, `--font-*`); use those utilities (`text-muted-foreground`, `bg-status-success`, `border-border` …; the full vocabulary is that `@theme` block), not raw hex. Both apps are `<html class="dark">` and dark-only. Both emits use `--selector-class dark --only core` (`:root, :root.dark`).
 
 **CI gate: `bun run check:basalt`** — `tokens:css --check` in both apps (the committed emit must match what the pinned CLI emits) + `check-theme` and `check-theme --audit-allows` in both apps. Bump `basalt-ui` and re-run `bun run --filter '*' tokens` in the same commit.
 
