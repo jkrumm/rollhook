@@ -1,11 +1,11 @@
 /* @generated basalt-ui — do not edit; regenerate with the command on the next line */
-/* basalt-ui 2.11.1 — `basalt-ui tokens:css --selector-class dark --only core --out src/styles/basalt-tokens.css` */
+/* basalt-ui 2.28.0 — `basalt-ui tokens:css --selector-class dark --only core --out src/styles/basalt-tokens.css` */
 :root {
-  --vx-radius-card: 7px;
+  --vx-radius-card: 10px;
   --vx-radius-ctrl: 6px;
   --vx-radius-tight: 5px;
   --vx-radius-fine: 4px;
-  --vx-radius-floating: 8px;
+  --vx-radius-floating: 11px;
   --vx-radius-pill: 9999px;
   --vx-hit: 24px;
   --vx-space-row-inset-x: 10px;
@@ -15,6 +15,7 @@
   --vx-space-control-height-tag: 1.25rem;
   --vx-space-control-height-widget: 1.5rem;
   --vx-space-control-height-ctl: 2rem;
+  --vx-space-control-height-dense: 1.75rem;
   --vx-space-stack-xs: 4px;
   --vx-space-stack-sm: 8px;
   --vx-space-stack-md: 12px;
@@ -47,13 +48,13 @@
   --vx-fill-hover-orange: color-mix(in srgb, var(--vx-fill-orange) 88%, #000);
   --vx-text-nano: 10px;
   --vx-text-micro: 11px;
-  --vx-text-xs: 12.5px;
-  --vx-text-sm: 13.5px;
+  --vx-text-xs: 12px;
+  --vx-text-sm: 13px;
   --vx-text-md: 15px;
   --vx-text-lg: 16px;
   --vx-text-xl: 18px;
   --vx-text-h2: 21px;
-  --vx-text-kpi: 24px;
+  --vx-text-kpi: 22px;
   --vx-text-h1: 26px;
   --vx-text-display: 30px;
   --vx-area-top: 22%;
@@ -71,20 +72,29 @@
     --vx-hit: 44px;
   }
 }
+@media (pointer: fine) {
+  [data-basalt-dense] {
+    --vx-space-control-height-ctl: var(--vx-space-control-height-dense);
+    --button-height-ctl: calc(var(--vx-space-control-height-dense) * var(--mantine-scale));
+    --input-height-ctl: calc(var(--vx-space-control-height-dense) * var(--mantine-scale));
+    --ai-size-ctl: calc(var(--vx-space-control-height-dense) * var(--mantine-scale));
+    --badge-height-ctl: calc(var(--vx-space-control-height-dense) * var(--mantine-scale));
+  }
+}
 :root,
 :root.dark {
   --vx-status-excellent: #43bf4d;
   --vx-status-good: #52c07c;
   --vx-status-warn: #e6a53d;
-  --vx-status-bad: #e06761;
+  --vx-status-bad: #fe8178;
   --vx-status-neutral: #a1a1aa;
   --vx-good-solid: #52c07c;
-  --vx-bad-solid: #e06761;
+  --vx-bad-solid: #fe8178;
   --vx-warn-solid: #e6a53d;
   --vx-neutral: #d4d4d8;
   --vx-line: #e4e4e7;
   --vx-line2: #a1a1aa;
-  --vx-axis: rgba(255, 255, 255, 0.6);
+  --vx-axis: #a7a7aa;
   --vx-axis-stroke: rgba(255, 255, 255, 0.12);
   --vx-grid: rgba(255, 255, 255, 0.06);
   --vx-crosshair: rgba(255, 255, 255, 0.42);
@@ -98,11 +108,11 @@
   --vx-ink: #e5e5e9;
   --vx-ink2: #dddde1;
   --vx-muted: #d4d4d8;
-  --vx-faint: #a1a1a4;
+  --vx-faint: #a7a7aa;
   --vx-accent: #a2c3f0;
   --vx-accent-hover: #65a2e3;
   --vx-accent-fill: #4374a6;
-  --vx-accent-fill-hover: #3c6895;
+  --vx-accent-fill-hover: #2d5b88;
   --vx-on-accent: #ffffff;
   --vx-divider: rgba(255, 255, 255, 0.08);
   --vx-shadow-card: 0 1px 3px rgba(0, 0, 0, 0.4), inset 0 0 0 1px color-mix(in srgb, #ffffff 4%, transparent);
@@ -112,6 +122,8 @@
   --vx-surface-bg: #27272a;
   --vx-surface-panel: #2b2b2e;
   --vx-surface-panel-hover: #38383b;
+  --vx-surface-row-hover: #38383b;
+  --vx-surface-row-selected: #3c3c3f;
   --vx-surface-elevated: #38383b;
   --vx-surface-subtle: #323235;
   --vx-surface-overlay: color-mix(in srgb, #3f3f46 50%, #27272a);
@@ -121,17 +133,17 @@
 }
 :root.light {
   --vx-status-excellent: #29a634;
-  --vx-status-good: #327a4d;
-  --vx-status-warn: #b07808;
+  --vx-status-good: #2f774b;
+  --vx-status-warn: #935f00;
   --vx-status-bad: #b5403d;
   --vx-status-neutral: #71717a;
-  --vx-good-solid: #327a4d;
+  --vx-good-solid: #2f774b;
   --vx-bad-solid: #b5403d;
-  --vx-warn-solid: #b07808;
+  --vx-warn-solid: #935f00;
   --vx-neutral: #525255;
   --vx-line: #52525c;
   --vx-line2: #71717a;
-  --vx-axis: rgba(38, 38, 41, 0.6);
+  --vx-axis: #69696c;
   --vx-axis-stroke: rgba(38, 38, 41, 0.12);
   --vx-grid: rgba(38, 38, 41, 0.07);
   --vx-crosshair: rgba(38, 38, 41, 0.32);
@@ -147,9 +159,9 @@
   --vx-muted: #525255;
   --vx-faint: #69696c;
   --vx-accent: #4374a6;
-  --vx-accent-hover: #3c6895;
+  --vx-accent-hover: #2d5b88;
   --vx-accent-fill: #4374a6;
-  --vx-accent-fill-hover: #3c6895;
+  --vx-accent-fill-hover: #2d5b88;
   --vx-on-accent: #ffffff;
   --vx-divider: rgba(38, 38, 41, 0.09);
   --vx-shadow-card: 0 1px 2px rgba(28, 25, 23, 0.05), 0 0 0 1px var(--vx-surface-hairline);
@@ -159,6 +171,8 @@
   --vx-surface-bg: #f2f2f5;
   --vx-surface-panel: #fafafd;
   --vx-surface-panel-hover: #ffffff;
+  --vx-surface-row-hover: #efeff2;
+  --vx-surface-row-selected: #eaeaed;
   --vx-surface-elevated: #ffffff;
   --vx-surface-subtle: #f4f4f8;
   --vx-surface-overlay: #ffffff;
