@@ -10,13 +10,10 @@ const E2E_DIR = join(ROOT, 'e2e')
 const HELLO_WORLD_DIR = join(E2E_DIR, 'hello-world')
 
 function composeE2E(args: string, extraEnv?: Record<string, string>): void {
-  execSync(
-    `docker compose -f ${E2E_DIR}/compose.e2e.yml --project-name rollhook-e2e ${args}`,
-    {
-      stdio: 'inherit',
-      env: { ...process.env, PROJECT_ROOT: ROOT, ROLLHOOK_SECRET, ...extraEnv },
-    },
-  )
+  execSync(`docker compose -f ${E2E_DIR}/compose.e2e.yml --project-name rollhook-e2e ${args}`, {
+    stdio: 'inherit',
+    env: { ...process.env, PROJECT_ROOT: ROOT, ROLLHOOK_SECRET, ...extraEnv },
+  })
 }
 
 export async function setup(): Promise<void> {
@@ -28,10 +25,9 @@ export async function setup(): Promise<void> {
 
   // Build the RollHook Docker image from the monorepo root so E2E runs the real container
   // Dockerfile lives at the repo root
-  execSync(
-    `docker build -t rollhook-e2e-server:latest -f ${ROOT}/Dockerfile ${ROOT}`,
-    { stdio: 'inherit' },
-  )
+  execSync(`docker build -t rollhook-e2e-server:latest -f ${ROOT}/Dockerfile ${ROOT}`, {
+    stdio: 'inherit',
+  })
 
   // Start infrastructure (Traefik) and RollHook container (with embedded Zot registry)
   composeE2E('up -d')
@@ -72,7 +68,9 @@ export async function setup(): Promise<void> {
   execSync(`docker push ${REGISTRY_HOST}/rollhook-e2e-hello:v1`, { stdio: 'inherit' })
   execSync(`docker tag rollhook-e2e-hello:v2 ${REGISTRY_HOST}/rollhook-e2e-hello:v2`)
   execSync(`docker push ${REGISTRY_HOST}/rollhook-e2e-hello:v2`, { stdio: 'inherit' })
-  execSync(`docker tag rollhook-e2e-hello:v-unhealthy ${REGISTRY_HOST}/rollhook-e2e-hello:v-unhealthy`)
+  execSync(
+    `docker tag rollhook-e2e-hello:v-unhealthy ${REGISTRY_HOST}/rollhook-e2e-hello:v-unhealthy`,
+  )
   execSync(`docker push ${REGISTRY_HOST}/rollhook-e2e-hello:v-unhealthy`, { stdio: 'inherit' })
 
   // Start hello-world app at v1
@@ -95,8 +93,7 @@ export async function teardown(): Promise<void> {
       cwd: ROOT,
       env: { ...process.env, ROLLHOOK_SECRET },
     })
-  }
-  catch (err) {
+  } catch (err) {
     console.warn('demo export failed (non-fatal):', err)
   }
   execSync(`docker compose --project-directory ${HELLO_WORLD_DIR} down -v`, {
@@ -110,11 +107,9 @@ async function waitForUrl(url: string, timeoutMs: number): Promise<void> {
   while (Date.now() < deadline) {
     try {
       const res = await fetch(url)
-      if (res.ok)
-        return
-    }
-    catch {}
-    await new Promise(resolve => setTimeout(resolve, 500))
+      if (res.ok) return
+    } catch {}
+    await new Promise((resolve) => setTimeout(resolve, 500))
   }
   throw new Error(`Service did not become ready within ${timeoutMs}ms: ${url}`)
 }

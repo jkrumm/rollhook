@@ -1,6 +1,15 @@
 import type { JobResult } from '../setup/fixtures.ts'
 import { beforeAll, describe, expect, it } from 'vitest'
-import { adminHeaders, APP_NAME, BASE_URL, getContainerCount, pollJobUntilDone, REGISTRY_HOST, TRAEFIK_URL, webhookHeaders } from '../setup/fixtures.ts'
+import {
+  adminHeaders,
+  APP_NAME,
+  BASE_URL,
+  getContainerCount,
+  pollJobUntilDone,
+  REGISTRY_HOST,
+  TRAEFIK_URL,
+  webhookHeaders,
+} from '../setup/fixtures.ts'
 
 const IMAGE_V1 = `${REGISTRY_HOST}/rollhook-e2e-hello:v1`
 const NONEXISTENT_IMAGE = `${REGISTRY_HOST}/rollhook-e2e-hello:no-such-tag`
@@ -17,7 +26,7 @@ beforeAll(async () => {
     body: JSON.stringify({ image_tag: IMAGE_V1 }),
   })
   expect(res.status).toBe(200)
-  const body = await res.json() as { job_id: string, app: string, status: string }
+  const body = (await res.json()) as { job_id: string; app: string; status: string }
   jobId = body.job_id
   completedJob = await pollJobUntilDone(jobId)
 })
@@ -35,7 +44,7 @@ describe('deploy API', () => {
   it('completed job is retrievable via GET /jobs/:id', async () => {
     const res = await fetch(`${BASE_URL}/jobs/${jobId}`, { headers: adminHeaders() })
     expect(res.status).toBe(200)
-    const detail = await res.json() as Record<string, unknown>
+    const detail = (await res.json()) as Record<string, unknown>
     expect(detail.id).toBe(jobId)
     expect(detail.status).toBe('success')
     expect(detail.app).toBe(APP_NAME)
@@ -43,7 +52,7 @@ describe('deploy API', () => {
 
   it('successful deploy job has compose_path and service populated', async () => {
     const res = await fetch(`${BASE_URL}/jobs/${jobId}`, { headers: adminHeaders() })
-    const job = await res.json() as Record<string, unknown>
+    const job = (await res.json()) as Record<string, unknown>
     expect(typeof job.compose_path).toBe('string')
     expect((job.compose_path as string).endsWith('compose.yml')).toBe(true)
     expect(job.service).toBe('hello-world')
@@ -51,21 +60,21 @@ describe('deploy API', () => {
 
   it('successful deploy response does not include error field', async () => {
     const res = await fetch(`${BASE_URL}/jobs/${jobId}`, { headers: adminHeaders() })
-    const detail = await res.json() as Record<string, unknown>
+    const detail = (await res.json()) as Record<string, unknown>
     // error should be null or absent, not a string
     expect(detail.error == null || detail.error === '').toBe(true)
   })
 
   it('job is visible in app-filtered list', async () => {
     const res = await fetch(`${BASE_URL}/jobs?app=${APP_NAME}`, { headers: adminHeaders() })
-    const jobs = await res.json() as Array<{ id: string }>
-    expect(jobs.some(j => j.id === jobId)).toBe(true)
+    const jobs = (await res.json()) as Array<{ id: string }>
+    expect(jobs.some((j) => j.id === jobId)).toBe(true)
   })
 
   it('job is visible in status-filtered list', async () => {
     const res = await fetch(`${BASE_URL}/jobs?status=success`, { headers: adminHeaders() })
-    const jobs = await res.json() as Array<{ id: string }>
-    expect(jobs.some(j => j.id === jobId)).toBe(true)
+    const jobs = (await res.json()) as Array<{ id: string }>
+    expect(jobs.some((j) => j.id === jobId)).toBe(true)
   })
 
   it('deploy with image matching no running container returns 500', async () => {
@@ -76,13 +85,13 @@ describe('deploy API', () => {
       body: JSON.stringify({ image_tag: `${REGISTRY_HOST}/nonexistent-image:v1` }),
     })
     expect(res.status).toBe(500)
-    const body = await res.json() as { job_id: string, status: string, error: string }
+    const body = (await res.json()) as { job_id: string; status: string; error: string }
     expect(body.status).toBe('failed')
     expect(body.error).toContain('no running container found matching image')
 
     // compose_path and service must be null — discovery never completed
     const jobRes = await fetch(`${BASE_URL}/jobs/${body.job_id}`, { headers: adminHeaders() })
-    const job = await jobRes.json() as Record<string, unknown>
+    const job = (await jobRes.json()) as Record<string, unknown>
     expect(job.compose_path == null).toBe(true)
     expect(job.service == null).toBe(true)
   })
@@ -104,7 +113,7 @@ describe('deploy API', () => {
       body: JSON.stringify({ image_tag: NONEXISTENT_IMAGE }),
     })
     expect(res.status).toBe(200)
-    const body = await res.json() as { job_id: string, app: string, status: string }
+    const body = (await res.json()) as { job_id: string; app: string; status: string }
     // Async mode returns 'queued' — the job hasn't completed yet
     expect(body.status).toBe('queued')
     expect(body.app).toBe(APP_NAME)
@@ -118,7 +127,7 @@ describe('deploy API', () => {
   it('deployed version is actually served by the app after success', async () => {
     const res = await fetch(`${TRAEFIK_URL}/version`)
     expect(res.status).toBe(200)
-    const body = await res.json() as { version: string }
+    const body = (await res.json()) as { version: string }
     expect(body.version).toBe('v1')
   })
 

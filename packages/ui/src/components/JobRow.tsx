@@ -13,8 +13,7 @@ const STATUS_BORDER: Record<string, string> = {
 function formatDuration(createdAt: string, updatedAt: string): string {
   const ms = new Date(updatedAt).getTime() - new Date(createdAt).getTime()
   const s = Math.round(ms / 1000)
-  if (s < 60)
-    return `${s}s`
+  if (s < 60) return `${s}s`
   return `${Math.floor(s / 60)}m ${s % 60}s`
 }
 
@@ -55,9 +54,11 @@ export function JobRow({ job, expanded, onToggle }: JobRowProps) {
     >
       {/* Chevron — desktop only */}
       <span className="hidden sm:flex items-center justify-center w-3.5 shrink-0">
-        {expanded
-          ? <ChevronDown className="size-3.5 text-muted-foreground" />
-          : <ChevronRight className="size-3.5 text-muted-foreground" />}
+        {expanded ? (
+          <ChevronDown className="size-3.5 text-muted-foreground" />
+        ) : (
+          <ChevronRight className="size-3.5 text-muted-foreground" />
+        )}
       </span>
 
       {/* App name — fills remaining space, truncates */}
@@ -67,7 +68,10 @@ export function JobRow({ job, expanded, onToggle }: JobRowProps) {
       <StatusBadge status={job.status} className="hidden sm:inline-flex shrink-0" />
 
       {/* Fixed-width data columns: consistent position across all rows */}
-      <span className="font-mono text-xs text-muted-foreground tabular-nums text-right w-[7ch] sm:w-[12ch] shrink-0 truncate" title={job.image_tag}>
+      <span
+        className="font-mono text-xs text-muted-foreground tabular-nums text-right w-[7ch] sm:w-[12ch] shrink-0 truncate"
+        title={job.image_tag}
+      >
         {extractVersion(job.image_tag)}
       </span>
       <span className="font-mono text-xs text-muted-foreground tabular-nums text-right w-[11ch] shrink-0 ml-2 sm:ml-0">

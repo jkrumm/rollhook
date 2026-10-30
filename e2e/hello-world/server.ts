@@ -8,9 +8,10 @@ const server = Bun.serve({
   fetch(req) {
     const { pathname } = new URL(req.url)
     if (pathname === '/health')
-      return new Response(isShuttingDown ? 'shutting down' : 'ok', { status: isShuttingDown ? 503 : 200 })
-    if (pathname === '/version')
-      return Response.json({ version: VERSION, pid: process.pid })
+      return new Response(isShuttingDown ? 'shutting down' : 'ok', {
+        status: isShuttingDown ? 503 : 200,
+      })
+    if (pathname === '/version') return Response.json({ version: VERSION, pid: process.pid })
     return new Response('not found', { status: 404 })
   },
 })
@@ -20,7 +21,7 @@ const server = Bun.serve({
 process.on('SIGTERM', async () => {
   isShuttingDown = true
   // Wait for Traefik to deregister (healthcheck interval 1s + buffer)
-  await new Promise(resolve => setTimeout(resolve, 3000))
+  await new Promise((resolve) => setTimeout(resolve, 3000))
   await server.stop(true)
   process.exit(0)
 })

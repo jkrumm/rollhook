@@ -15,30 +15,26 @@ async function fetchLogs(jobId: string): Promise<string[]> {
   const res = await fetch(`${BASE_URL}/jobs/${jobId}/logs`, {
     headers: { Authorization: `Bearer ${TOKEN}` },
   })
-  if (!res.ok || !res.body)
-    return []
+  if (!res.ok || !res.body) return []
   const reader = res.body.getReader()
   const decoder = new TextDecoder()
   const lines: string[] = []
   let buffer = ''
   while (true) {
     const { done, value } = await reader.read()
-    if (done)
-      break
+    if (done) break
     buffer += decoder.decode(value, { stream: true })
     const parts = buffer.split('\n\n')
     buffer = parts.pop() ?? ''
     for (const part of parts) {
       const line = part.replace(/^data: /, '').trim()
-      if (line)
-        lines.push(line)
+      if (line) lines.push(line)
     }
   }
   // Flush decoder and emit any trailing buffered event not terminated by \n\n
   buffer += decoder.decode()
   const tail = buffer.replace(/^data: /, '').trim()
-  if (tail)
-    lines.push(tail)
+  if (tail) lines.push(tail)
   return lines
 }
 
@@ -46,12 +42,11 @@ async function main() {
   const res = await fetch(`${BASE_URL}/jobs?limit=50`, {
     headers: { Authorization: `Bearer ${TOKEN}` },
   })
-  if (!res.ok)
-    throw new Error(`Failed to fetch jobs: ${res.status}`)
-  const allJobs = await res.json() as JobResult[]
+  if (!res.ok) throw new Error(`Failed to fetch jobs: ${res.status}`)
+  const allJobs = (await res.json()) as JobResult[]
   // Exclude non-terminal jobs — queued/running at teardown time are interrupted artifacts
   // that would be marked failed on next startup. They add noise to demo data.
-  const jobs = allJobs.filter(j => j.status === 'success' || j.status === 'failed')
+  const jobs = allJobs.filter((j) => j.status === 'success' || j.status === 'failed')
 
   const logs: Record<string, string[]> = {}
   for (const job of jobs) {
@@ -62,13 +57,12 @@ async function main() {
 
   // Redact machine-specific paths before committing demo data.
   const sanitize = (s: string) => s.replaceAll(ROOT, '/workspace/rollhook')
-  const sanitizedJobs = jobs.map(j => ({
+  const sanitizedJobs = jobs.map((j) => ({
     ...j,
     compose_path: j.compose_path ? sanitize(j.compose_path) : j.compose_path,
   }))
   const sanitizedLogs: Record<string, string[]> = {}
-  for (const [id, lines] of Object.entries(logs))
-    sanitizedLogs[id] = lines.map(sanitize)
+  for (const [id, lines] of Object.entries(logs)) sanitizedLogs[id] = lines.map(sanitize)
 
   const data = {
     generated: new Date().toISOString(),

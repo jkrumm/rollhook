@@ -2,7 +2,15 @@ import type { JobResult } from '../setup/fixtures.ts'
 import { execFileSync } from 'node:child_process'
 import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { adminHeaders, BASE_URL, E2E_DIR, getContainerCount, REGISTRY_HOST, startContainerWithLabels, stopContainer } from '../setup/fixtures.ts'
+import {
+  adminHeaders,
+  BASE_URL,
+  E2E_DIR,
+  getContainerCount,
+  REGISTRY_HOST,
+  startContainerWithLabels,
+  stopContainer,
+} from '../setup/fixtures.ts'
 
 // Image tag that does not exist in the local registry → docker pull fails fast (no rollout)
 const NONEXISTENT_IMAGE = `${REGISTRY_HOST}/rollhook-e2e-hello:does-not-exist`
@@ -18,11 +26,11 @@ beforeAll(async () => {
     body: JSON.stringify({ image_tag: NONEXISTENT_IMAGE }),
   })
   expect(res.status).toBe(500)
-  const { job_id } = await res.json() as { job_id: string }
+  const { job_id } = (await res.json()) as { job_id: string }
 
   // Fetch canonical JobResult from DB (has `id` field, full schema)
   const jobRes = await fetch(`${BASE_URL}/jobs/${job_id}`, { headers: adminHeaders() })
-  failedJob = await jobRes.json() as JobResult
+  failedJob = (await jobRes.json()) as JobResult
 })
 
 describe('failed deployment lifecycle', () => {
@@ -47,8 +55,8 @@ describe('failed deployment lifecycle', () => {
   it('failed job appears in ?status=failed list', async () => {
     const res = await fetch(`${BASE_URL}/jobs?status=failed`, { headers: adminHeaders() })
     expect(res.status).toBe(200)
-    const jobs = await res.json() as Array<{ id: string, status: string }>
-    const found = jobs.find(j => j.id === failedJob.id)
+    const jobs = (await res.json()) as Array<{ id: string; status: string }>
+    const found = jobs.find((j) => j.id === failedJob.id)
     expect(found).toBeDefined()
     expect(found!.status).toBe('failed')
   })
@@ -91,30 +99,64 @@ describe('validate failures', () => {
   }
 
   beforeAll(() => {
-    tagAndStart('rollhook-validate-notfound:v1', '/nonexistent/rollhook-test/compose.yml', 'web', 'validate-notfound')
-    tagAndStart('rollhook-validate-noservice:v1', join(FIXTURES_DIR, 'no-service.yml'), 'nonexistent-service', 'validate-noservice')
-    tagAndStart('rollhook-validate-badyaml:v1', join(FIXTURES_DIR, 'invalid.yml'), 'web', 'validate-badyaml')
-    tagAndStart('rollhook-validate-ports:v1', join(FIXTURES_DIR, 'ports.yml'), 'web', 'validate-ports')
-    tagAndStart('rollhook-validate-cname:v1', join(FIXTURES_DIR, 'container-name.yml'), 'web', 'validate-cname')
-    tagAndStart('rollhook-validate-nohc:v1', join(FIXTURES_DIR, 'no-healthcheck.yml'), 'web', 'validate-nohc')
-    tagAndStart('rollhook-validate-noimgtag:v1', join(FIXTURES_DIR, 'hardcoded-image.yml'), 'web', 'validate-noimgtag')
+    tagAndStart(
+      'rollhook-validate-notfound:v1',
+      '/nonexistent/rollhook-test/compose.yml',
+      'web',
+      'validate-notfound',
+    )
+    tagAndStart(
+      'rollhook-validate-noservice:v1',
+      join(FIXTURES_DIR, 'no-service.yml'),
+      'nonexistent-service',
+      'validate-noservice',
+    )
+    tagAndStart(
+      'rollhook-validate-badyaml:v1',
+      join(FIXTURES_DIR, 'invalid.yml'),
+      'web',
+      'validate-badyaml',
+    )
+    tagAndStart(
+      'rollhook-validate-ports:v1',
+      join(FIXTURES_DIR, 'ports.yml'),
+      'web',
+      'validate-ports',
+    )
+    tagAndStart(
+      'rollhook-validate-cname:v1',
+      join(FIXTURES_DIR, 'container-name.yml'),
+      'web',
+      'validate-cname',
+    )
+    tagAndStart(
+      'rollhook-validate-nohc:v1',
+      join(FIXTURES_DIR, 'no-healthcheck.yml'),
+      'web',
+      'validate-nohc',
+    )
+    tagAndStart(
+      'rollhook-validate-noimgtag:v1',
+      join(FIXTURES_DIR, 'hardcoded-image.yml'),
+      'web',
+      'validate-noimgtag',
+    )
   })
 
   afterAll(() => {
-    for (const id of containers)
-      stopContainer(id)
+    for (const id of containers) stopContainer(id)
   })
 
-  async function deployAndFail(imageTag: string): Promise<{ job: JobResult, logs: string }> {
+  async function deployAndFail(imageTag: string): Promise<{ job: JobResult; logs: string }> {
     const res = await fetch(`${BASE_URL}/deploy`, {
       method: 'POST',
       headers: adminHeaders(),
       body: JSON.stringify({ image_tag: imageTag }),
     })
     expect(res.status).toBe(500)
-    const { job_id } = await res.json() as { job_id: string }
+    const { job_id } = (await res.json()) as { job_id: string }
     const jobRes = await fetch(`${BASE_URL}/jobs/${job_id}`, { headers: adminHeaders() })
-    const job = await jobRes.json() as JobResult
+    const job = (await jobRes.json()) as JobResult
     const logsRes = await fetch(`${BASE_URL}/jobs/${job_id}/logs`, { headers: adminHeaders() })
     const logs = await logsRes.text()
     return { job, logs }

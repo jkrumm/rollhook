@@ -24,13 +24,14 @@ export function DeployChart({ data, selectedDay, onDayClick }: DeployChartProps)
         barGap={2}
         margin={{ top: 4, right: 8, bottom: 0, left: 8 }}
         style={onDayClick ? { cursor: 'pointer' } : undefined}
-        onClick={onDayClick
-          ? (chartData) => {
-              const day = chartData?.activeLabel
-              if (day != null)
-                onDayClick(String(day))
-            }
-          : undefined}
+        onClick={
+          onDayClick
+            ? (chartData) => {
+                const day = chartData?.activeLabel
+                if (day != null) onDayClick(String(day))
+              }
+            : undefined
+        }
       >
         <XAxis
           dataKey="day"

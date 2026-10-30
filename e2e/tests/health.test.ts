@@ -11,7 +11,7 @@ describe('/health endpoint', () => {
 
   it('response includes version field', async () => {
     const res = await fetch(`${BASE_URL}/health`)
-    const body = await res.json() as { status: string, version: string }
+    const body = (await res.json()) as { status: string; version: string }
     expect(typeof body.version).toBe('string')
     expect(body.version.length).toBeGreaterThan(0)
   })
@@ -24,7 +24,7 @@ describe('/health endpoint', () => {
   it('/openapi.json returns JSON spec with correct title', async () => {
     const res = await fetch(`${BASE_URL}/openapi.json`)
     expect(res.status).toBe(200)
-    const spec = await res.json() as { info: { title: string } }
+    const spec = (await res.json()) as { info: { title: string } }
     expect(spec.info.title).toBe('RollHook API')
   })
 
@@ -47,7 +47,7 @@ describe('/ready endpoint', () => {
   // caller. Asserted explicitly: toMatchObject alone would pass if it leaked.
   it('withholds docker_host and detail from anonymous callers', async () => {
     const res = await fetch(`${BASE_URL}/ready`)
-    const body = await res.json() as { docker_host?: string, detail?: string }
+    const body = (await res.json()) as { docker_host?: string; detail?: string }
     expect(body.docker_host).toBeUndefined()
     expect(body.detail).toBeUndefined()
   })
@@ -55,7 +55,7 @@ describe('/ready endpoint', () => {
   it('returns docker_host to authenticated callers', async () => {
     const res = await fetch(`${BASE_URL}/ready`, { headers: adminHeaders() })
     expect(res.status).toBe(200)
-    const body = await res.json() as { docker_host?: string }
+    const body = (await res.json()) as { docker_host?: string }
     expect(typeof body.docker_host).toBe('string')
     expect(body.docker_host).toBeTruthy()
   })

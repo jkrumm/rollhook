@@ -1,14 +1,6 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": [
-    "react",
-    "typescript",
-    "import",
-    "unicorn",
-    "jsx-a11y",
-    "promise",
-    "oxc"
-  ],
+  "plugins": ["react", "typescript", "import", "unicorn", "jsx-a11y", "promise", "oxc"],
   "categories": {
     "correctness": "error"
   },
@@ -23,10 +15,7 @@
   ],
   "rules": {
     "no-var": "error",
-    "eqeqeq": [
-      "error",
-      "smart"
-    ],
+    "eqeqeq": ["error", "smart"],
     "no-console": "off",
     "react/rules-of-hooks": "error",
     "react/jsx-key": "error",

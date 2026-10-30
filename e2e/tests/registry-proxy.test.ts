@@ -1,8 +1,15 @@
 import { execFileSync } from 'node:child_process'
 import { describe, expect, it } from 'vitest'
-import { adminHeaders, BASE_URL, pollJobUntilDone, REGISTRY_HOST, ROLLHOOK_SECRET } from '../setup/fixtures.ts'
+import {
+  adminHeaders,
+  BASE_URL,
+  pollJobUntilDone,
+  REGISTRY_HOST,
+  ROLLHOOK_SECRET,
+} from '../setup/fixtures.ts'
 
-const MANIFEST_ACCEPT = 'application/vnd.docker.distribution.manifest.v2+json, application/vnd.oci.image.manifest.v1+json'
+const MANIFEST_ACCEPT =
+  'application/vnd.docker.distribution.manifest.v2+json, application/vnd.oci.image.manifest.v1+json'
 
 function registryHeaders(): HeadersInit {
   return { Authorization: `Bearer ${ROLLHOOK_SECRET}` }
@@ -41,15 +48,17 @@ describe('registry proxy — catalog and tags', () => {
   it('/v2/_catalog lists pushed images', async () => {
     const res = await fetch(`${BASE_URL}/v2/_catalog`, { headers: registryHeaders() })
     expect(res.status).toBe(200)
-    const body = await res.json() as { repositories: string[] }
+    const body = (await res.json()) as { repositories: string[] }
     expect(Array.isArray(body.repositories)).toBe(true)
     expect(body.repositories).toContain('rollhook-e2e-hello')
   })
 
   it('/v2/rollhook-e2e-hello/tags/list returns all pushed tags', async () => {
-    const res = await fetch(`${BASE_URL}/v2/rollhook-e2e-hello/tags/list`, { headers: registryHeaders() })
+    const res = await fetch(`${BASE_URL}/v2/rollhook-e2e-hello/tags/list`, {
+      headers: registryHeaders(),
+    })
     expect(res.status).toBe(200)
-    const body = await res.json() as { name: string, tags: string[] }
+    const body = (await res.json()) as { name: string; tags: string[] }
     expect(body.name).toBe('rollhook-e2e-hello')
     expect(body.tags).toContain('v1')
     expect(body.tags).toContain('v2')
@@ -57,7 +66,9 @@ describe('registry proxy — catalog and tags', () => {
   })
 
   it('tags/list for nonexistent image returns 404', async () => {
-    const res = await fetch(`${BASE_URL}/v2/rollhook-nonexistent-image/tags/list`, { headers: registryHeaders() })
+    const res = await fetch(`${BASE_URL}/v2/rollhook-nonexistent-image/tags/list`, {
+      headers: registryHeaders(),
+    })
     expect(res.status).toBe(404)
   })
 })
@@ -68,7 +79,7 @@ describe('registry proxy — manifests', () => {
       headers: { ...registryHeaders(), Accept: MANIFEST_ACCEPT },
     })
     expect(res.status).toBe(200)
-    const body = await res.json() as Record<string, unknown>
+    const body = (await res.json()) as Record<string, unknown>
     // OCI or Docker v2 manifest must have schemaVersion
     expect(typeof body.schemaVersion).toBe('number')
   })
@@ -90,8 +101,10 @@ describe('registry proxy — push and deploy round-trip', () => {
     execFileSync('docker', ['push', TAG], { stdio: 'inherit' })
 
     // Verify the tag now appears in the registry
-    const tagsRes = await fetch(`${BASE_URL}/v2/rollhook-e2e-hello/tags/list`, { headers: registryHeaders() })
-    const { tags } = await tagsRes.json() as { tags: string[] }
+    const tagsRes = await fetch(`${BASE_URL}/v2/rollhook-e2e-hello/tags/list`, {
+      headers: registryHeaders(),
+    })
+    const { tags } = (await tagsRes.json()) as { tags: string[] }
     expect(tags).toContain('v3')
 
     // Full deploy round-trip: RollHook pulls v3 from its embedded Zot and rolls out
@@ -101,7 +114,7 @@ describe('registry proxy — push and deploy round-trip', () => {
       body: JSON.stringify({ image_tag: TAG }),
     })
     expect(deployRes.status).toBe(200)
-    const { job_id } = await deployRes.json() as { job_id: string }
+    const { job_id } = (await deployRes.json()) as { job_id: string }
     const job = await pollJobUntilDone(job_id, 90_000)
     expect(job.status).toBe('success')
   }, 120_000)

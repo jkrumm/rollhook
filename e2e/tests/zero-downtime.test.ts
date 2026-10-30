@@ -1,5 +1,13 @@
 import { beforeAll, describe, expect, it } from 'vitest'
-import { adminHeaders, BASE_URL, getContainerCount, pollJobUntilDone, REGISTRY_HOST, TRAEFIK_URL, webhookHeaders } from '../setup/fixtures.ts'
+import {
+  adminHeaders,
+  BASE_URL,
+  getContainerCount,
+  pollJobUntilDone,
+  REGISTRY_HOST,
+  TRAEFIK_URL,
+  webhookHeaders,
+} from '../setup/fixtures.ts'
 
 const IMAGE_V1 = `${REGISTRY_HOST}/rollhook-e2e-hello:v1`
 const IMAGE_V2 = `${REGISTRY_HOST}/rollhook-e2e-hello:v2`
@@ -13,7 +21,7 @@ beforeAll(async () => {
     body: JSON.stringify({ image_tag: IMAGE_V1 }),
   })
   expect(res.status).toBe(200)
-  const body = await res.json() as { status: string }
+  const body = (await res.json()) as { status: string }
   expect(body.status).toBe('success')
 }, 120_000)
 
@@ -21,7 +29,7 @@ describe('zero-downtime rolling deployment', () => {
   it('v1 is running and accessible before deployment', async () => {
     const res = await fetch(`${TRAEFIK_URL}/version`)
     expect(res.status).toBe(200)
-    const body = await res.json() as { version: string }
+    const body = (await res.json()) as { version: string }
     expect(body.version).toBe('v1')
   })
 
@@ -37,7 +45,7 @@ describe('zero-downtime rolling deployment', () => {
       body: JSON.stringify({ image_tag: IMAGE_V2 }),
     })
     expect(deployRes.status).toBe(200)
-    const { job_id } = await deployRes.json() as { job_id: string }
+    const { job_id } = (await deployRes.json()) as { job_id: string }
 
     const errors: string[] = []
     const versions: string[] = []
@@ -54,10 +62,9 @@ describe('zero-downtime rolling deployment', () => {
           errors.push(`HTTP ${res.status}`)
           return
         }
-        const body = await res.json() as { version: string }
+        const body = (await res.json()) as { version: string }
         versions.push(body.version)
-      }
-      catch (err) {
+      } catch (err) {
         errors.push(err instanceof Error ? err.message : String(err))
       }
     }, 50)
@@ -75,11 +82,11 @@ describe('zero-downtime rolling deployment', () => {
     // Wait for Traefik to discover the new container and update routing.
     // Docker rollout completes when the container is healthy at the Docker level,
     // but Traefik needs an additional healthcheck interval (~1s) to start routing.
-    await new Promise(resolve => setTimeout(resolve, 3_000))
+    await new Promise((resolve) => setTimeout(resolve, 3_000))
 
     clearInterval(versionPoller)
     // Flush any in-flight responses before asserting
-    await new Promise(resolve => setTimeout(resolve, 300))
+    await new Promise((resolve) => setTimeout(resolve, 300))
 
     expect(job.status).toBe('success')
 
@@ -108,7 +115,7 @@ describe('zero-downtime rolling deployment', () => {
   it('v2 is serving after deployment', async () => {
     const res = await fetch(`${TRAEFIK_URL}/version`)
     expect(res.status).toBe(200)
-    const body = await res.json() as { version: string }
+    const body = (await res.json()) as { version: string }
     expect(body.version).toBe('v2')
   })
 

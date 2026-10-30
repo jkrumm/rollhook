@@ -14,7 +14,7 @@ export function JobListContainer({ jobs, expandedId, onExpand }: JobListContaine
       jobs={jobs}
       expandedId={expandedId}
       onExpand={onExpand}
-      renderExpanded={job => <LogContainer jobId={job.id} status={job.status} />}
+      renderExpanded={(job) => <LogContainer jobId={job.id} status={job.status} />}
     />
   )
 }

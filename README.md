@@ -115,14 +115,13 @@ let isShuttingDown = false
 
 process.on('SIGTERM', async () => {
   isShuttingDown = true
-  await new Promise(resolve => setTimeout(resolve, 3000))
+  await new Promise((resolve) => setTimeout(resolve, 3000))
   await server.stop(true)
   process.exit(0)
 })
 
 // health handler:
-if (pathname === '/health')
-  return new Response('ok', { status: isShuttingDown ? 503 : 200 })
+if (pathname === '/health') return new Response('ok', { status: isShuttingDown ? 503 : 200 })
 ```
 
 See [`e2e/hello-world/`](e2e/hello-world/) for a complete reference app.
