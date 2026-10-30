@@ -1,0 +1,21 @@
+{
+  "printWidth": 100,
+  "tabWidth": 2,
+  "useTabs": false,
+  "singleQuote": true,
+  "trailingComma": "all",
+  "semi": false,
+  "ignorePatterns": [
+    "**/dist/**",
+    "**/.output/**",
+    "**/.astro/**",
+    "apps/server/public/**",
+    "apps/dashboard/src/api/generated/**",
+    "apps/dashboard/openapi.json",
+    "apps/*/src/styles/basalt-tokens.css",
+    "bun.lock",
+    "CHANGELOG.md",
+    "docs/**",
+    "e2e/fixtures/validate/**"
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": [
+    "react",
+    "typescript",
+    "import",
+    "unicorn",
+    "jsx-a11y",
+    "promise",
+    "oxc"
+  ],
+  "categories": {
+    "correctness": "error"
+  },
+  "ignorePatterns": [
+    "**/dist/**",
+    "**/.output/**",
+    "**/.astro/**",
+    "apps/server/public/**",
+    "apps/dashboard/src/api/generated/**",
+    "docs/**",
+    "e2e/fixtures/**"
+  ],
+  "rules": {
+    "no-var": "error",
+    "eqeqeq": [
+      "error",
+      "smart"
+    ],
+    "no-console": "off",
+    "react/rules-of-hooks": "error",
+    "react/jsx-key": "error",
+    "react/react-in-jsx-scope": "off",
+    "typescript/no-explicit-any": "error",
+    "import/no-duplicates": "error",
+    "import/no-unassigned-import": "off",
+    "no-constant-binary-expression": "error",
+    "typescript/no-misused-spread": "off",
+    "react/incompatible-library": "off",
+    "react/set-state-in-effect": "off",
+    "jsx-a11y/no-autofocus": "off",
+    "promise/no-callback-in-promise": "off",
+    "typescript/no-redundant-type-constituents": "off"
+  }
+}

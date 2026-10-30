@@ -2,7 +2,7 @@
 
 ## Validate
 
-`make check` runs exactly the local gates CI runs (`.github/workflows/ci.yml`): `bun install --frozen-lockfile`, `bun run lint`, `bun run typecheck`, `bun run check:basalt`, `bun run test:unit` (dashboard `bun test`), then Go `build` / `vet` / `test` and `golangci-lint` in Docker, then the OpenAPI drift check.
+`make check` runs exactly the local gates CI runs (`.github/workflows/ci.yml`): `bun install --frozen-lockfile`, `bun run lint` (oxlint --type-aware), `bun run format:check` (oxfmt), `bun run typecheck`, `bun run check:basalt`, `bun run test:unit` (dashboard `bun test`), then Go `build` / `vet` / `test` and `golangci-lint` in Docker, then the OpenAPI drift check.
 
 **Go is not installed locally.** All Go commands run via Docker:
 
@@ -92,7 +92,7 @@ Each `global.css` maps `--vx-*` onto Tailwind's `@theme inline` namespaces (`--c
 
 **Fonts stay ours.** RollHook is Instrument Sans + JetBrains Mono (`@fontsource-variable` in the dashboard, `astro:fonts` in `astro.config.mjs`). basalt-ui 2.x ships Nunito Sans + Hubot Sans, so `basalt-ui fonts:css` would rebrand both apps — do not adopt it.
 
-`apps/marketing/src/styles/basalt-tokens.css` is not eslint-ignored: the emitter writes `0.1` rather than `0.10`, so the sheet lints clean. `public/site.webmanifest`'s `theme_color`/`background_color` must be kept equal to `--vx-surface-bg` dark (`#27272a`) by hand; the file declares its own exception with a `"basalt:theme-allow-file"` member on line 2 — no `basalt.exemptRules` anywhere. `check-theme --audit-allows` proves every waiver still suppresses something and exits 1 when one does not.
+`apps/marketing/src/styles/basalt-tokens.css` is oxfmt-ignored (the emit is byte-exact, `tokens:css --check` fails on any reformat). `public/site.webmanifest`'s `theme_color`/`background_color` must be kept equal to `--vx-surface-bg` dark (`#27272a`) by hand; the file declares its own exception with a `"basalt:theme-allow-file"` member on line 2 — no `basalt.exemptRules` anywhere. `check-theme --audit-allows` proves every waiver still suppresses something and exits 1 when one does not.
 
 ---
 
