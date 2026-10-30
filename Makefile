@@ -17,9 +17,10 @@ ROLLHOOK_SSH_HOST ?= vps
 help: ## List available targets
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-8s\033[0m %s\n", $$1, $$2}'
 
-check: ## Run exactly the local validation CI runs (lint, typecheck, basalt, dashboard unit tests, Go build/vet/test/lint, OpenAPI drift)
+check: ## Run exactly the local validation CI runs (lint, format check, typecheck, basalt, dashboard unit tests, Go build/vet/test/lint, OpenAPI drift)
 	bun install --frozen-lockfile
 	bun run lint
+	bun run format:check
 	bun run typecheck
 	bun run check:basalt
 	bun run test:unit
