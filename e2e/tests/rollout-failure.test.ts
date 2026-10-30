@@ -29,10 +29,10 @@ beforeAll(async () => {
     body: JSON.stringify({ image_tag: UNHEALTHY_IMAGE }),
   })
   expect(res.status).toBe(500)
-  const { job_id } = await res.json() as { job_id: string }
+  const { job_id } = (await res.json()) as { job_id: string }
 
   const jobRes = await fetch(`${BASE_URL}/jobs/${job_id}`, { headers: adminHeaders() })
-  failedJob = await jobRes.json() as JobResult
+  failedJob = (await jobRes.json()) as JobResult
 }, 120_000)
 
 describe('rollout health-check failure + rollback', () => {
@@ -67,7 +67,7 @@ describe('rollout health-check failure + rollback', () => {
   it('failed job appears in ?status=failed list', async () => {
     const res = await fetch(`${BASE_URL}/jobs?status=failed`, { headers: adminHeaders() })
     expect(res.status).toBe(200)
-    const jobs = await res.json() as Array<{ id: string, status: string }>
-    expect(jobs.some(j => j.id === failedJob.id)).toBe(true)
+    const jobs = (await res.json()) as Array<{ id: string; status: string }>
+    expect(jobs.some((j) => j.id === failedJob.id)).toBe(true)
   })
 })

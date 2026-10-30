@@ -12,8 +12,7 @@ export function TokenGate({ onToken }: TokenGateProps) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!value.trim())
-      return
+    if (!value.trim()) return
     setLoading(true)
     setError('')
     try {
@@ -22,15 +21,12 @@ export function TokenGate({ onToken }: TokenGateProps) {
       })
       if (res.ok) {
         onToken(value.trim())
-      }
-      else {
+      } else {
         setError('Invalid token')
       }
-    }
-    catch {
+    } catch {
       setError('Connection failed')
-    }
-    finally {
+    } finally {
       setLoading(false)
     }
   }
@@ -44,19 +40,25 @@ export function TokenGate({ onToken }: TokenGateProps) {
           <p className="text-sm text-muted-foreground">Enter your token to continue</p>
         </div>
         <form onSubmit={handleSubmit} className="space-y-3">
-          <label htmlFor="webhook-token" className="sr-only">Webhook token</label>
+          <label htmlFor="webhook-token" className="sr-only">
+            Webhook token
+          </label>
           <input
             id="webhook-token"
             type="password"
             value={value}
-            onChange={e => setValue(e.target.value)}
+            onChange={(e) => setValue(e.target.value)}
             placeholder="webhook token"
             aria-invalid={!!error}
             aria-describedby={error ? 'token-error' : undefined}
             className="w-full bg-input border border-border rounded px-3 py-2 font-mono text-sm outline-none focus:ring-1 focus:ring-ring"
             autoFocus
           />
-          {error && <p id="token-error" role="alert" className="text-destructive text-xs font-mono">{error}</p>}
+          {error && (
+            <p id="token-error" role="alert" className="text-destructive text-xs font-mono">
+              {error}
+            </p>
+          )}
           <button
             type="submit"
             disabled={loading || !value.trim()}

@@ -13,10 +13,7 @@ export function getApiToken() {
 // Signature matches what orval's fetch client generator expects:
 // customInstance<T>(url, options?: RequestInit) — URL includes query params.
 // Returns { data, status, headers } to match orval's generated response union types.
-export async function customInstance<T>(
-  url: string,
-  options?: RequestInit,
-): Promise<T> {
+export async function customInstance<T>(url: string, options?: RequestInit): Promise<T> {
   const res = await fetch(url, {
     ...options,
     headers: {
@@ -25,8 +22,7 @@ export async function customInstance<T>(
     },
   })
 
-  if (!res.ok)
-    throw new Error(`${res.status}`)
+  if (!res.ok) throw new Error(`${res.status}`)
 
   const data = await res.json()
   return { data, status: res.status, headers: res.headers } as unknown as T

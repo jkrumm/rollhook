@@ -5,30 +5,31 @@ import { getJobs } from '../api/generated/jobs/jobs'
 const IS_DEMO = import.meta.env.DEV || import.meta.env.MODE === 'demo'
 
 async function getDemoData() {
-  if (!IS_DEMO)
-    return null
+  if (!IS_DEMO) return null
   return (await import('../demo/data.json')).default
 }
 
-export async function fetchJobs(params: { app?: string, status?: JobStatus, limit?: number } = {}): Promise<JobResult[]> {
+export async function fetchJobs(
+  params: { app?: string; status?: JobStatus; limit?: number } = {},
+): Promise<JobResult[]> {
   if (IS_DEMO) {
     const data = await getDemoData()
     let jobs = (data?.jobs ?? []) as JobResult[]
-    if (params.app)
-      jobs = jobs.filter(j => j.app === params.app)
-    if (params.status)
-      jobs = jobs.filter(j => j.status === params.status)
-    if (params.limit)
-      jobs = jobs.slice(0, params.limit)
+    if (params.app) jobs = jobs.filter((j) => j.app === params.app)
+    if (params.status) jobs = jobs.filter((j) => j.status === params.status)
+    if (params.limit) jobs = jobs.slice(0, params.limit)
     return jobs
   }
   const result = await getJobs(params)
-  if (result.status !== 200)
-    throw new Error(`Failed to fetch jobs: HTTP ${result.status}`)
+  if (result.status !== 200) throw new Error(`Failed to fetch jobs: HTTP ${result.status}`)
   return (result.data as JobResult[]) ?? []
 }
 
-export function streamLogs(jobId: string, onLine: (line: string) => void, signal: AbortSignal): Promise<void> {
+export function streamLogs(
+  jobId: string,
+  onLine: (line: string) => void,
+  signal: AbortSignal,
+): Promise<void> {
   if (IS_DEMO) {
     return getDemoData().then((data) => {
       const lines = (data?.logs as Record<string, string[]> | undefined)?.[jobId] ?? []
@@ -46,30 +47,28 @@ export function streamLogs(jobId: string, onLine: (line: string) => void, signal
       })
     })
   }
-  return fetch(`/jobs/${jobId}/logs`, { headers: { Authorization: `Bearer ${getApiToken()}` }, signal })
-    .then((res) => {
-      if (!res.ok)
-        throw new Error(`${res.status}`)
-      if (!res.body)
-        throw new Error('Response body is null')
-      const reader = res.body.getReader()
-      const decoder = new TextDecoder()
-      let buffer = ''
-      function pump(): Promise<void> {
-        return reader.read().then(({ done, value }) => {
-          if (done)
-            return
-          buffer += decoder.decode(value, { stream: true })
-          const parts = buffer.split('\n\n')
-          buffer = parts.pop() ?? ''
-          for (const part of parts) {
-            const line = part.replace(/^data: /, '')
-            if (line)
-              onLine(line)
-          }
-          return pump()
-        })
-      }
-      return pump()
-    })
+  return fetch(`/jobs/${jobId}/logs`, {
+    headers: { Authorization: `Bearer ${getApiToken()}` },
+    signal,
+  }).then((res) => {
+    if (!res.ok) throw new Error(`${res.status}`)
+    if (!res.body) throw new Error('Response body is null')
+    const reader = res.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+    function pump(): Promise<void> {
+      return reader.read().then(({ done, value }) => {
+        if (done) return
+        buffer += decoder.decode(value, { stream: true })
+        const parts = buffer.split('\n\n')
+        buffer = parts.pop() ?? ''
+        for (const part of parts) {
+          const line = part.replace(/^data: /, '')
+          if (line) onLine(line)
+        }
+        return pump()
+      })
+    }
+    return pump()
+  })
 }

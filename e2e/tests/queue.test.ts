@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { adminHeaders, APP_NAME, BASE_URL, getContainerCount, pollJobUntilDone, REGISTRY_HOST, webhookHeaders } from '../setup/fixtures.ts'
+import {
+  adminHeaders,
+  APP_NAME,
+  BASE_URL,
+  getContainerCount,
+  pollJobUntilDone,
+  REGISTRY_HOST,
+  webhookHeaders,
+} from '../setup/fixtures.ts'
 
 const IMAGE_V1 = `${REGISTRY_HOST}/rollhook-e2e-hello:v1`
 
@@ -23,8 +31,8 @@ describe('job queue', () => {
     expect(res1.status).toBe(200)
     expect(res2.status).toBe(200)
 
-    const body1 = await res1.json() as { job_id: string, status: string }
-    const body2 = await res2.json() as { job_id: string, status: string }
+    const body1 = (await res1.json()) as { job_id: string; status: string }
+    const body2 = (await res2.json()) as { job_id: string; status: string }
 
     // Both accepted with queued/running status (not failed)
     expect(['queued', 'running']).toContain(body1.status)
@@ -63,13 +71,15 @@ describe('job queue', () => {
       body: JSON.stringify({ image_tag: IMAGE_V1 }),
     })
     expect(slowRes.status).toBe(200)
-    const { job_id: slowJobId } = await slowRes.json() as { job_id: string }
+    const { job_id: slowJobId } = (await slowRes.json()) as { job_id: string }
 
     // While the first job is running, verify GET /jobs returns it with queued or running status
-    const listRes = await fetch(`${BASE_URL}/jobs?app=${APP_NAME}&limit=5`, { headers: adminHeaders() })
+    const listRes = await fetch(`${BASE_URL}/jobs?app=${APP_NAME}&limit=5`, {
+      headers: adminHeaders(),
+    })
     expect(listRes.status).toBe(200)
-    const listedJobs = await listRes.json() as Array<{ id: string, status: string }>
-    const listed = listedJobs.find(j => j.id === slowJobId)
+    const listedJobs = (await listRes.json()) as Array<{ id: string; status: string }>
+    const listed = listedJobs.find((j) => j.id === slowJobId)
     expect(listed).toBeTruthy()
     expect(['queued', 'running', 'success']).toContain(listed!.status)
 

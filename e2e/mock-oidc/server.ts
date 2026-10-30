@@ -26,13 +26,12 @@ interface TokenRequest {
 }
 
 function b64url(data: BufferSource | string): string {
-  const bytes
-    = typeof data === 'string'
+  const bytes =
+    typeof data === 'string'
       ? new TextEncoder().encode(data)
       : new Uint8Array(data instanceof ArrayBuffer ? data : (data as ArrayBufferView).buffer)
   let b64 = ''
-  for (const byte of bytes)
-    b64 += String.fromCharCode(byte)
+  for (const byte of bytes) b64 += String.fromCharCode(byte)
   return btoa(b64).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
 }
 
@@ -49,7 +48,10 @@ async function startServer(): Promise<void> {
     ['sign', 'verify'],
   )
 
-  const publicKeyJwk = await crypto.subtle.exportKey('jwk', keyPair.publicKey) as Record<string, unknown>
+  const publicKeyJwk = (await crypto.subtle.exportKey('jwk', keyPair.publicKey)) as Record<
+    string,
+    unknown
+  >
   publicKeyJwk.kid = KID
   publicKeyJwk.use = 'sig'
   publicKeyJwk.alg = 'RS256'
@@ -83,7 +85,7 @@ async function startServer(): Promise<void> {
       }
 
       if (pathname === '/token' && req.method === 'POST') {
-        const body = await req.json() as TokenRequest
+        const body = (await req.json()) as TokenRequest
         if (!body.repository || !body.ref)
           return Response.json({ error: 'repository and ref are required' }, { status: 400 })
 

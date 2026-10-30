@@ -1,7 +1,7 @@
 import type { JobResult, JobStatus } from '@rollhook/ui'
 import { ChevronDown, SlidersHorizontal } from 'lucide-react'
 
-const STATUSES: Array<{ label: string, selectLabel: string, value: JobStatus | undefined }> = [
+const STATUSES: Array<{ label: string; selectLabel: string; value: JobStatus | undefined }> = [
   { label: 'All', selectLabel: 'Status', value: undefined },
   { label: 'Queued', selectLabel: 'Queued', value: 'queued' },
   { label: 'Running', selectLabel: 'Running', value: 'running' },
@@ -17,8 +17,14 @@ interface FilterBarProps {
   onStatusChange: (status: JobStatus | undefined) => void
 }
 
-export function FilterBar({ jobs, selectedApp, selectedStatus, onAppChange, onStatusChange }: FilterBarProps) {
-  const apps = [...new Set(jobs.map(j => j.app))].toSorted()
+export function FilterBar({
+  jobs,
+  selectedApp,
+  selectedStatus,
+  onAppChange,
+  onStatusChange,
+}: FilterBarProps) {
+  const apps = [...new Set(jobs.map((j) => j.app))].toSorted()
 
   const counts = jobs.reduce<Record<string, number>>((acc, j) => {
     acc[j.status] = (acc[j.status] ?? 0) + 1
@@ -32,11 +38,15 @@ export function FilterBar({ jobs, selectedApp, selectedStatus, onAppChange, onSt
         <select
           aria-label="Filter by app"
           value={selectedApp ?? ''}
-          onChange={e => onAppChange(e.target.value || undefined)}
+          onChange={(e) => onAppChange(e.target.value || undefined)}
           className="w-full appearance-none bg-background border border-border rounded-md pl-3 pr-8 py-1.5 text-sm outline-none focus:ring-1 focus:ring-ring cursor-pointer"
         >
           <option value="">Apps</option>
-          {apps.map(a => <option key={a} value={a}>{a}</option>)}
+          {apps.map((a) => (
+            <option key={a} value={a}>
+              {a}
+            </option>
+          ))}
         </select>
         <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
       </div>
@@ -46,11 +56,13 @@ export function FilterBar({ jobs, selectedApp, selectedStatus, onAppChange, onSt
         <select
           aria-label="Filter by status"
           value={selectedStatus ?? ''}
-          onChange={e => onStatusChange((e.target.value as JobStatus) || undefined)}
+          onChange={(e) => onStatusChange((e.target.value as JobStatus) || undefined)}
           className="w-full appearance-none bg-background border border-border rounded-md pl-3 pr-8 py-1.5 text-sm outline-none focus:ring-1 focus:ring-ring cursor-pointer"
         >
           {STATUSES.map(({ selectLabel, value }) => (
-            <option key={selectLabel} value={value ?? ''}>{selectLabel}</option>
+            <option key={selectLabel} value={value ?? ''}>
+              {selectLabel}
+            </option>
           ))}
         </select>
         <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
@@ -74,9 +86,10 @@ export function FilterBar({ jobs, selectedApp, selectedStatus, onAppChange, onSt
             >
               {label}
               {count > 0 && (
-                <span className={`text-[10px] rounded px-1 py-0.5 leading-none tabular-nums ${
-                  isActive ? 'bg-foreground/10 text-foreground' : 'bg-muted text-muted-foreground'
-                }`}
+                <span
+                  className={`text-[10px] rounded px-1 py-0.5 leading-none tabular-nums ${
+                    isActive ? 'bg-foreground/10 text-foreground' : 'bg-muted text-muted-foreground'
+                  }`}
                 >
                   {count}
                 </span>

@@ -1,16 +1,12 @@
 {
   "name": "@rollhook/ui",
-  "type": "module",
   "version": "0.0.1",
+  "type": "module",
   "exports": {
     ".": "./src/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"
-  },
-  "peerDependencies": {
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0"
   },
   "dependencies": {
     "@tanstack/react-virtual": "3.14.13",
@@ -21,5 +17,9 @@
   },
   "devDependencies": {
     "@types/react": "19.3.0"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
   }
 }

@@ -18,14 +18,13 @@ async function getOIDCToken(opts: {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(opts),
   })
-  if (!res.ok)
-    throw new Error(`Mock OIDC server returned ${res.status}`)
-  const { token } = await res.json() as { token: string }
+  if (!res.ok) throw new Error(`Mock OIDC server returned ${res.status}`)
+  const { token } = (await res.json()) as { token: string }
   return token
 }
 
 function oidcHeaders(token: string): HeadersInit {
-  return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+  return { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
 }
 
 describe('oidc authentication', () => {
@@ -137,14 +136,14 @@ describe('oidc authentication', () => {
       body: JSON.stringify({ image_name: 'rollhook-e2e-hello' }),
     })
     expect(authRes.status).toBe(200)
-    const { token, secret } = await authRes.json() as { token: string, secret: string }
+    const { token, secret } = (await authRes.json()) as { token: string; secret: string }
     expect(token).toBeTruthy()
     expect(secret).toBeTruthy()
 
     // Step 2: Use secret to deploy (not the OIDC token)
     const deployRes = await fetch(`${BASE_URL}/deploy?async=true`, {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${secret}`, 'Content-Type': 'application/json' },
+      headers: { Authorization: `Bearer ${secret}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ image_tag: IMAGE_V2 }),
     })
     // 200 = deploy accepted (queued). 503 = queue full (also acceptable under load).
@@ -154,7 +153,7 @@ describe('oidc authentication', () => {
   it('invalid bearer token on /deploy → 403', async () => {
     const res = await fetch(`${BASE_URL}/deploy?async=true`, {
       method: 'POST',
-      headers: { 'Authorization': 'Bearer invalid-secret', 'Content-Type': 'application/json' },
+      headers: { Authorization: 'Bearer invalid-secret', 'Content-Type': 'application/json' },
       body: JSON.stringify({ image_tag: IMAGE_V2 }),
     })
     expect(res.status).toBe(403)

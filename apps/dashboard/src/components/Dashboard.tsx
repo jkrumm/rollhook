@@ -7,16 +7,18 @@ import { FilterBar } from './FilterBar'
 import { JobListContainer } from './JobListContainer'
 
 function computeChartData(jobs: JobResult[]): ChartDataPoint[] {
-  const map = new Map<string, { success: number, failed: number }>()
+  const map = new Map<string, { success: number; failed: number }>()
   for (const job of jobs) {
-    if (job.status !== 'success' && job.status !== 'failed')
-      continue
+    if (job.status !== 'success' && job.status !== 'failed') continue
     const day = job.created_at.slice(0, 10)
     const entry = map.get(day) ?? { success: 0, failed: 0 }
     entry[job.status]++
     map.set(day, entry)
   }
-  return [...map.entries()].toSorted(([a], [b]) => a.localeCompare(b)).slice(-14).map(([day, counts]) => ({ day: day.slice(5), ...counts }))
+  return [...map.entries()]
+    .toSorted(([a], [b]) => a.localeCompare(b))
+    .slice(-14)
+    .map(([day, counts]) => ({ day: day.slice(5), ...counts }))
 }
 
 interface DashboardProps {
@@ -33,8 +35,7 @@ export function Dashboard({ onLogout }: DashboardProps) {
       const data = await fetchJobs({ limit: 200 })
       setJobs(data)
       setLoadError(null)
-    }
-    catch {
+    } catch {
       setLoadError('Failed to load jobs. Check token or server connectivity.')
     }
   }, [])
@@ -49,20 +50,18 @@ export function Dashboard({ onLogout }: DashboardProps) {
   // Re-poll immediately when tab becomes visible after being hidden
   useEffect(() => {
     function onVisibility() {
-      if (!document.hidden)
-        void load()
+      if (!document.hidden) void load()
     }
     document.addEventListener('visibilitychange', onVisibility)
     return () => document.removeEventListener('visibilitychange', onVisibility)
   }, [load])
 
-  const appStatusFiltered = jobs.filter(j =>
-    (!params.app || j.app === params.app)
-    && (!params.status || j.status === params.status),
+  const appStatusFiltered = jobs.filter(
+    (j) => (!params.app || j.app === params.app) && (!params.status || j.status === params.status),
   )
 
-  const filtered = appStatusFiltered.filter(j =>
-    !params.day || j.created_at.slice(5, 10) === params.day,
+  const filtered = appStatusFiltered.filter(
+    (j) => !params.day || j.created_at.slice(5, 10) === params.day,
   )
 
   const chartData = computeChartData(appStatusFiltered)
@@ -102,7 +101,7 @@ export function Dashboard({ onLogout }: DashboardProps) {
         <DeployChart
           data={chartData}
           selectedDay={params.day}
-          onDayClick={day => setParams({ day: params.day === day ? undefined : day })}
+          onDayClick={(day) => setParams({ day: params.day === day ? undefined : day })}
         />
       </div>
 
@@ -116,13 +115,13 @@ export function Dashboard({ onLogout }: DashboardProps) {
           jobs={jobs}
           selectedApp={params.app}
           selectedStatus={params.status}
-          onAppChange={app => setParams({ app })}
-          onStatusChange={status => setParams({ status })}
+          onAppChange={(app) => setParams({ app })}
+          onStatusChange={(status) => setParams({ status })}
         />
         <JobListContainer
           jobs={filtered}
           expandedId={params.job ?? null}
-          onExpand={id => setParams({ job: id ?? undefined })}
+          onExpand={(id) => setParams({ job: id ?? undefined })}
         />
       </div>
     </div>

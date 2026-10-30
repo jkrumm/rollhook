@@ -46,17 +46,15 @@ export function LogContainer({ jobId, status }: LogContainerProps) {
 
           if (match) {
             const lineMs = new Date(match[1]).getTime()
-            if (startTimeRef.current === null)
-              startTimeRef.current = lineMs
+            if (startTimeRef.current === null) startTimeRef.current = lineMs
             elapsed = Math.round((lineMs - startTimeRef.current) / 1000)
             text = match[2]
-          }
-          else {
+          } else {
             text = raw
           }
 
           seenCountRef.current++
-          setLogLines(prev => [...prev, { text, elapsed }])
+          setLogLines((prev) => [...prev, { text, elapsed }])
           setIsLoading(false)
         },
         ctrl.signal,
@@ -76,8 +74,7 @@ export function LogContainer({ jobId, status }: LogContainerProps) {
           // eslint-disable-next-line react-web-api/no-leaked-event-listener -- ctrl.abort() fires this in cleanup; { once: true } auto-removes it
           ctrl.signal.addEventListener('abort', onAbort, { once: true })
         })
-        if (!cancelled)
-          return streamOnce()
+        if (!cancelled) return streamOnce()
       }
     }
 

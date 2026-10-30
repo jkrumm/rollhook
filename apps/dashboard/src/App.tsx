@@ -7,8 +7,7 @@ const IS_DEMO = import.meta.env.DEV || import.meta.env.MODE === 'demo'
 
 export function App() {
   const [token, setToken] = useState(() => {
-    if (IS_DEMO)
-      return startDemoSession()
+    if (IS_DEMO) return startDemoSession()
     return restoreSession()
   })
 

@@ -1,11 +1,8 @@
 {
   "name": "@rollhook/dashboard",
-  "type": "module",
   "version": "0.0.1",
   "private": true,
-  "basalt": {
-    "profile": "tokens-only"
-  },
+  "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -34,5 +31,8 @@
     "orval": "8.33.0",
     "tailwindcss": "4.3.3",
     "vite": "7.3.1"
+  },
+  "basalt": {
+    "profile": "tokens-only"
   }
 }

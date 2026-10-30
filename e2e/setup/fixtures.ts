@@ -37,8 +37,7 @@ export function getContainerCount(nameFilter: string = CONTAINER_NAME_FILTER): n
       { encoding: 'utf-8' },
     ).trim()
     return output ? output.split('\n').filter(Boolean).length : 0
-  }
-  catch {
+  } catch {
     return 0
   }
 }
@@ -46,11 +45,11 @@ export function getContainerCount(nameFilter: string = CONTAINER_NAME_FILTER): n
 export const ROLLHOOK_SECRET = 'e2e-secret-token'
 
 export function adminHeaders(): HeadersInit {
-  return { 'Authorization': `Bearer ${ROLLHOOK_SECRET}`, 'Content-Type': 'application/json' }
+  return { Authorization: `Bearer ${ROLLHOOK_SECRET}`, 'Content-Type': 'application/json' }
 }
 
 export function webhookHeaders(): HeadersInit {
-  return { 'Authorization': `Bearer ${ROLLHOOK_SECRET}`, 'Content-Type': 'application/json' }
+  return { Authorization: `Bearer ${ROLLHOOK_SECRET}`, 'Content-Type': 'application/json' }
 }
 
 export type { JobResult }
@@ -58,13 +57,9 @@ export type { JobResult }
 // Start a detached container with the given image and Docker labels.
 // Returns the container ID. The container runs `sleep 3600` and is started with
 // --rm so it auto-removes when stopped. Callers must stop it in afterAll.
-export function startContainerWithLabels(
-  image: string,
-  labels: Record<string, string>,
-): string {
+export function startContainerWithLabels(image: string, labels: Record<string, string>): string {
   const args = ['run', '-d', '--rm']
-  for (const [k, v] of Object.entries(labels))
-    args.push('--label', `${k}=${v}`)
+  for (const [k, v] of Object.entries(labels)) args.push('--label', `${k}=${v}`)
   args.push(image, 'sleep', '3600')
   return execFileSync('docker', args, { encoding: 'utf-8' }).trim()
 }
@@ -73,8 +68,7 @@ export function startContainerWithLabels(
 export function stopContainer(id: string): void {
   try {
     execFileSync('docker', ['stop', id])
-  }
-  catch {
+  } catch {
     // ignore
   }
 }
@@ -85,24 +79,25 @@ export async function pollJobUntilDone(jobId: string, timeoutMs = 90_000): Promi
   const deadline = Date.now() + timeoutMs
   while (Date.now() < deadline) {
     const res = await fetch(`${BASE_URL}/jobs/${jobId}`, { headers: adminHeaders() })
-    const job = await res.json() as JobResult
-    if (job.status === 'success' || job.status === 'failed')
-      return job
-    await new Promise(resolve => setTimeout(resolve, 1_000))
+    const job = (await res.json()) as JobResult
+    if (job.status === 'success' || job.status === 'failed') return job
+    await new Promise((resolve) => setTimeout(resolve, 1_000))
   }
   throw new Error(`Job ${jobId} did not complete within ${timeoutMs}ms`)
 }
 
 // Same as pollJobUntilDone but uses the webhook token — mirrors the real CI journey
 // where rollhook-action only has a webhook token, not an admin token.
-export async function webhookPollJobUntilDone(jobId: string, timeoutMs = 90_000): Promise<JobResult> {
+export async function webhookPollJobUntilDone(
+  jobId: string,
+  timeoutMs = 90_000,
+): Promise<JobResult> {
   const deadline = Date.now() + timeoutMs
   while (Date.now() < deadline) {
     const res = await fetch(`${BASE_URL}/jobs/${jobId}`, { headers: webhookHeaders() })
-    const job = await res.json() as JobResult
-    if (job.status === 'success' || job.status === 'failed')
-      return job
-    await new Promise(resolve => setTimeout(resolve, 1_000))
+    const job = (await res.json()) as JobResult
+    if (job.status === 'success' || job.status === 'failed') return job
+    await new Promise((resolve) => setTimeout(resolve, 1_000))
   }
   throw new Error(`Job ${jobId} did not complete within ${timeoutMs}ms`)
 }
