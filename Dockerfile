@@ -10,7 +10,7 @@ COPY apps/dashboard/ apps/dashboard/
 COPY packages/ui/ packages/ui/
 RUN bun run --filter @rollhook/dashboard build
 
-FROM golang:1.25-alpine AS go-builder
+FROM golang:1.26-alpine AS go-builder
 WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download

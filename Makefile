@@ -4,7 +4,7 @@
 
 .DEFAULT_GOAL := help
 
-GO_IMAGE   := golang:1.25-alpine
+GO_IMAGE   := golang:1.26-alpine
 GO_RUN     := docker run --rm -v "$(CURDIR)":/workspace -w /workspace $(GO_IMAGE)
 LINT_IMAGE := golangci/golangci-lint:v2.10.1
 
