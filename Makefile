@@ -6,7 +6,7 @@
 
 GO_IMAGE   := golang:1.26-alpine
 GO_RUN     := docker run --rm -v "$(CURDIR)":/workspace -w /workspace $(GO_IMAGE)
-LINT_IMAGE := golangci/golangci-lint:v2.10.1
+LINT_IMAGE := golangci/golangci-lint:v2.15.0
 
 # Production coordinates: the public prod domain and an ssh alias; the environment overrides both.
 ROLLHOOK_URL      ?= https://rollhook.jkrumm.com
