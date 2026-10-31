@@ -7,16 +7,10 @@
  */
 
 export type GetJobsParams = {
-/**
- * Filter by app name
- */
-app?: string;
-/**
- * Filter by status: queued, running, success, or failed
- */
-status?: string;
-/**
- * Maximum results to return (default 50)
- */
-limit?: number;
+  /** Filter by app name */
+  app?: string;
+  /** Filter by status: queued, running, success, or failed */
+  status?: string;
+  /** Maximum results to return (default 50) */
+  limit?: number;
 };
