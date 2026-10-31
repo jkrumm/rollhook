@@ -4,6 +4,7 @@ import (
 	"crypto/subtle"
 	"encoding/base64"
 	"encoding/json"
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -13,7 +14,7 @@ import (
 
 // hopByHopHeaders lists connection-specific headers that must not be forwarded upstream.
 // httputil.ReverseProxy strips most of these automatically, but we strip them explicitly
-// in Director to match the TypeScript proxy behaviour (notably Authorization).
+// in the proxy's Rewrite hook to match the TypeScript proxy behaviour (notably Authorization).
 var hopByHopHeaders = []string{
 	"Authorization",
 	"Host",
@@ -26,6 +27,10 @@ var hopByHopHeaders = []string{
 	"Trailers",
 	"Upgrade",
 }
+
+// forwardedPassthroughHeaders are the upstream reverse proxy's (Traefik's) forwarding
+// headers. httputil.ReverseProxy removes them before Rewrite; NewProxy copies them back.
+var forwardedPassthroughHeaders = []string{"Forwarded", "X-Forwarded-Host", "X-Forwarded-Proto"}
 
 // zotAbsoluteURLPattern matches absolute URLs pointing at the internal Zot address.
 // Location headers from Zot contain these and must be rewritten to relative paths
@@ -136,7 +141,33 @@ func NewProxy(zotAddr, secret string) http.Handler {
 
 	zotAuth := "Basic " + base64.StdEncoding.EncodeToString([]byte(ZotUser+":"+secret))
 
-	proxy := httputil.NewSingleHostReverseProxy(target)
+	proxy := &httputil.ReverseProxy{
+		// Rewrite (not the deprecated Director): ReverseProxy strips hop-by-hop and
+		// X-Forwarded-* headers before calling it, so a client-supplied Connection
+		// header can no longer drop the injected Zot credentials.
+		Rewrite: func(pr *httputil.ProxyRequest) {
+			pr.SetURL(target)
+			// Keep the wire format Zot has always seen from NewSingleHostReverseProxy:
+			// the client's Host, the reverse proxy's X-Forwarded-* chain passed through,
+			// and the client IP appended to X-Forwarded-For.
+			pr.Out.Host = pr.In.Host
+			for _, h := range forwardedPassthroughHeaders {
+				if v, ok := pr.In.Header[h]; ok {
+					pr.Out.Header[h] = v
+				}
+			}
+			if clientIP, _, err := net.SplitHostPort(pr.In.RemoteAddr); err == nil {
+				if prior := pr.In.Header.Values("X-Forwarded-For"); len(prior) > 0 {
+					clientIP = strings.Join(prior, ", ") + ", " + clientIP
+				}
+				pr.Out.Header.Set("X-Forwarded-For", clientIP)
+			}
+			for _, h := range hopByHopHeaders {
+				pr.Out.Header.Del(h)
+			}
+			pr.Out.Header.Set("Authorization", zotAuth)
+		},
+	}
 
 	// Rewrite absolute Zot Location URLs to relative paths so Docker follows
 	// redirects through our proxy endpoint, not directly to 127.0.0.1:5000.
@@ -149,16 +180,6 @@ func NewProxy(zotAddr, secret string) http.Handler {
 			resp.Header.Set("Location", rewritten)
 		}
 		return nil
-	}
-
-	// Override Director: strip hop-by-hop headers and inject Zot credentials.
-	originalDirector := proxy.Director
-	proxy.Director = func(req *http.Request) {
-		originalDirector(req)
-		for _, h := range hopByHopHeaders {
-			req.Header.Del(h)
-		}
-		req.Header.Set("Authorization", zotAuth)
 	}
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
