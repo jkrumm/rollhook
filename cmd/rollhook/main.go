@@ -27,14 +27,35 @@ import (
 	"github.com/jkrumm/rollhook/internal/state"
 )
 
+// scalarHTML serves the API reference UI. The script is pinned to an exact
+// version and file with Subresource Integrity, so a changed CDN file is refused
+// instead of running on the dashboard's origin (where rh_token lives). To bump:
+// take dist/browser/standalone.js from the npm tarball of the new version and
+// set integrity to "sha384-" + base64(sha384(file)).
 const scalarHTML = `<!doctype html>
 <html>
 <head><title>RollHook API</title><meta charset="utf-8"/></head>
 <body>
 <script id="api-reference" data-url="/openapi.json"></script>
-<script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference"></script>
+<script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference@1.75.0/dist/browser/standalone.js" integrity="sha384-xgelKlDcc+BYp0O+ZYzFesLnWCgGpEbXVVZWNQT6WyZYygN01tbEMygnjPXb5OPI" crossorigin="anonymous"></script>
 </body>
 </html>`
+
+// scalarCSP limits the docs page to the pinned CDN script and same-origin
+// requests, so even a misbehaving script cannot send data elsewhere.
+const scalarCSP = "default-src 'none'; " +
+	"script-src https://cdn.jsdelivr.net; " +
+	"style-src 'self' 'unsafe-inline'; " +
+	"font-src 'self' data: https://fonts.scalar.com; " +
+	"img-src 'self' data:; " +
+	"connect-src 'self'; " +
+	"base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+
+func serveScalar(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Content-Security-Policy", scalarCSP)
+	_, _ = w.Write([]byte(scalarHTML))
+}
 
 // envInt reads an integer env var, returning defaultVal if unset, unparseable,
 // or negative. Zero is a valid, meaningful value (the documented "disable" escape
@@ -171,10 +192,7 @@ func main() {
 	humaAPI.UseMiddleware(middleware.HumaAuth(humaAPI, secret, oidcVerifier))
 
 	// Scalar UI — served at /openapi, spec JSON is at /openapi.json (huma default)
-	r.Get("/openapi", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		_, _ = w.Write([]byte(scalarHTML))
-	})
+	r.Get("/openapi", serveScalar)
 
 	api.RegisterHealth(humaAPI)
 	api.RegisterReady(humaAPI, cli, secret)
