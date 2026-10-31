@@ -13,20 +13,18 @@ const IMAGE_V1 = `${REGISTRY_HOST}/rollhook-e2e-hello:v1`
 
 describe('job queue', () => {
   it('processes two concurrent async deploys sequentially and both succeed', async () => {
-    // Fire two async deploys simultaneously — both enter the queue before either starts running.
-    // This validates that the FIFO queue accepts concurrent requests and processes them in order.
-    const [res1, res2] = await Promise.all([
+    // Fire two async deploys back to back: the second arrives while the first is still rolling out,
+    // so it waits in the queue. The 1.1 s gap gives the jobs distinct created_at seconds (SQLite
+    // CURRENT_TIMESTAMP has second precision), which the FIFO assertion below needs.
+    const deploy = () =>
       fetch(`${BASE_URL}/deploy?async=true`, {
         method: 'POST',
         headers: webhookHeaders(),
         body: JSON.stringify({ image_tag: IMAGE_V1 }),
-      }),
-      fetch(`${BASE_URL}/deploy?async=true`, {
-        method: 'POST',
-        headers: webhookHeaders(),
-        body: JSON.stringify({ image_tag: IMAGE_V1 }),
-      }),
-    ])
+      })
+    const res1 = await deploy()
+    await new Promise((resolve) => setTimeout(resolve, 1100))
+    const res2 = await deploy()
 
     expect(res1.status).toBe(200)
     expect(res2.status).toBe(200)

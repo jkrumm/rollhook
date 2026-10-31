@@ -75,8 +75,8 @@ export const getPostAuthTokenUrl = () => {
 }
 
 /**
- * Validates the OIDC token and checks allowed_repos/allowed_refs labels on the running service. Returns the registry password for docker login and the ROLLHOOK_SECRET for all subsequent API calls (deploy, jobs, logs). PR refs are always denied.
- * @summary Exchange a GitHub Actions OIDC JWT for a registry credential and API secret
+ * Validates the OIDC token and checks allowed_repos/allowed_refs labels on the running service. Returns an image-scoped registry password for docker login and a short-lived deploy token scoped to that service (POST /deploy, GET /jobs/{id}, GET /jobs/{id}/logs). Never returns ROLLHOOK_SECRET. PR refs are always denied.
+ * @summary Exchange a GitHub Actions OIDC JWT for a registry credential and a scoped deploy token
  */
 export const postAuthToken = async (tokenInputBody: NonReadonly<TokenInputBody>, options?: Parameters<typeof customInstance>[1]): Promise<postAuthTokenResponse> => {
 

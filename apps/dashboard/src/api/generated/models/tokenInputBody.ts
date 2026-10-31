@@ -9,6 +9,10 @@
 export interface TokenInputBody {
   /** A URL to the JSON Schema for this object. */
   readonly $schema?: string;
-  /** Image name (without registry prefix or tag), e.g. myapp */
+  /** Image repository without tag: a bare name (myapp), a path suffix (org/myapp) or the full repository (ghcr.io/org/myapp). Matched on whole path segments against the image of the running service; a registry-qualified name only matches that registry. */
   image_name: string;
+  /** Compose project (com.docker.compose.project) of the target service. Only needed when the image runs in more than one Compose service. */
+  project?: string;
+  /** Compose service (com.docker.compose.service) of the target service. Only needed when the image runs in more than one Compose service. */
+  service?: string;
 }

@@ -83,7 +83,7 @@ export const getPostDeployUrl = (params?: PostDeployParams,) => {
 }
 
 /**
- * Enqueues a zero-downtime rolling deploy for the service matching image_tag. By default blocks until the job reaches a terminal state and returns the result. Pass ?async=true to return immediately with status=queued. The app name is derived from the last path segment of image_tag before the colon (e.g. ghcr.io/org/my-api:sha → my-api). Returns 500 with an error field if the deploy fails.
+ * Enqueues a zero-downtime rolling deploy for the service matching image_tag. If the image runs in more than one Compose service, the request is rejected with 409 unless project and service select one. By default blocks until the job reaches a terminal state and returns the result. Pass ?async=true to return immediately with status=queued. The app name is derived from the last path segment of image_tag before the colon (e.g. ghcr.io/org/my-api:sha → my-api). Returns 500 with an error field if the deploy fails. Accepts the static ROLLHOOK_SECRET or a deploy token from POST /auth/token; a deploy token is only valid when the image_tag repository (registry host + path, tag/digest stripped) equals the repository the token was issued for, and only for that service.
  * @summary Trigger a rolling deployment
  */
 export const postDeploy = async (deployInputBody: NonReadonly<DeployInputBody>,

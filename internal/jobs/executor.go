@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/docker/docker/client"
 	"github.com/google/uuid"
 
 	"github.com/jkrumm/rollhook/internal/db"
+	dockerpkg "github.com/jkrumm/rollhook/internal/docker"
 	"github.com/jkrumm/rollhook/internal/jobs/steps"
 	"github.com/jkrumm/rollhook/internal/notifier"
 )
@@ -48,7 +48,7 @@ func NewJob(imageTag string) db.Job {
 	now := time.Now().UTC()
 	return db.Job{
 		ID:        uuid.New().String(),
-		App:       extractApp(imageTag),
+		App:       dockerpkg.AppFromRef(imageTag),
 		Status:    db.StatusQueued,
 		ImageTag:  imageTag,
 		CreatedAt: now,
@@ -73,19 +73,6 @@ func (e *Executor) Submit(job db.Job) error {
 		return fmt.Errorf("executor: %w", err)
 	}
 	return nil
-}
-
-// extractApp derives the app name from an image tag.
-// "registry.example.com/myapp:v1" → "myapp"
-func extractApp(imageTag string) string {
-	last := imageTag
-	if idx := strings.LastIndex(imageTag, "/"); idx >= 0 {
-		last = imageTag[idx+1:]
-	}
-	if idx := strings.Index(last, ":"); idx >= 0 {
-		last = last[:idx]
-	}
-	return last
 }
 
 func (e *Executor) run(ctx context.Context, job db.Job) {
@@ -144,7 +131,7 @@ func (e *Executor) run(ctx context.Context, job db.Job) {
 
 func (e *Executor) execute(ctx context.Context, job db.Job, log func(string)) error {
 	// Step 1: Discover
-	result, err := steps.Discover(ctx, e.docker, job.ImageTag)
+	result, err := steps.Discover(ctx, e.docker, job.ImageTag, steps.Target{Project: job.TargetProject, Service: job.TargetService})
 	if err != nil {
 		return err
 	}

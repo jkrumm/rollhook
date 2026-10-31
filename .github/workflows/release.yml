@@ -26,23 +26,17 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.RELEASE_TOKEN }} # PAT as jkrumm — bypasses branch protection ruleset
+          # Keep the checkout token out of .git/config so later steps cannot reuse
+          # it. semantic-release authenticates its own pushes with the
+          # RELEASE_TOKEN PAT, which it receives as GITHUB_TOKEN in its step env
+          # below — that variable is the PAT, not the workflow's github.token, so
+          # the PAT is only exposed to that one step. No dependency install runs
+          # in this job — the release tooling is fetched by npx at pinned versions.
+          persist-credentials: false
 
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.3.9
-
-      - uses: actions/cache@v4
-        with:
-          path: ~/.bun/install/cache
-          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lock') }}
-          restore-keys: ${{ runner.os }}-bun-
-
-      - run: bun install --frozen-lockfile
 
       # Cache the npm package store so semantic-release packages aren't
       # re-downloaded on every release run.
@@ -63,11 +57,11 @@ jobs:
         # Retry once: npm registry occasionally returns 403 for recently
         # published packages when the ~/.npm cache is cold on first run.
         run: |
-          SR_CMD="npx -p semantic-release@25 \
-            -p @semantic-release/changelog@6 \
-            -p @semantic-release/git@10 \
-            -p @semantic-release/github@12 \
-            -p conventional-changelog-conventionalcommits@9 \
+          SR_CMD="npx -p semantic-release@25.0.9 \
+            -p @semantic-release/changelog@6.0.3 \
+            -p @semantic-release/git@10.0.1 \
+            -p @semantic-release/github@12.0.10 \
+            -p conventional-changelog-conventionalcommits@9.3.1 \
             semantic-release"
           if [ "${{ inputs.dry_run }}" = "true" ]; then
             SR_CMD="$SR_CMD --dry-run"

@@ -27,14 +27,48 @@ import (
 	"github.com/jkrumm/rollhook/internal/state"
 )
 
+// scalarHTML serves the API reference UI. The script is pinned to an exact
+// version and file with Subresource Integrity, so a changed CDN file is refused
+// instead of running on the dashboard's origin (where rh_token lives). To bump:
+// take dist/browser/standalone.js from the npm tarball of the new version and
+// set integrity to "sha384-" + base64(sha384(file)).
 const scalarHTML = `<!doctype html>
 <html>
 <head><title>RollHook API</title><meta charset="utf-8"/></head>
 <body>
 <script id="api-reference" data-url="/openapi.json"></script>
-<script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference"></script>
+<script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference@1.75.0/dist/browser/standalone.js" integrity="sha384-xgelKlDcc+BYp0O+ZYzFesLnWCgGpEbXVVZWNQT6WyZYygN01tbEMygnjPXb5OPI" crossorigin="anonymous"></script>
 </body>
 </html>`
+
+// scalarCSP limits the docs page to the pinned CDN script and same-origin
+// requests, so even a misbehaving script cannot send data elsewhere. Verified
+// against the pinned standalone.js (1.75.0):
+//   - styles are injected inline; fonts.scalar.com is only referenced from
+//     @font-face rules in them (woff2), so it needs font-src, not style-src
+//   - the bundle starts no Web Workers, so there is no worker-src
+//   - response previews use blob: URLs in <img>/<video>/<audio> (img-src,
+//     media-src). HTML/PDF previews (<iframe>/<object> on blob:) stay blocked:
+//     an unsandboxed blob: frame would run response HTML on this origin.
+//   - the API client's default proxy (proxy.scalar.com) is deliberately not
+//     in connect-src, so "try it" requests stay same-origin.
+//
+// The page's only inline <script> is the empty data-url config element, which
+// runs no code; TestServeScalar_InlineScriptsAllowedByCSP keeps it that way.
+const scalarCSP = "default-src 'none'; " +
+	"script-src https://cdn.jsdelivr.net; " +
+	"style-src 'self' 'unsafe-inline'; " +
+	"font-src 'self' data: https://fonts.scalar.com; " +
+	"img-src 'self' data: blob:; " +
+	"media-src blob:; " +
+	"connect-src 'self'; " +
+	"base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+
+func serveScalar(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Content-Security-Policy", scalarCSP)
+	_, _ = w.Write([]byte(scalarHTML))
+}
 
 // envInt reads an integer env var, returning defaultVal if unset, unparseable,
 // or negative. Zero is a valid, meaningful value (the documented "disable" escape
@@ -171,10 +205,7 @@ func main() {
 	humaAPI.UseMiddleware(middleware.HumaAuth(humaAPI, secret, oidcVerifier))
 
 	// Scalar UI — served at /openapi, spec JSON is at /openapi.json (huma default)
-	r.Get("/openapi", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		_, _ = w.Write([]byte(scalarHTML))
-	})
+	r.Get("/openapi", serveScalar)
 
 	api.RegisterHealth(humaAPI)
 	api.RegisterReady(humaAPI, cli, secret)
@@ -183,7 +214,7 @@ func main() {
 	api.RegisterJobsAPI(humaAPI, store)
 
 	// SSE log stream — registered directly on Chi to bypass huma's response wrapping.
-	r.With(middleware.RequireAuth(secret)).Get("/jobs/{id}/logs", api.StreamLogsHandler(store, dataDir))
+	r.With(middleware.RequireAuthAllowScoped(secret)).Get("/jobs/{id}/logs", api.StreamLogsHandler(store, dataDir))
 
 	// OCI distribution routes — proxied to internal Zot (127.0.0.1:5000).
 	proxyHandler := registry.NewProxy("http://127.0.0.1:5000", secret)

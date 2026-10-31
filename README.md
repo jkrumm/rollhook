@@ -153,18 +153,31 @@ See [`e2e/hello-world/`](e2e/hello-world/) for a complete reference app.
 
 Interactive docs at `/openapi` on your running instance. Key routes:
 
-| Method | Route             | Auth         | Description                                          |
-| ------ | ----------------- | ------------ | ---------------------------------------------------- |
-| `POST` | `/auth/token`     | OIDC JWT     | Exchange OIDC token for registry credential + secret |
-| `POST` | `/deploy`         | bearer       | Trigger deploy (`?async=true` to not block)          |
-| `GET`  | `/jobs/{id}`      | bearer       | Job status + metadata                                |
-| `GET`  | `/jobs/{id}/logs` | bearer       | SSE log stream                                       |
-| `GET`  | `/jobs`           | bearer       | History (`?app=&status=&limit=`)                     |
-| `GET`  | `/health`         | none         | Liveness — `{ status, version }`                     |
-| `GET`  | `/ready`          | none         | Readiness — `{ status, docker }`                     |
-| `*`    | `/v2/*`           | bearer/basic | Built-in OCI registry (push & pull)                  |
+| Method | Route             | Auth         | Description                                                       |
+| ------ | ----------------- | ------------ | ----------------------------------------------------------------- |
+| `POST` | `/auth/token`     | OIDC JWT     | Exchange OIDC token for registry credential + scoped deploy token |
+| `POST` | `/deploy`         | bearer       | Trigger deploy (`?async=true` to not block)                       |
+| `GET`  | `/jobs/{id}`      | bearer       | Job status + metadata                                             |
+| `GET`  | `/jobs/{id}/logs` | bearer       | SSE log stream                                                    |
+| `GET`  | `/jobs`           | bearer       | History (`?app=&status=&limit=`)                                  |
+| `GET`  | `/health`         | none         | Liveness — `{ status, version }`                                  |
+| `GET`  | `/ready`          | none         | Readiness — `{ status, docker }`                                  |
+| `*`    | `/v2/*`           | bearer/basic | Built-in OCI registry (push & pull)                               |
 
-**Auth:** `POST /auth/token` accepts GitHub Actions OIDC JWTs and returns `ROLLHOOK_SECRET` for all subsequent API calls. All other routes require `Bearer <ROLLHOOK_SECRET>`.
+**Auth:** `POST /auth/token` accepts GitHub Actions OIDC JWTs and returns an image-scoped registry credential plus a short-lived deploy token (field `secret`, never `ROLLHOOK_SECRET`). The deploy token is bound to the full image repository (registry host + path) of the service it was issued for and to that Compose service. It is valid only for `POST /deploy` of that repository to that service and for `GET /jobs/{id}` / `GET /jobs/{id}/logs` of that repository's jobs. All other routes require `Bearer <ROLLHOOK_SECRET>`.
+
+**Treat `secret` as a credential.** It deploys your service for 30 minutes and can only be invalidated early by rotating `ROLLHOOK_SECRET`. Never echo or log it; in GitHub Actions mask it before any other step can print it (`echo "::add-mask::$SECRET"`). `jkrumm/rollhook-action` must do this for the `secret` (and registry `token`) it receives.
+
+**Image matching** (`image_name` on `/auth/token`, `image_tag` on `/deploy`). RollHook finds the running Compose container whose image repository matches:
+
+1. exactly (`ghcr.io/org/my-api` == `ghcr.io/org/my-api`), else
+2. on whole path segments from the end: `my-api` and `org/my-api` match `ghcr.io/org/my-api`; `other/my-api` and `evil.io/org/my-api` do not.
+
+A registry-qualified name therefore only ever matches its own registry host. A deploy with a deploy token additionally requires the `image_tag` repository (tag/digest stripped) to **equal** the repository of the running service exactly — so CI must push and deploy under the same registry host and path the service's compose file runs, e.g. `rollhook.example.com/my-api:<sha>` for a service running `rollhook.example.com/my-api`.
+
+If the name matches more than one repository, or the same repository runs in more than one Compose project/service (e.g. `web` and `worker` from one image), the request fails with `409` instead of picking one. Pass `project` and `service` (the `com.docker.compose.project` / `com.docker.compose.service` labels) in the request body to select the service. Containers not started by Compose are ignored.
+
+> **Behaviour change:** earlier versions fell back to matching on the last path segment alone, so `localhost:7700/my-api` could resolve a service running `registry.example.com/my-api`, and a shared image picked whichever container Docker listed first. Those requests now return `403` (no matching service) or `409` (ambiguous). Align the image reference with the one in the compose file, or pass `project`/`service`.
 
 **Liveness vs readiness:** `/health` reports only that the process is up; `/ready` also verifies the Docker daemon is reachable and returns `503` when it is not. A RollHook that cannot reach Docker will fail every deploy, so point your **monitoring** (Uptime Kuma, Prometheus, …) at `/ready` — that is the alert you want, and polling it is also what drives RollHook's daemon-connectivity logging to stderr.
 

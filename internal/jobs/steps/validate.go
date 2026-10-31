@@ -38,7 +38,7 @@ func Validate(composePath, service, imageTag string, logFn func(string)) error {
 
 	opts, err := cli.NewProjectOptions(
 		[]string{composePath},
-		cli.WithOsEnv,
+		cli.WithEnv(composeEnv()), // OS env minus RollHook credentials
 		cli.WithLoadOptions(func(o *loader.Options) {
 			o.SkipValidation = true // skip strict JSON schema checks
 		}),

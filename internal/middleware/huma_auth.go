@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/danielgtaylor/huma/v2"
+	"github.com/jkrumm/rollhook/internal/deploytoken"
 	oidcpkg "github.com/jkrumm/rollhook/internal/oidc"
 )
 
@@ -14,6 +15,8 @@ import (
 // with a Security requirement. Accepts both GitHub Actions OIDC JWTs and static secrets.
 //
 //   - OIDC JWT (starts with "eyJ"): verified via verifier → claims stored in request context
+//   - Deploy token (starts with "rhd_", minted by POST /auth/token): HMAC-verified,
+//     accepted only on deployTokenOperations; its scope is stored in the request context
 //   - Static secret: constant-time comparison against secret
 //   - Missing/malformed Bearer → 401
 //   - Invalid JWT or wrong static secret → 403
@@ -33,6 +36,13 @@ func hasVerifier(v oidcpkg.Verifiable) bool {
 	}
 }
 
+// deployTokenOperations are the only operations a service-scoped deploy token may
+// call. Handlers enforce the scope itself (full image repository + Compose service).
+var deployTokenOperations = map[string]bool{
+	"post-deploy": true,
+	"get-job":     true,
+}
+
 // Pass nil as verifier to disable OIDC support (static secret only).
 func HumaAuth(api huma.API, secret string, verifier oidcpkg.Verifiable) func(huma.Context, func(huma.Context)) {
 	return func(ctx huma.Context, next func(huma.Context)) {
@@ -44,6 +54,20 @@ func HumaAuth(api huma.API, secret string, verifier oidcpkg.Verifiable) func(hum
 		token, ok := strings.CutPrefix(auth, "Bearer ")
 		if !ok {
 			_ = huma.WriteErr(api, ctx, http.StatusUnauthorized, "unauthorized")
+			return
+		}
+
+		if deploytoken.IsDeployToken(token) {
+			scope, valid := deploytoken.Parse(secret, token)
+			if !valid {
+				_ = huma.WriteErr(api, ctx, http.StatusForbidden, "invalid or expired deploy token")
+				return
+			}
+			if !deployTokenOperations[ctx.Operation().OperationID] {
+				_ = huma.WriteErr(api, ctx, http.StatusForbidden, "deploy tokens are only accepted for POST /deploy and GET /jobs/{id}")
+				return
+			}
+			next(huma.WithValue(ctx, deploytoken.ContextKey, scope))
 			return
 		}
 

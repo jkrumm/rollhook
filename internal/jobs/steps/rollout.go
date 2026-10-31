@@ -64,6 +64,7 @@ func Rollout(ctx context.Context, cli *client.Client, composePath, service, proj
 		"--scale", fmt.Sprintf("%s=%d", service, scaleCount),
 	)
 	cmd.Dir = cwd
+	cmd.Env = composeEnv() // never hand RollHook's own credentials to compose interpolation
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {

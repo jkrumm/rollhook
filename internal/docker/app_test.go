@@ -1,10 +1,10 @@
-package jobs
+package docker
 
 import (
 	"testing"
 )
 
-func TestExtractApp(t *testing.T) {
+func TestAppFromRef(t *testing.T) {
 	tests := []struct {
 		imageTag string
 		wantApp  string
@@ -33,13 +33,17 @@ func TestExtractApp(t *testing.T) {
 		// Dash in app name
 		{"my-app:v1", "my-app"},
 		{"registry.io/org/my-app:v1", "my-app"},
+
+		// Digest references
+		{"localhost:7700/myapp@sha256:deadbeef", "myapp"},
+		{"ghcr.io/org/myapp:v1@sha256:deadbeef", "myapp"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.imageTag, func(t *testing.T) {
-			got := extractApp(tt.imageTag)
+			got := AppFromRef(tt.imageTag)
 			if got != tt.wantApp {
-				t.Errorf("extractApp(%q) = %q, want %q", tt.imageTag, got, tt.wantApp)
+				t.Errorf("AppFromRef(%q) = %q, want %q", tt.imageTag, got, tt.wantApp)
 			}
 		})
 	}

@@ -31,6 +31,11 @@ type Job struct {
 	Error       *string   `json:"error,omitempty"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
+
+	// TargetProject / TargetService pin discovery to one Compose service when
+	// the image runs in several. Request-time only: not persisted, not exposed.
+	TargetProject string `json:"-"`
+	TargetService string `json:"-"`
 }
 
 // Store wraps a *sql.DB and provides job CRUD operations.
