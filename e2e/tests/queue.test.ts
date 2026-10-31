@@ -54,9 +54,13 @@ describe('job queue', () => {
     const [firstJob, secondJob] = [job1, job2].sort(
       (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
     )
-    expect(new Date(firstJob.updated_at).getTime()).toBeLessThanOrEqual(
-      new Date(secondJob.updated_at).getTime(),
-    )
+    // created_at has second precision (SQLite CURRENT_TIMESTAMP): two concurrent requests usually
+    // share it, and a tie says nothing about queue order. Only a strictly earlier enqueue is evidence.
+    if (new Date(firstJob.created_at).getTime() < new Date(secondJob.created_at).getTime()) {
+      expect(new Date(firstJob.updated_at).getTime()).toBeLessThanOrEqual(
+        new Date(secondJob.updated_at).getTime(),
+      )
+    }
 
     // After both deploys complete there must be exactly 1 container — each rollout
     // scales up and then drains the old containers, not accumulating extras.
