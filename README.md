@@ -153,18 +153,18 @@ See [`e2e/hello-world/`](e2e/hello-world/) for a complete reference app.
 
 Interactive docs at `/openapi` on your running instance. Key routes:
 
-| Method | Route             | Auth         | Description                                          |
-| ------ | ----------------- | ------------ | ---------------------------------------------------- |
-| `POST` | `/auth/token`     | OIDC JWT     | Exchange OIDC token for registry credential + secret |
-| `POST` | `/deploy`         | bearer       | Trigger deploy (`?async=true` to not block)          |
-| `GET`  | `/jobs/{id}`      | bearer       | Job status + metadata                                |
-| `GET`  | `/jobs/{id}/logs` | bearer       | SSE log stream                                       |
-| `GET`  | `/jobs`           | bearer       | History (`?app=&status=&limit=`)                     |
-| `GET`  | `/health`         | none         | Liveness — `{ status, version }`                     |
-| `GET`  | `/ready`          | none         | Readiness — `{ status, docker }`                     |
-| `*`    | `/v2/*`           | bearer/basic | Built-in OCI registry (push & pull)                  |
+| Method | Route             | Auth         | Description                                                       |
+| ------ | ----------------- | ------------ | ----------------------------------------------------------------- |
+| `POST` | `/auth/token`     | OIDC JWT     | Exchange OIDC token for registry credential + scoped deploy token |
+| `POST` | `/deploy`         | bearer       | Trigger deploy (`?async=true` to not block)                       |
+| `GET`  | `/jobs/{id}`      | bearer       | Job status + metadata                                             |
+| `GET`  | `/jobs/{id}/logs` | bearer       | SSE log stream                                                    |
+| `GET`  | `/jobs`           | bearer       | History (`?app=&status=&limit=`)                                  |
+| `GET`  | `/health`         | none         | Liveness — `{ status, version }`                                  |
+| `GET`  | `/ready`          | none         | Readiness — `{ status, docker }`                                  |
+| `*`    | `/v2/*`           | bearer/basic | Built-in OCI registry (push & pull)                               |
 
-**Auth:** `POST /auth/token` accepts GitHub Actions OIDC JWTs and returns `ROLLHOOK_SECRET` for all subsequent API calls. All other routes require `Bearer <ROLLHOOK_SECRET>`.
+**Auth:** `POST /auth/token` accepts GitHub Actions OIDC JWTs and returns an image-scoped registry credential plus a short-lived deploy token (field `secret`, never `ROLLHOOK_SECRET`). The deploy token is valid only for `POST /deploy` of the service it was issued for and `GET /jobs/{id}` / `GET /jobs/{id}/logs` of that app's jobs. All other routes require `Bearer <ROLLHOOK_SECRET>`.
 
 **Liveness vs readiness:** `/health` reports only that the process is up; `/ready` also verifies the Docker daemon is reachable and returns `503` when it is not. A RollHook that cannot reach Docker will fail every deploy, so point your **monitoring** (Uptime Kuma, Prometheus, …) at `/ready` — that is the alert you want, and polling it is also what drives RollHook's daemon-connectivity logging to stderr.
 

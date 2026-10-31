@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { adminHeaders, BASE_URL, REGISTRY_HOST } from '../setup/fixtures.ts'
+import { adminHeaders, BASE_URL, REGISTRY_HOST, ROLLHOOK_SECRET } from '../setup/fixtures.ts'
 
 const MOCK_OIDC_URL = 'http://localhost:18080'
 const IMAGE_V2 = `${REGISTRY_HOST}/rollhook-e2e-hello:v2`
@@ -123,13 +123,13 @@ describe('oidc authentication', () => {
     expect([200, 503]).toContain(res.status)
   })
 
-  it('oidc → /auth/token → use secret for /deploy', async () => {
+  it('oidc → /auth/token → scoped deploy token for /deploy, never the master secret', async () => {
     const oidcToken = await getOIDCToken({
       repository: 'rollhook-e2e/hello',
       ref: 'refs/heads/main',
       aud: BASE_URL,
     })
-    // Step 1: Exchange OIDC token for registry token + secret
+    // Step 1: Exchange OIDC token for registry token + scoped deploy token
     const authRes = await fetch(`${BASE_URL}/auth/token`, {
       method: 'POST',
       headers: oidcHeaders(oidcToken),
@@ -139,15 +139,27 @@ describe('oidc authentication', () => {
     const { token, secret } = (await authRes.json()) as { token: string; secret: string }
     expect(token).toBeTruthy()
     expect(secret).toBeTruthy()
+    expect(secret).not.toBe(ROLLHOOK_SECRET)
+    const scoped = { 'Authorization': `Bearer ${secret}`, 'Content-Type': 'application/json' }
 
-    // Step 2: Use secret to deploy (not the OIDC token)
+    // Step 2: The deploy token deploys the service it was issued for
     const deployRes = await fetch(`${BASE_URL}/deploy?async=true`, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${secret}`, 'Content-Type': 'application/json' },
+      headers: scoped,
       body: JSON.stringify({ image_tag: IMAGE_V2 }),
     })
     // 200 = deploy accepted (queued). 503 = queue full (also acceptable under load).
     expect([200, 503]).toContain(deployRes.status)
+
+    // ...but not another app, and not the admin surface
+    const otherRes = await fetch(`${BASE_URL}/deploy?async=true`, {
+      method: 'POST',
+      headers: scoped,
+      body: JSON.stringify({ image_tag: `${REGISTRY_HOST}/some-other-app:v1` }),
+    })
+    expect(otherRes.status).toBe(403)
+    const listRes = await fetch(`${BASE_URL}/jobs`, { headers: scoped })
+    expect(listRes.status).toBe(403)
   })
 
   it('invalid bearer token on /deploy → 403', async () => {
