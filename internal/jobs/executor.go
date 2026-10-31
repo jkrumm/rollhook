@@ -144,7 +144,7 @@ func (e *Executor) run(ctx context.Context, job db.Job) {
 
 func (e *Executor) execute(ctx context.Context, job db.Job, log func(string)) error {
 	// Step 1: Discover
-	result, err := steps.Discover(ctx, e.docker, job.ImageTag)
+	result, err := steps.Discover(ctx, e.docker, job.ImageTag, steps.Target{})
 	if err != nil {
 		return err
 	}

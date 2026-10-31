@@ -112,7 +112,7 @@ func RegisterDeploy(humaAPI huma.API, exec *jobspkg.Executor, store *db.Store, c
 			if job.App != scope.App {
 				return nil, huma.NewError(http.StatusForbidden, fmt.Sprintf("deploy token is scoped to %q, not %q", scope.App, job.App))
 			}
-			disc, err := steps.Discover(ctx, cli, input.Body.ImageTag)
+			disc, err := steps.Discover(ctx, cli, input.Body.ImageTag, steps.Target{})
 			if err != nil {
 				return nil, discoverError(cli, err)
 			}

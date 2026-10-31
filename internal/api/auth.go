@@ -60,15 +60,9 @@ func RegisterAuthToken(humaAPI huma.API, secret string, cli *client.Client) {
 
 		// Discover the running container to get its labels, then check allowed_repos/refs.
 		// Fail-secure: if no container is running (first deploy), deny.
-		disc, err := steps.Discover(ctx, cli, imageName+":latest")
+		disc, err := steps.Discover(ctx, cli, imageName+":latest", steps.Target{})
 		if err != nil {
 			return nil, discoverError(cli, err)
-		}
-		// The registry token is minted for imageName, so the container whose labels
-		// were checked must actually run that repository — not merely share its base name.
-		if !repoMatchesImageName(disc.Image, imageName) {
-			return nil, huma.NewError(http.StatusForbidden, fmt.Sprintf(
-				"image_name %q does not match the discovered service image %q", imageName, disc.Image))
 		}
 		if err := checkOIDCLabels(claims, disc.Labels); err != nil {
 			return nil, huma.NewError(http.StatusForbidden, err.Error())
@@ -109,14 +103,4 @@ func discoverError(cli *client.Client, err error) error {
 	default:
 		return huma.NewError(http.StatusInternalServerError, "service discovery failed: "+err.Error())
 	}
-}
-
-// repoMatchesImageName reports whether repo (a running container's image
-// repository, possibly registry-prefixed) is imageName itself or ends with
-// "/"+imageName on a path-segment boundary.
-//
-//	repoMatchesImageName("registry.example.com/myapp", "myapp")          → true
-//	repoMatchesImageName("registry.example.com/myapp", "other-ns/myapp") → false
-func repoMatchesImageName(repo, imageName string) bool {
-	return repo == imageName || strings.HasSuffix(repo, "/"+imageName)
 }

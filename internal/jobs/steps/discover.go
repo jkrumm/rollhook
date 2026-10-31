@@ -1,9 +1,11 @@
 package steps
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/docker/docker/api/types/container"
@@ -16,10 +18,22 @@ import (
 // Callers can use errors.Is to distinguish this from infrastructure errors.
 var ErrServiceNotFound = errors.New("service not found")
 
-// ErrAmbiguousImage is returned by Discover when a bare or partial image name
-// only matches running containers by base name and those containers run
-// different image repositories.
+// ErrAmbiguousImage is returned by Discover when the image name matches running
+// Compose containers of more than one image repository, or of more than one
+// Compose service, and no Target narrows it down to one.
 var ErrAmbiguousImage = errors.New("ambiguous image name")
+
+const (
+	labelProject = "com.docker.compose.project"
+	labelService = "com.docker.compose.service"
+)
+
+// Target optionally pins discovery to one Compose service. Empty fields match
+// any project / service.
+type Target struct {
+	Project string
+	Service string
+}
 
 // DiscoveryResult holds Compose metadata extracted from a running container.
 type DiscoveryResult struct {
@@ -30,9 +44,11 @@ type DiscoveryResult struct {
 	Image       string            // image repository (no tag) the discovered container runs
 }
 
-// Discover finds the running container whose image matches imageTag and
-// extracts its Docker Compose metadata (compose file path, service, project).
-func Discover(ctx context.Context, cli *client.Client, imageTag string) (*DiscoveryResult, error) {
+// Discover finds the running Compose container whose image matches imageTag
+// (narrowed to target, if set) and extracts its Docker Compose metadata
+// (compose file path, service, project). See FindMatchingContainer for the
+// matching rules.
+func Discover(ctx context.Context, cli *client.Client, imageTag string, target Target) (*DiscoveryResult, error) {
 	imageName := ExtractImageName(imageTag)
 
 	containers, err := dockerpkg.ListRunningContainers(ctx, cli)
@@ -40,12 +56,12 @@ func Discover(ctx context.Context, cli *client.Client, imageTag string) (*Discov
 		return nil, fmt.Errorf("discover: %w", err)
 	}
 
-	match, err := FindMatchingContainer(containers, imageName)
+	match, err := FindMatchingContainer(containers, imageName, target)
 	if err != nil {
 		return nil, err
 	}
 	if match == nil {
-		return nil, fmt.Errorf("%w: no running container found matching image: %s", ErrServiceNotFound, imageName)
+		return nil, fmt.Errorf("%w: no running Compose container found matching image: %s", ErrServiceNotFound, imageName)
 	}
 
 	detail, err := dockerpkg.InspectContainer(ctx, cli, match.ID)
@@ -72,42 +88,75 @@ func ExtractImageName(imageTag string) string {
 	return dockerpkg.RepoFromRef(imageTag)
 }
 
-// FindMatchingContainer returns the container whose Image field matches
-// imageName. An exact repository match always wins. Otherwise it falls back to
-// a base-name match (last path segment) to handle registry-prefixed images when
-// searching by bare name (e.g. "myapp" matches "registry.example.com/myapp").
-// The fallback only succeeds when every base-name candidate runs the same image
-// repository; otherwise ErrAmbiguousImage is returned instead of guessing.
-// Returns (nil, nil) when nothing matches.
-func FindMatchingContainer(containers []container.Summary, imageName string) (*container.Summary, error) {
-	searchBase := baseName(imageName)
-	var fallback *container.Summary
-	var fallbackRepo string
+// FindMatchingContainer returns the running Compose container (one carrying
+// project and service labels) whose image repository matches imageName:
+//
+//  1. Exact repository match ("ghcr.io/org/myapp" == "ghcr.io/org/myapp").
+//  2. Otherwise a path-segment suffix match: "myapp" and "org/myapp" match
+//     "ghcr.io/org/myapp", "rg/myapp" and "evil.io/org/myapp" do not. A
+//     registry-qualified name therefore only ever matches its own registry.
+//
+// Containers outside target (when set) and containers not started by Compose
+// are ignored. The remaining candidates must all run the same repository and
+// belong to the same Compose project/service — replicas of one service — or
+// ErrAmbiguousImage is returned instead of guessing. Among replicas the newest
+// container wins (ties broken by ID), so the result does not depend on the
+// daemon's listing order. Returns (nil, nil) when nothing matches.
+func FindMatchingContainer(containers []container.Summary, imageName string, target Target) (*container.Summary, error) {
+	var exact, suffix []*container.Summary
 	for i := range containers {
 		c := &containers[i]
-		cName := ExtractImageName(c.Image)
-		if cName == imageName {
-			return c, nil
+		project, service := c.Labels[labelProject], c.Labels[labelService]
+		if project == "" || service == "" {
+			continue // not a Compose service — RollHook cannot roll it out
 		}
-		if baseName(cName) != searchBase {
+		if (target.Project != "" && project != target.Project) || (target.Service != "" && service != target.Service) {
 			continue
 		}
-		if fallback == nil {
-			fallback, fallbackRepo = c, cName
-		} else if cName != fallbackRepo {
-			return nil, fmt.Errorf("%w: %q matches containers running %s and %s — use the full image name",
-				ErrAmbiguousImage, imageName, fallbackRepo, cName)
+		repo := ExtractImageName(c.Image)
+		switch {
+		case repo == imageName:
+			exact = append(exact, c)
+		case strings.HasSuffix(repo, "/"+imageName):
+			suffix = append(suffix, c)
 		}
 	}
-	return fallback, nil
+	candidates := exact
+	if len(candidates) == 0 {
+		candidates = suffix
+	}
+	if len(candidates) == 0 {
+		return nil, nil
+	}
+
+	slices.SortFunc(candidates, func(a, b *container.Summary) int {
+		return cmp.Or(cmp.Compare(b.Created, a.Created), strings.Compare(a.ID, b.ID)) // newest first
+	})
+
+	repos := map[string]bool{}
+	services := map[string]bool{}
+	for _, c := range candidates {
+		repos[ExtractImageName(c.Image)] = true
+		services[c.Labels[labelProject]+"/"+c.Labels[labelService]] = true
+	}
+	if len(repos) > 1 {
+		return nil, fmt.Errorf("%w: %q matches containers running %s — use the full image name",
+			ErrAmbiguousImage, imageName, strings.Join(sortedKeys(repos), ", "))
+	}
+	if len(services) > 1 {
+		return nil, fmt.Errorf("%w: %q is run by Compose services %s — pass project and service to select one",
+			ErrAmbiguousImage, imageName, strings.Join(sortedKeys(services), ", "))
+	}
+	return candidates[0], nil
 }
 
-// baseName returns the last path segment of an image name (after the final slash).
-func baseName(image string) string {
-	if idx := strings.LastIndex(image, "/"); idx >= 0 {
-		return image[idx+1:]
+func sortedKeys(m map[string]bool) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
 	}
-	return image
+	slices.Sort(keys)
+	return keys
 }
 
 // ExtractComposeInfo reads Docker Compose labels from a container's label map
@@ -123,12 +172,12 @@ func ExtractComposeInfo(labels map[string]string, name string) (*DiscoveryResult
 		return nil, fmt.Errorf("container %s is missing 'config_files' label — not started via docker compose", name)
 	}
 
-	service := labels["com.docker.compose.service"]
+	service := labels[labelService]
 	if service == "" {
 		return nil, fmt.Errorf("container %s is missing 'service' label — not started via docker compose", name)
 	}
 
-	project := labels["com.docker.compose.project"]
+	project := labels[labelProject]
 	if project == "" {
 		return nil, fmt.Errorf("container %s is missing 'project' label — not started via docker compose", name)
 	}
