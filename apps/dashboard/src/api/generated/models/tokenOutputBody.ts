@@ -9,7 +9,7 @@
 export interface TokenOutputBody {
   /** A URL to the JSON Schema for this object. */
   readonly $schema?: string;
-  /** Bearer token for all subsequent API calls (deploy, jobs, logs) */
+  /** Short-lived deploy token (not ROLLHOOK_SECRET), scoped to the discovered service: valid as Bearer for POST /deploy of that service and GET /jobs/{id} and /jobs/{id}/logs of its jobs */
   secret: string;
   /** Registry password for docker login */
   token: string;

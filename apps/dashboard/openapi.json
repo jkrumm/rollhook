@@ -287,7 +287,7 @@
             "type": "string"
           },
           "secret": {
-            "description": "Bearer token for all subsequent API calls (deploy, jobs, logs)",
+            "description": "Short-lived deploy token (not ROLLHOOK_SECRET), scoped to the discovered service: valid as Bearer for POST /deploy of that service and GET /jobs/{id} and /jobs/{id}/logs of its jobs",
             "type": "string"
           },
           "token": {
@@ -318,7 +318,7 @@
   "paths": {
     "/auth/token": {
       "post": {
-        "description": "Validates the OIDC token and checks allowed_repos/allowed_refs labels on the running service. Returns the registry password for docker login and the ROLLHOOK_SECRET for all subsequent API calls (deploy, jobs, logs). PR refs are always denied.",
+        "description": "Validates the OIDC token and checks allowed_repos/allowed_refs labels on the running service. Returns an image-scoped registry password for docker login and a short-lived deploy token scoped to that service (POST /deploy, GET /jobs/{id}, GET /jobs/{id}/logs). Never returns ROLLHOOK_SECRET. PR refs are always denied.",
         "operationId": "post-auth-token",
         "requestBody": {
           "content": {
@@ -357,7 +357,7 @@
             "bearer": []
           }
         ],
-        "summary": "Exchange a GitHub Actions OIDC JWT for a registry credential and API secret",
+        "summary": "Exchange a GitHub Actions OIDC JWT for a registry credential and a scoped deploy token",
         "tags": [
           "Auth"
         ]
@@ -365,7 +365,7 @@
     },
     "/deploy": {
       "post": {
-        "description": "Enqueues a zero-downtime rolling deploy for the service matching image_tag. By default blocks until the job reaches a terminal state and returns the result. Pass ?async=true to return immediately with status=queued. The app name is derived from the last path segment of image_tag before the colon (e.g. ghcr.io/org/my-api:sha → my-api). Returns 500 with an error field if the deploy fails.",
+        "description": "Enqueues a zero-downtime rolling deploy for the service matching image_tag. By default blocks until the job reaches a terminal state and returns the result. Pass ?async=true to return immediately with status=queued. The app name is derived from the last path segment of image_tag before the colon (e.g. ghcr.io/org/my-api:sha → my-api). Returns 500 with an error field if the deploy fails. Accepts the static ROLLHOOK_SECRET or a deploy token from POST /auth/token; a deploy token is only valid for the service it was issued for.",
         "operationId": "post-deploy",
         "parameters": [
           {
