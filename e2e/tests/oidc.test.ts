@@ -160,6 +160,35 @@ describe('oidc authentication', () => {
     expect(otherRes.status).toBe(403)
     const listRes = await fetch(`${BASE_URL}/jobs`, { headers: scoped })
     expect(listRes.status).toBe(403)
+
+    // ...nor an image from another registry that only shares the base name.
+    // The token binds the full repository (registry host + path).
+    for (const image_tag of [
+      'attacker.io/evil/rollhook-e2e-hello:v1',
+      'attacker.io/rollhook-e2e-hello:v1',
+      'rollhook-e2e-hello:v1',
+    ]) {
+      const foreignRes = await fetch(`${BASE_URL}/deploy?async=true`, {
+        method: 'POST',
+        headers: scoped,
+        body: JSON.stringify({ image_tag }),
+      })
+      expect(foreignRes.status, image_tag).toBe(403)
+    }
+  })
+
+  it('oidc → /auth/token with a foreign-registry image_name of the same base name → 403', async () => {
+    const oidcToken = await getOIDCToken({
+      repository: 'rollhook-e2e/hello',
+      ref: 'refs/heads/main',
+      aud: BASE_URL,
+    })
+    const authRes = await fetch(`${BASE_URL}/auth/token`, {
+      method: 'POST',
+      headers: oidcHeaders(oidcToken),
+      body: JSON.stringify({ image_name: 'attacker.io/evil/rollhook-e2e-hello' }),
+    })
+    expect(authRes.status).toBe(403)
   })
 
   it('invalid bearer token on /deploy → 403', async () => {
