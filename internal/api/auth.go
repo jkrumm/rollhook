@@ -29,7 +29,7 @@ type TokenOutput struct {
 	Status int
 	Body   struct {
 		Token  string `json:"token" doc:"Registry password for docker login"`
-		Secret string `json:"secret" doc:"Short-lived deploy token (not ROLLHOOK_SECRET), scoped to the discovered service: valid as Bearer for POST /deploy of that service and GET /jobs/{id} and /jobs/{id}/logs of its jobs"`
+		Secret string `json:"secret" doc:"Short-lived deploy token (not ROLLHOOK_SECRET), bound to the full image repository and Compose service that was discovered: valid as Bearer for POST /deploy of that repository to that service and GET /jobs/{id} and /jobs/{id}/logs of its jobs. Sensitive credential, valid for 30 minutes and only invalidated early by rotating ROLLHOOK_SECRET: never log it; in GitHub Actions mask it with ::add-mask:: before use."`
 	}
 }
 

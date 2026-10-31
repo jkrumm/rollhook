@@ -9,7 +9,7 @@
 export interface TokenOutputBody {
   /** A URL to the JSON Schema for this object. */
   readonly $schema?: string;
-  /** Short-lived deploy token (not ROLLHOOK_SECRET), scoped to the discovered service: valid as Bearer for POST /deploy of that service and GET /jobs/{id} and /jobs/{id}/logs of its jobs */
+  /** Short-lived deploy token (not ROLLHOOK_SECRET), bound to the full image repository and Compose service that was discovered: valid as Bearer for POST /deploy of that repository to that service and GET /jobs/{id} and /jobs/{id}/logs of its jobs. Sensitive credential, valid for 30 minutes and only invalidated early by rotating ROLLHOOK_SECRET: never log it; in GitHub Actions mask it with ::add-mask:: before use. */
   secret: string;
   /** Registry password for docker login */
   token: string;
