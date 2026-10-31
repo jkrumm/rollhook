@@ -7,6 +7,8 @@
  */
 
 export type PostDeployParams = {
-  /** Return immediately with status=queued instead of blocking until completion */
-  async?: boolean;
+/**
+ * Return immediately with status=queued instead of blocking until completion
+ */
+async?: boolean;
 };
