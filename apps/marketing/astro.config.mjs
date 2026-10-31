@@ -8,6 +8,8 @@ export default defineConfig({
   site: 'https://rollhook.com',
   integrations: [react(), sitemap()],
   server: { port: 7701 },
+  // Astro 7 defaults to 'jsx', which drops whitespace between inline elements in prose.
+  compressHTML: true,
   fonts: [
     {
       provider: fontProviders.fontsource(),
