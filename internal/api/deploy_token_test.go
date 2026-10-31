@@ -145,3 +145,20 @@ func TestDeployToken_DeployForeignRepoSameBaseNameForbidden(t *testing.T) {
 		}
 	}
 }
+
+func TestDeployToken_DeployOtherServiceForbidden(t *testing.T) {
+	for _, body := range []string{
+		`{"image_tag":"` + myRepo + `:v2","project":"other-proj"}`,
+		`{"image_tag":"` + myRepo + `:v2","service":"worker"}`,
+		`{"image_tag":"` + myRepo + `:v2","project":"proj","service":"worker"}`,
+	} {
+		srv, store, _ := newTestServer(t)
+		w := doRequest(t, srv, http.MethodPost, "/deploy?async=true", body, deployTokenHeader(myRepo))
+		if w.Code != http.StatusForbidden {
+			t.Errorf("%s: expected 403, got %d: %s", body, w.Code, w.Body.String())
+		}
+		if jobs, _ := store.List("", "", 10); len(jobs) != 0 {
+			t.Errorf("%s: no job may be queued, got %d", body, len(jobs))
+		}
+	}
+}

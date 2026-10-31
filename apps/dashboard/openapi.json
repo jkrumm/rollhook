@@ -16,6 +16,14 @@
           "image_tag": {
             "description": "Full Docker image reference to deploy (e.g. registry.example.com/app:sha256)",
             "type": "string"
+          },
+          "project": {
+            "description": "Compose project (com.docker.compose.project) of the service to deploy. Only needed when the image runs in more than one Compose service.",
+            "type": "string"
+          },
+          "service": {
+            "description": "Compose service (com.docker.compose.service) to deploy. Only needed when the image runs in more than one Compose service.",
+            "type": "string"
           }
         },
         "required": [
@@ -265,7 +273,15 @@
             "type": "string"
           },
           "image_name": {
-            "description": "Image name (without registry prefix or tag), e.g. myapp",
+            "description": "Image repository without tag: a bare name (myapp), a path suffix (org/myapp) or the full repository (ghcr.io/org/myapp). Matched on whole path segments against the image of the running service; a registry-qualified name only matches that registry.",
+            "type": "string"
+          },
+          "project": {
+            "description": "Compose project (com.docker.compose.project) of the target service. Only needed when the image runs in more than one Compose service.",
+            "type": "string"
+          },
+          "service": {
+            "description": "Compose service (com.docker.compose.service) of the target service. Only needed when the image runs in more than one Compose service.",
             "type": "string"
           }
         },
@@ -365,7 +381,7 @@
     },
     "/deploy": {
       "post": {
-        "description": "Enqueues a zero-downtime rolling deploy for the service matching image_tag. By default blocks until the job reaches a terminal state and returns the result. Pass ?async=true to return immediately with status=queued. The app name is derived from the last path segment of image_tag before the colon (e.g. ghcr.io/org/my-api:sha → my-api). Returns 500 with an error field if the deploy fails. Accepts the static ROLLHOOK_SECRET or a deploy token from POST /auth/token; a deploy token is only valid when the image_tag repository (registry host + path, tag/digest stripped) equals the repository the token was issued for, and only for that service.",
+        "description": "Enqueues a zero-downtime rolling deploy for the service matching image_tag. If the image runs in more than one Compose service, the request is rejected with 409 unless project and service select one. By default blocks until the job reaches a terminal state and returns the result. Pass ?async=true to return immediately with status=queued. The app name is derived from the last path segment of image_tag before the colon (e.g. ghcr.io/org/my-api:sha → my-api). Returns 500 with an error field if the deploy fails. Accepts the static ROLLHOOK_SECRET or a deploy token from POST /auth/token; a deploy token is only valid when the image_tag repository (registry host + path, tag/digest stripped) equals the repository the token was issued for, and only for that service.",
         "operationId": "post-deploy",
         "parameters": [
           {

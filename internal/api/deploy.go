@@ -23,6 +23,8 @@ type DeployInput struct {
 	Async bool `query:"async" doc:"Return immediately with status=queued instead of blocking until completion"`
 	Body  struct {
 		ImageTag string `json:"image_tag" required:"true" doc:"Full Docker image reference to deploy (e.g. registry.example.com/app:sha256)"`
+		Project  string `json:"project,omitempty" doc:"Compose project (com.docker.compose.project) of the service to deploy. Only needed when the image runs in more than one Compose service."`
+		Service  string `json:"service,omitempty" doc:"Compose service (com.docker.compose.service) to deploy. Only needed when the image runs in more than one Compose service."`
 	}
 }
 
@@ -96,7 +98,7 @@ func RegisterDeploy(humaAPI huma.API, exec *jobspkg.Executor, store *db.Store, c
 		Method:      http.MethodPost,
 		Path:        "/deploy",
 		Summary:     "Trigger a rolling deployment",
-		Description: "Enqueues a zero-downtime rolling deploy for the service matching image_tag. By default blocks until the job reaches a terminal state and returns the result. Pass ?async=true to return immediately with status=queued. The app name is derived from the last path segment of image_tag before the colon (e.g. ghcr.io/org/my-api:sha → my-api). Returns 500 with an error field if the deploy fails. Accepts the static ROLLHOOK_SECRET or a deploy token from POST /auth/token; a deploy token is only valid when the image_tag repository (registry host + path, tag/digest stripped) equals the repository the token was issued for, and only for that service.",
+		Description: "Enqueues a zero-downtime rolling deploy for the service matching image_tag. If the image runs in more than one Compose service, the request is rejected with 409 unless project and service select one. By default blocks until the job reaches a terminal state and returns the result. Pass ?async=true to return immediately with status=queued. The app name is derived from the last path segment of image_tag before the colon (e.g. ghcr.io/org/my-api:sha → my-api). Returns 500 with an error field if the deploy fails. Accepts the static ROLLHOOK_SECRET or a deploy token from POST /auth/token; a deploy token is only valid when the image_tag repository (registry host + path, tag/digest stripped) equals the repository the token was issued for, and only for that service.",
 		Tags:        []string{"Deploy"},
 		Security:    []map[string][]string{{"bearer": {}}},
 	}, func(ctx context.Context, input *DeployInput) (*DeployOutput, error) {
@@ -105,6 +107,7 @@ func RegisterDeploy(humaAPI huma.API, exec *jobspkg.Executor, store *db.Store, c
 		}
 
 		job := jobspkg.NewJob(input.Body.ImageTag)
+		job.TargetProject, job.TargetService = input.Body.Project, input.Body.Service
 
 		// Deploy-token callers (minted by POST /auth/token) may only deploy the
 		// exact image repository — registry host included — to the service the
@@ -113,6 +116,11 @@ func RegisterDeploy(humaAPI huma.API, exec *jobspkg.Executor, store *db.Store, c
 			if repo := steps.ExtractImageName(input.Body.ImageTag); repo != scope.Repo {
 				return nil, huma.NewError(http.StatusForbidden, fmt.Sprintf("deploy token is scoped to repository %q, not %q", scope.Repo, repo))
 			}
+			if (job.TargetProject != "" && job.TargetProject != scope.Project) || (job.TargetService != "" && job.TargetService != scope.Service) {
+				return nil, huma.NewError(http.StatusForbidden, fmt.Sprintf("deploy token is scoped to service %s/%s", scope.Project, scope.Service))
+			}
+			// The executor re-discovers at run time; pin it to the token's service.
+			job.TargetProject, job.TargetService = scope.Project, scope.Service
 			disc, err := steps.Discover(ctx, cli, input.Body.ImageTag, steps.Target{Project: scope.Project, Service: scope.Service})
 			if err != nil {
 				return nil, discoverError(cli, err)

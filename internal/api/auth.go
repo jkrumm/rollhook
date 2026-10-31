@@ -19,7 +19,9 @@ import (
 
 type TokenInput struct {
 	Body struct {
-		ImageName string `json:"image_name" required:"true" doc:"Image name (without registry prefix or tag), e.g. myapp"`
+		ImageName string `json:"image_name" required:"true" doc:"Image repository without tag: a bare name (myapp), a path suffix (org/myapp) or the full repository (ghcr.io/org/myapp). Matched on whole path segments against the image of the running service; a registry-qualified name only matches that registry."`
+		Project   string `json:"project,omitempty" doc:"Compose project (com.docker.compose.project) of the target service. Only needed when the image runs in more than one Compose service."`
+		Service   string `json:"service,omitempty" doc:"Compose service (com.docker.compose.service) of the target service. Only needed when the image runs in more than one Compose service."`
 	}
 }
 
@@ -60,7 +62,10 @@ func RegisterAuthToken(humaAPI huma.API, secret string, cli *client.Client) {
 
 		// Discover the running container to get its labels, then check allowed_repos/refs.
 		// Fail-secure: if no container is running (first deploy), deny.
-		disc, err := steps.Discover(ctx, cli, imageName+":latest", steps.Target{})
+		disc, err := steps.Discover(ctx, cli, imageName+":latest", steps.Target{
+			Project: strings.TrimSpace(input.Body.Project),
+			Service: strings.TrimSpace(input.Body.Service),
+		})
 		if err != nil {
 			return nil, discoverError(cli, err)
 		}

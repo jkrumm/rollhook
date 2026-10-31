@@ -11,4 +11,8 @@ export interface DeployInputBody {
   readonly $schema?: string;
   /** Full Docker image reference to deploy (e.g. registry.example.com/app:sha256) */
   image_tag: string;
+  /** Compose project (com.docker.compose.project) of the service to deploy. Only needed when the image runs in more than one Compose service. */
+  project?: string;
+  /** Compose service (com.docker.compose.service) to deploy. Only needed when the image runs in more than one Compose service. */
+  service?: string;
 }
