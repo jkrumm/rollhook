@@ -5,7 +5,8 @@
     "lib": ["ES2023", "DOM", "DOM.Iterable"],
     "paths": {
       "@/*": ["./src/*"]
-    }
+    },
+    "types": ["bun"]
   },
   "include": ["src", "vite.config.ts"]
 }
