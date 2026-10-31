@@ -29,8 +29,8 @@
     "generate:api": "bun run --filter @rollhook/dashboard generate:api"
   },
   "devDependencies": {
-    "@commitlint/cli": "20.4.4",
-    "@commitlint/config-conventional": "20.4.4",
+    "@commitlint/cli": "21.2.4",
+    "@commitlint/config-conventional": "21.2.4",
     "@types/bun": "1.4.4",
     "lefthook": "2.2.2",
     "oxfmt": "0.72.0",
