@@ -16,12 +16,18 @@ import (
 // Callers can use errors.Is to distinguish this from infrastructure errors.
 var ErrServiceNotFound = errors.New("service not found")
 
+// ErrAmbiguousImage is returned by Discover when a bare or partial image name
+// only matches running containers by base name and those containers run
+// different image repositories.
+var ErrAmbiguousImage = errors.New("ambiguous image name")
+
 // DiscoveryResult holds Compose metadata extracted from a running container.
 type DiscoveryResult struct {
 	ComposePath string
 	Service     string
 	Project     string
 	Labels      map[string]string // all labels from the discovered container
+	Image       string            // image repository (no tag) the discovered container runs
 }
 
 // Discover finds the running container whose image matches imageTag and
@@ -34,7 +40,10 @@ func Discover(ctx context.Context, cli *client.Client, imageTag string) (*Discov
 		return nil, fmt.Errorf("discover: %w", err)
 	}
 
-	match := FindMatchingContainer(containers, imageName)
+	match, err := FindMatchingContainer(containers, imageName)
+	if err != nil {
+		return nil, err
+	}
 	if match == nil {
 		return nil, fmt.Errorf("%w: no running container found matching image: %s", ErrServiceNotFound, imageName)
 	}
@@ -44,7 +53,12 @@ func Discover(ctx context.Context, cli *client.Client, imageTag string) (*Discov
 		return nil, fmt.Errorf("discover: %w", err)
 	}
 
-	return ExtractComposeInfo(detail.Config.Labels, containerName(match))
+	result, err := ExtractComposeInfo(detail.Config.Labels, containerName(match))
+	if err != nil {
+		return nil, err
+	}
+	result.Image = ExtractImageName(match.Image)
+	return result, nil
 }
 
 // ExtractImageName strips the tag (and any digest) from an image reference,
@@ -58,20 +72,34 @@ func ExtractImageName(imageTag string) string {
 	return dockerpkg.RepoFromRef(imageTag)
 }
 
-// FindMatchingContainer returns the first container whose Image field matches
-// imageName. Matching is tried in order: exact name match, then base-name
-// fallback (last path segment) to handle registry-prefixed images when
+// FindMatchingContainer returns the container whose Image field matches
+// imageName. An exact repository match always wins. Otherwise it falls back to
+// a base-name match (last path segment) to handle registry-prefixed images when
 // searching by bare name (e.g. "myapp" matches "registry.example.com/myapp").
-func FindMatchingContainer(containers []container.Summary, imageName string) *container.Summary {
+// The fallback only succeeds when every base-name candidate runs the same image
+// repository; otherwise ErrAmbiguousImage is returned instead of guessing.
+// Returns (nil, nil) when nothing matches.
+func FindMatchingContainer(containers []container.Summary, imageName string) (*container.Summary, error) {
 	searchBase := baseName(imageName)
+	var fallback *container.Summary
+	var fallbackRepo string
 	for i := range containers {
 		c := &containers[i]
 		cName := ExtractImageName(c.Image)
-		if cName == imageName || baseName(cName) == searchBase {
-			return c
+		if cName == imageName {
+			return c, nil
+		}
+		if baseName(cName) != searchBase {
+			continue
+		}
+		if fallback == nil {
+			fallback, fallbackRepo = c, cName
+		} else if cName != fallbackRepo {
+			return nil, fmt.Errorf("%w: %q matches containers running %s and %s — use the full image name",
+				ErrAmbiguousImage, imageName, fallbackRepo, cName)
 		}
 	}
-	return nil
+	return fallback, nil
 }
 
 // baseName returns the last path segment of an image name (after the final slash).

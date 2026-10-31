@@ -1,6 +1,7 @@
 package steps_test
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/docker/docker/api/types/container"
@@ -48,7 +49,11 @@ func TestFindMatchingContainer(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		got := steps.FindMatchingContainer(containers, tc.imageName)
+		got, err := steps.FindMatchingContainer(containers, tc.imageName)
+		if err != nil {
+			t.Errorf("FindMatchingContainer(%q) unexpected error: %v", tc.imageName, err)
+			continue
+		}
 		if tc.wantID == "" {
 			if got != nil {
 				t.Errorf("FindMatchingContainer(%q) = %q, want nil", tc.imageName, got.ID)
@@ -60,6 +65,45 @@ func TestFindMatchingContainer(t *testing.T) {
 				t.Errorf("FindMatchingContainer(%q) = %q, want %q", tc.imageName, got.ID, tc.wantID)
 			}
 		}
+	}
+}
+
+func TestFindMatchingContainer_ExactMatchWins(t *testing.T) {
+	containers := []container.Summary{
+		{ID: "aaa", Image: "registry.example.com/myapp:v1"},
+		{ID: "bbb", Image: "registry.example.com/team/myapp:v1"},
+	}
+	got, err := steps.FindMatchingContainer(containers, "registry.example.com/team/myapp")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got == nil || got.ID != "bbb" {
+		t.Fatalf("expected exact match bbb, got %+v", got)
+	}
+}
+
+func TestFindMatchingContainer_AmbiguousBaseName(t *testing.T) {
+	containers := []container.Summary{
+		{ID: "aaa", Image: "registry.example.com/myapp:v1"},
+		{ID: "bbb", Image: "registry.example.com/team/myapp:v1"},
+	}
+	for _, name := range []string{"myapp", "other-ns/myapp"} {
+		got, err := steps.FindMatchingContainer(containers, name)
+		if !errors.Is(err, steps.ErrAmbiguousImage) {
+			t.Errorf("FindMatchingContainer(%q) = %+v, %v; want ErrAmbiguousImage", name, got, err)
+		}
+	}
+}
+
+func TestFindMatchingContainer_ReplicasAreNotAmbiguous(t *testing.T) {
+	// Old and new replicas of one service during a rollout run the same repo.
+	containers := []container.Summary{
+		{ID: "aaa", Image: "registry.example.com/myapp:v1"},
+		{ID: "bbb", Image: "registry.example.com/myapp:v2"},
+	}
+	got, err := steps.FindMatchingContainer(containers, "myapp")
+	if err != nil || got == nil || got.ID != "aaa" {
+		t.Fatalf("got %+v, %v; want aaa, nil", got, err)
 	}
 }
 
