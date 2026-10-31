@@ -1,16 +1,21 @@
 package middleware
 
 import (
+	"context"
 	"crypto/subtle"
 	"encoding/json"
 	"net/http"
 	"strings"
+
+	"github.com/jkrumm/rollhook/internal/deploytoken"
 )
 
 // RequireAuth returns a standard http.Handler middleware that enforces bearer token auth.
 // Behavior mirrors HumaAuth:
 //   - No Authorization header or non-Bearer format → 401 Unauthorized
 //   - Bearer with wrong token → 403 Forbidden
+//   - Valid deploy token → passes, with its scope stored in the request context;
+//     the handler must enforce that scope (see deploytoken.ScopeFromContext)
 //
 // Use as a standalone chi middleware for non-huma routes (e.g. SSE endpoint).
 func RequireAuth(secret string) func(http.Handler) http.Handler {
@@ -19,6 +24,15 @@ func RequireAuth(secret string) func(http.Handler) http.Handler {
 			token, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
 			if !ok {
 				writeJSON(w, http.StatusUnauthorized, "unauthorized")
+				return
+			}
+			if deploytoken.IsDeployToken(token) {
+				scope, valid := deploytoken.Parse(secret, token)
+				if !valid {
+					writeJSON(w, http.StatusForbidden, "forbidden")
+					return
+				}
+				next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), deploytoken.ContextKey, scope)))
 				return
 			}
 			if subtle.ConstantTimeCompare([]byte(token), []byte(secret)) != 1 {

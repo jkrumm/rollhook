@@ -13,7 +13,15 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-chi/chi/v5"
 	"github.com/jkrumm/rollhook/internal/db"
+	"github.com/jkrumm/rollhook/internal/deploytoken"
 )
+
+// jobVisible reports whether the caller may read job. Static-secret callers see
+// every job; deploy-token callers only see jobs of the app they are scoped to.
+func jobVisible(ctx context.Context, job *db.Job) bool {
+	scope, scoped := deploytoken.ScopeFromContext(ctx)
+	return !scoped || job.App == scope.App
+}
 
 type listJobsInput struct {
 	App    string `query:"app" doc:"Filter by app name"`
@@ -76,12 +84,13 @@ func RegisterJobsAPI(humaAPI huma.API, store *db.Store) {
 		Description: "Returns a single deployment job by ID. Returns 404 if not found. compose_path and service are populated after discovery completes; error is set only when status is failed.",
 		Tags:        []string{"Jobs"},
 		Security:    []map[string][]string{{"bearer": {}}},
-	}, func(_ context.Context, input *getJobInput) (*getJobOutput, error) {
+	}, func(ctx context.Context, input *getJobInput) (*getJobOutput, error) {
 		job, err := store.Get(input.ID)
 		if err != nil {
 			return nil, huma.NewError(http.StatusInternalServerError, err.Error())
 		}
-		if job == nil {
+		// Out-of-scope jobs are reported as missing so their existence does not leak.
+		if job == nil || !jobVisible(ctx, job) {
 			return nil, huma.NewError(http.StatusNotFound, fmt.Sprintf("job %q not found", input.ID))
 		}
 		out := &getJobOutput{}
@@ -101,7 +110,7 @@ func StreamLogsHandler(store *db.Store, dataDir string) http.HandlerFunc {
 		id := chi.URLParam(r, "id")
 
 		job, err := store.Get(id)
-		if err != nil || job == nil {
+		if err != nil || job == nil || !jobVisible(r.Context(), job) {
 			http.NotFound(w, r)
 			return
 		}

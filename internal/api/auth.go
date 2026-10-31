@@ -10,6 +10,7 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/docker/docker/client"
+	"github.com/jkrumm/rollhook/internal/deploytoken"
 	dockerpkg "github.com/jkrumm/rollhook/internal/docker"
 	"github.com/jkrumm/rollhook/internal/jobs/steps"
 	oidcpkg "github.com/jkrumm/rollhook/internal/oidc"
@@ -26,7 +27,7 @@ type TokenOutput struct {
 	Status int
 	Body   struct {
 		Token  string `json:"token" doc:"Registry password for docker login"`
-		Secret string `json:"secret" doc:"Bearer token for all subsequent API calls (deploy, jobs, logs)"`
+		Secret string `json:"secret" doc:"Short-lived deploy token (not ROLLHOOK_SECRET), scoped to the discovered service: valid as Bearer for POST /deploy of that service and GET /jobs/{id} and /jobs/{id}/logs of its jobs"`
 	}
 }
 
@@ -35,8 +36,8 @@ func RegisterAuthToken(humaAPI huma.API, secret string, cli *client.Client) {
 		OperationID: "post-auth-token",
 		Method:      http.MethodPost,
 		Path:        "/auth/token",
-		Summary:     "Exchange a GitHub Actions OIDC JWT for a registry credential and API secret",
-		Description: "Validates the OIDC token and checks allowed_repos/allowed_refs labels on the running service. Returns the registry password for docker login and the ROLLHOOK_SECRET for all subsequent API calls (deploy, jobs, logs). PR refs are always denied.",
+		Summary:     "Exchange a GitHub Actions OIDC JWT for a registry credential and a scoped deploy token",
+		Description: "Validates the OIDC token and checks allowed_repos/allowed_refs labels on the running service. Returns an image-scoped registry password for docker login and a short-lived deploy token scoped to that service (POST /deploy, GET /jobs/{id}, GET /jobs/{id}/logs). Never returns ROLLHOOK_SECRET. PR refs are always denied.",
 		Tags:        []string{"Auth"},
 		Security:    []map[string][]string{{"bearer": {}}},
 	}, func(ctx context.Context, input *TokenInput) (*TokenOutput, error) {
@@ -61,21 +62,7 @@ func RegisterAuthToken(humaAPI huma.API, secret string, cli *client.Client) {
 		// Fail-secure: if no container is running (first deploy), deny.
 		disc, err := steps.Discover(ctx, cli, imageName+":latest")
 		if err != nil {
-			switch {
-			case errors.Is(err, dockerpkg.ErrDaemonUnreachable):
-				slog.Error("docker daemon unreachable during service discovery",
-					"docker_host", cli.DaemonHost(), "error", err)
-				return nil, huma.NewError(http.StatusServiceUnavailable, fmt.Sprintf(
-					"RollHook cannot reach the Docker daemon at %s — host-side fault (check DOCKER_HOST and the Docker socket / socket proxy), not a problem with the calling workflow",
-					cli.DaemonHost()))
-			case errors.Is(err, steps.ErrServiceNotFound):
-				// Fail-secure authorization denial: no running container means
-				// allowed_repos cannot be verified, so this is deliberately a 403,
-				// not a lookup-miss status.
-				return nil, huma.NewError(http.StatusForbidden, "service not found — ensure the app is running before requesting a registry credential")
-			default:
-				return nil, huma.NewError(http.StatusInternalServerError, "service discovery failed: "+err.Error())
-			}
+			return nil, discoverError(cli, err)
 		}
 		if err := checkOIDCLabels(claims, disc.Labels); err != nil {
 			return nil, huma.NewError(http.StatusForbidden, err.Error())
@@ -83,10 +70,35 @@ func RegisterAuthToken(humaAPI huma.API, secret string, cli *client.Client) {
 
 		out := &TokenOutput{}
 		out.Status = http.StatusOK
-		// Return a short-lived HMAC token scoped to this image — not the static secret.
-		// The registry proxy accepts these tokens alongside the static secret.
+		// Both credentials are short-lived HMAC tokens — never the static secret.
+		// The registry token is scoped to this image; the deploy token to the
+		// discovered Compose service (and read access to that app's jobs).
 		out.Body.Token = registry.MintRegistryToken(secret, imageName)
-		out.Body.Secret = secret
+		out.Body.Secret = deploytoken.Mint(secret, deploytoken.Scope{
+			App:     imageName[strings.LastIndex(imageName, "/")+1:],
+			Project: disc.Project,
+			Service: disc.Service,
+		})
 		return out, nil
 	})
+}
+
+// discoverError maps a steps.Discover failure on an authorization path to an
+// HTTP error. A missing service is a fail-secure 403, not a lookup miss.
+func discoverError(cli *client.Client, err error) error {
+	switch {
+	case errors.Is(err, dockerpkg.ErrDaemonUnreachable):
+		slog.Error("docker daemon unreachable during service discovery",
+			"docker_host", cli.DaemonHost(), "error", err)
+		return huma.NewError(http.StatusServiceUnavailable, fmt.Sprintf(
+			"RollHook cannot reach the Docker daemon at %s — host-side fault (check DOCKER_HOST and the Docker socket / socket proxy), not a problem with the calling workflow",
+			cli.DaemonHost()))
+	case errors.Is(err, steps.ErrServiceNotFound):
+		// Fail-secure authorization denial: no running container means
+		// allowed_repos cannot be verified, so this is deliberately a 403,
+		// not a lookup-miss status.
+		return huma.NewError(http.StatusForbidden, "service not found — ensure the app is running before requesting a registry credential or deploying with a deploy token")
+	default:
+		return huma.NewError(http.StatusInternalServerError, "service discovery failed: "+err.Error())
+	}
 }

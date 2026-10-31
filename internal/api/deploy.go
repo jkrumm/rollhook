@@ -13,7 +13,9 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/docker/docker/client"
 	"github.com/jkrumm/rollhook/internal/db"
+	"github.com/jkrumm/rollhook/internal/deploytoken"
 	jobspkg "github.com/jkrumm/rollhook/internal/jobs"
+	"github.com/jkrumm/rollhook/internal/jobs/steps"
 	oidcpkg "github.com/jkrumm/rollhook/internal/oidc"
 )
 
@@ -94,7 +96,7 @@ func RegisterDeploy(humaAPI huma.API, exec *jobspkg.Executor, store *db.Store, c
 		Method:      http.MethodPost,
 		Path:        "/deploy",
 		Summary:     "Trigger a rolling deployment",
-		Description: "Enqueues a zero-downtime rolling deploy for the service matching image_tag. By default blocks until the job reaches a terminal state and returns the result. Pass ?async=true to return immediately with status=queued. The app name is derived from the last path segment of image_tag before the colon (e.g. ghcr.io/org/my-api:sha → my-api). Returns 500 with an error field if the deploy fails.",
+		Description: "Enqueues a zero-downtime rolling deploy for the service matching image_tag. By default blocks until the job reaches a terminal state and returns the result. Pass ?async=true to return immediately with status=queued. The app name is derived from the last path segment of image_tag before the colon (e.g. ghcr.io/org/my-api:sha → my-api). Returns 500 with an error field if the deploy fails. Accepts the static ROLLHOOK_SECRET or a deploy token from POST /auth/token; a deploy token is only valid for the service it was issued for.",
 		Tags:        []string{"Deploy"},
 		Security:    []map[string][]string{{"bearer": {}}},
 	}, func(ctx context.Context, input *DeployInput) (*DeployOutput, error) {
@@ -103,6 +105,22 @@ func RegisterDeploy(humaAPI huma.API, exec *jobspkg.Executor, store *db.Store, c
 		}
 
 		job := jobspkg.NewJob(input.Body.ImageTag)
+
+		// Deploy-token callers (minted by POST /auth/token) may only deploy the
+		// service the token was issued for.
+		if scope, scoped := deploytoken.ScopeFromContext(ctx); scoped {
+			if job.App != scope.App {
+				return nil, huma.NewError(http.StatusForbidden, fmt.Sprintf("deploy token is scoped to %q, not %q", scope.App, job.App))
+			}
+			disc, err := steps.Discover(ctx, cli, input.Body.ImageTag)
+			if err != nil {
+				return nil, discoverError(cli, err)
+			}
+			if disc.Project != scope.Project || disc.Service != scope.Service {
+				return nil, huma.NewError(http.StatusForbidden, "image_tag resolves to a different service than the deploy token was issued for")
+			}
+		}
+
 		if err := exec.Submit(job); err != nil {
 			if errors.Is(err, jobspkg.ErrQueueFull) || errors.Is(err, jobspkg.ErrQueueDrained) {
 				return nil, huma.NewError(http.StatusServiceUnavailable, "server busy, try again later")
