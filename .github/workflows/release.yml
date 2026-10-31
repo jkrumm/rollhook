@@ -26,9 +26,12 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          # Do not leave the PAT in .git/config: semantic-release authenticates its
-          # own pushes from GITHUB_TOKEN below. No dependency install runs in this
-          # job either — the release tooling is fetched by npx at pinned versions.
+          # Keep the checkout token out of .git/config so later steps cannot reuse
+          # it. semantic-release authenticates its own pushes with the
+          # RELEASE_TOKEN PAT, which it receives as GITHUB_TOKEN in its step env
+          # below — that variable is the PAT, not the workflow's github.token, so
+          # the PAT is only exposed to that one step. No dependency install runs
+          # in this job — the release tooling is fetched by npx at pinned versions.
           persist-credentials: false
 
       - uses: actions/setup-node@v4
