@@ -37,7 +37,7 @@ func hasVerifier(v oidcpkg.Verifiable) bool {
 }
 
 // deployTokenOperations are the only operations a service-scoped deploy token may
-// call. Handlers enforce the scope itself (app/service match).
+// call. Handlers enforce the scope itself (full image repository + Compose service).
 var deployTokenOperations = map[string]bool{
 	"post-deploy": true,
 	"get-job":     true,

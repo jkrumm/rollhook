@@ -13,20 +13,18 @@ const IMAGE_V1 = `${REGISTRY_HOST}/rollhook-e2e-hello:v1`
 
 describe('job queue', () => {
   it('processes two concurrent async deploys sequentially and both succeed', async () => {
-    // Fire two async deploys simultaneously — both enter the queue before either starts running.
-    // This validates that the FIFO queue accepts concurrent requests and processes them in order.
-    const [res1, res2] = await Promise.all([
+    // Fire two async deploys back to back: the second arrives while the first is still rolling out,
+    // so it waits in the queue. The 1.1 s gap gives the jobs distinct created_at seconds (SQLite
+    // CURRENT_TIMESTAMP has second precision), which the FIFO assertion below needs.
+    const deploy = () =>
       fetch(`${BASE_URL}/deploy?async=true`, {
         method: 'POST',
         headers: webhookHeaders(),
         body: JSON.stringify({ image_tag: IMAGE_V1 }),
-      }),
-      fetch(`${BASE_URL}/deploy?async=true`, {
-        method: 'POST',
-        headers: webhookHeaders(),
-        body: JSON.stringify({ image_tag: IMAGE_V1 }),
-      }),
-    ])
+      })
+    const res1 = await deploy()
+    await new Promise((resolve) => setTimeout(resolve, 1100))
+    const res2 = await deploy()
 
     expect(res1.status).toBe(200)
     expect(res2.status).toBe(200)
@@ -54,13 +52,9 @@ describe('job queue', () => {
     const [firstJob, secondJob] = [job1, job2].sort(
       (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
     )
-    // created_at has second precision (SQLite CURRENT_TIMESTAMP): two concurrent requests usually
-    // share it, and a tie says nothing about queue order. Only a strictly earlier enqueue is evidence.
-    if (new Date(firstJob.created_at).getTime() < new Date(secondJob.created_at).getTime()) {
-      expect(new Date(firstJob.updated_at).getTime()).toBeLessThanOrEqual(
-        new Date(secondJob.updated_at).getTime(),
-      )
-    }
+    expect(new Date(firstJob.updated_at).getTime()).toBeLessThanOrEqual(
+      new Date(secondJob.updated_at).getTime(),
+    )
 
     // After both deploys complete there must be exactly 1 container — each rollout
     // scales up and then drains the old containers, not accumulating extras.

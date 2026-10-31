@@ -107,7 +107,7 @@ func RegisterDeploy(humaAPI huma.API, exec *jobspkg.Executor, store *db.Store, c
 		}
 
 		job := jobspkg.NewJob(input.Body.ImageTag)
-		job.TargetProject, job.TargetService = input.Body.Project, input.Body.Service
+		job.TargetProject, job.TargetService = strings.TrimSpace(input.Body.Project), strings.TrimSpace(input.Body.Service)
 
 		// Deploy-token callers (minted by POST /auth/token) may only deploy the
 		// exact image repository — registry host included — to the service the
