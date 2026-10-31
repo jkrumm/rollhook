@@ -19,8 +19,8 @@
     "@fontsource-variable/jetbrains-mono": "5.3.0",
     "@rollhook/ui": "workspace:*",
     "lucide-react": "0.577.0",
-    "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
   },
   "devDependencies": {
     "@tailwindcss/vite": "4.3.3",
