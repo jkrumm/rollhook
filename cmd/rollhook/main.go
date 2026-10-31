@@ -42,12 +42,25 @@ const scalarHTML = `<!doctype html>
 </html>`
 
 // scalarCSP limits the docs page to the pinned CDN script and same-origin
-// requests, so even a misbehaving script cannot send data elsewhere.
+// requests, so even a misbehaving script cannot send data elsewhere. Verified
+// against the pinned standalone.js (1.75.0):
+//   - styles are injected inline; fonts.scalar.com is only referenced from
+//     @font-face rules in them (woff2), so it needs font-src, not style-src
+//   - the bundle starts no Web Workers, so there is no worker-src
+//   - response previews use blob: URLs in <img>/<video>/<audio> (img-src,
+//     media-src). HTML/PDF previews (<iframe>/<object> on blob:) stay blocked:
+//     an unsandboxed blob: frame would run response HTML on this origin.
+//   - the API client's default proxy (proxy.scalar.com) is deliberately not
+//     in connect-src, so "try it" requests stay same-origin.
+//
+// The page's only inline <script> is the empty data-url config element, which
+// runs no code; TestServeScalar_InlineScriptsAllowedByCSP keeps it that way.
 const scalarCSP = "default-src 'none'; " +
 	"script-src https://cdn.jsdelivr.net; " +
 	"style-src 'self' 'unsafe-inline'; " +
 	"font-src 'self' data: https://fonts.scalar.com; " +
-	"img-src 'self' data:; " +
+	"img-src 'self' data: blob:; " +
+	"media-src blob:; " +
 	"connect-src 'self'; " +
 	"base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
 
