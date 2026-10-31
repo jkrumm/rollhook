@@ -140,7 +140,7 @@ describe('oidc authentication', () => {
     expect(token).toBeTruthy()
     expect(secret).toBeTruthy()
     expect(secret).not.toBe(ROLLHOOK_SECRET)
-    const scoped = { 'Authorization': `Bearer ${secret}`, 'Content-Type': 'application/json' }
+    const scoped = { Authorization: `Bearer ${secret}`, 'Content-Type': 'application/json' }
 
     // Step 2: The deploy token deploys the service it was issued for
     const deployRes = await fetch(`${BASE_URL}/deploy?async=true`, {
