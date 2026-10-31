@@ -201,7 +201,7 @@ func main() {
 	api.RegisterJobsAPI(humaAPI, store)
 
 	// SSE log stream — registered directly on Chi to bypass huma's response wrapping.
-	r.With(middleware.RequireAuth(secret)).Get("/jobs/{id}/logs", api.StreamLogsHandler(store, dataDir))
+	r.With(middleware.RequireAuthAllowScoped(secret)).Get("/jobs/{id}/logs", api.StreamLogsHandler(store, dataDir))
 
 	// OCI distribution routes — proxied to internal Zot (127.0.0.1:5000).
 	proxyHandler := registry.NewProxy("http://127.0.0.1:5000", secret)

@@ -66,7 +66,7 @@ func newTestServer(t *testing.T) (http.Handler, *db.Store, string) {
 
 	api.RegisterDeploy(humaAPI, exec, store, cli)
 	api.RegisterJobsAPI(humaAPI, store)
-	r.With(middleware.RequireAuth(testSecret)).Get("/jobs/{id}/logs", api.StreamLogsHandler(store, dataDir))
+	r.With(middleware.RequireAuthAllowScoped(testSecret)).Get("/jobs/{id}/logs", api.StreamLogsHandler(store, dataDir))
 
 	return r, store, dataDir
 }
@@ -266,7 +266,7 @@ func TestStreamLogs_TerminalJob(t *testing.T) {
 
 	// Build a minimal chi server for the SSE handler.
 	r := chi.NewRouter()
-	r.With(middleware.RequireAuth(testSecret)).Get("/jobs/{id}/logs", api.StreamLogsHandler(store, dataDir))
+	r.With(middleware.RequireAuthAllowScoped(testSecret)).Get("/jobs/{id}/logs", api.StreamLogsHandler(store, dataDir))
 
 	req := httptest.NewRequest(http.MethodGet, "/jobs/log-job/logs", nil)
 	req.Header.Set("Authorization", authHeader())
@@ -330,7 +330,7 @@ func TestStreamLogs_TerminalJobLogReaped(t *testing.T) {
 	_ = store.Insert(j)
 
 	r := chi.NewRouter()
-	r.With(middleware.RequireAuth(testSecret)).Get("/jobs/{id}/logs", api.StreamLogsHandler(store, dataDir))
+	r.With(middleware.RequireAuthAllowScoped(testSecret)).Get("/jobs/{id}/logs", api.StreamLogsHandler(store, dataDir))
 
 	req := httptest.NewRequest(http.MethodGet, "/jobs/reaped-job/logs", nil)
 	req.Header.Set("Authorization", authHeader())
