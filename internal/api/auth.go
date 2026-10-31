@@ -72,10 +72,11 @@ func RegisterAuthToken(humaAPI huma.API, secret string, cli *client.Client) {
 		out.Status = http.StatusOK
 		// Both credentials are short-lived HMAC tokens — never the static secret.
 		// The registry token is scoped to this image; the deploy token to the
-		// discovered Compose service (and read access to that app's jobs).
+		// full repository the discovered Compose service runs and that service
+		// (and read access to that repository's jobs).
 		out.Body.Token = registry.MintRegistryToken(secret, imageName)
 		out.Body.Secret = deploytoken.Mint(secret, deploytoken.Scope{
-			App:     imageName[strings.LastIndex(imageName, "/")+1:],
+			Repo:    disc.Image,
 			Project: disc.Project,
 			Service: disc.Service,
 		})

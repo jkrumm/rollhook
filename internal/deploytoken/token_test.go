@@ -11,7 +11,7 @@ import (
 
 const secret = "test-secret-8"
 
-var scope = Scope{App: "myapp", Project: "proj", Service: "web"}
+var scope = Scope{Repo: "ghcr.io/org/myapp", Project: "proj", Service: "web"}
 
 func TestMintParseRoundTrip(t *testing.T) {
 	tok := Mint(secret, scope)
@@ -30,7 +30,7 @@ func TestMintParseRoundTrip(t *testing.T) {
 func TestParseRejects(t *testing.T) {
 	valid := Mint(secret, scope)
 	body, mac, _ := strings.Cut(strings.TrimPrefix(valid, Prefix), ".")
-	forged := Mint("other-secret", Scope{App: "other", Project: "p", Service: "s"})
+	forged := Mint("other-secret", Scope{Repo: "other", Project: "p", Service: "s"})
 	forgedBody, _, _ := strings.Cut(strings.TrimPrefix(forged, Prefix), ".")
 
 	cases := map[string]string{

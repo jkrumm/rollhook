@@ -1,8 +1,9 @@
 // Package deploytoken mints and validates short-lived, service-scoped API
 // tokens handed out by POST /auth/token to OIDC callers.
 //
-// A deploy token authorizes POST /deploy for exactly one Compose service and
-// read access to that app's jobs (GET /jobs/{id}, GET /jobs/{id}/logs). It is
+// A deploy token authorizes POST /deploy of exactly one image repository to
+// exactly one Compose service, and read access to the jobs of that repository
+// (GET /jobs/{id}, GET /jobs/{id}/logs). It is
 // never a substitute for the static ROLLHOOK_SECRET.
 package deploytoken
 
@@ -32,7 +33,10 @@ const hmacDomain = "rollhook-deploy-token:"
 
 // Scope is the service a deploy token is bound to.
 type Scope struct {
-	App     string `json:"app"`     // last path segment of the image name (== db.Job.App)
+	// Repo is the full image repository (registry host + path, no tag or
+	// digest, as steps.ExtractImageName returns it) the authorized service
+	// runs. POST /deploy requires the image_tag repository to equal it exactly.
+	Repo    string `json:"repo"`
 	Project string `json:"project"` // com.docker.compose.project of the authorized service
 	Service string `json:"service"` // com.docker.compose.service of the authorized service
 }
@@ -93,7 +97,7 @@ func Parse(secret, token string) (Scope, bool) {
 	if err := json.Unmarshal(raw, &p); err != nil {
 		return Scope{}, false
 	}
-	if p.App == "" || p.Project == "" || p.Service == "" || time.Now().Unix() > p.Exp {
+	if p.Repo == "" || p.Project == "" || p.Service == "" || time.Now().Unix() > p.Exp {
 		return Scope{}, false
 	}
 	return p.Scope, true

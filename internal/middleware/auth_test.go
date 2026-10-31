@@ -9,7 +9,7 @@ import (
 	"github.com/jkrumm/rollhook/internal/middleware"
 )
 
-var testScope = deploytoken.Scope{App: "myapp", Project: "proj", Service: "web"}
+var testScope = deploytoken.Scope{Repo: "ghcr.io/org/myapp", Project: "proj", Service: "web"}
 
 func TestRequireAuth(t *testing.T) {
 	const secret = "test-secret-ok"

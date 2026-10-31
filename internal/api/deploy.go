@@ -96,7 +96,7 @@ func RegisterDeploy(humaAPI huma.API, exec *jobspkg.Executor, store *db.Store, c
 		Method:      http.MethodPost,
 		Path:        "/deploy",
 		Summary:     "Trigger a rolling deployment",
-		Description: "Enqueues a zero-downtime rolling deploy for the service matching image_tag. By default blocks until the job reaches a terminal state and returns the result. Pass ?async=true to return immediately with status=queued. The app name is derived from the last path segment of image_tag before the colon (e.g. ghcr.io/org/my-api:sha → my-api). Returns 500 with an error field if the deploy fails. Accepts the static ROLLHOOK_SECRET or a deploy token from POST /auth/token; a deploy token is only valid for the service it was issued for.",
+		Description: "Enqueues a zero-downtime rolling deploy for the service matching image_tag. By default blocks until the job reaches a terminal state and returns the result. Pass ?async=true to return immediately with status=queued. The app name is derived from the last path segment of image_tag before the colon (e.g. ghcr.io/org/my-api:sha → my-api). Returns 500 with an error field if the deploy fails. Accepts the static ROLLHOOK_SECRET or a deploy token from POST /auth/token; a deploy token is only valid when the image_tag repository (registry host + path, tag/digest stripped) equals the repository the token was issued for, and only for that service.",
 		Tags:        []string{"Deploy"},
 		Security:    []map[string][]string{{"bearer": {}}},
 	}, func(ctx context.Context, input *DeployInput) (*DeployOutput, error) {
@@ -107,16 +107,17 @@ func RegisterDeploy(humaAPI huma.API, exec *jobspkg.Executor, store *db.Store, c
 		job := jobspkg.NewJob(input.Body.ImageTag)
 
 		// Deploy-token callers (minted by POST /auth/token) may only deploy the
-		// service the token was issued for.
+		// exact image repository — registry host included — to the service the
+		// token was issued for.
 		if scope, scoped := deploytoken.ScopeFromContext(ctx); scoped {
-			if job.App != scope.App {
-				return nil, huma.NewError(http.StatusForbidden, fmt.Sprintf("deploy token is scoped to %q, not %q", scope.App, job.App))
+			if repo := steps.ExtractImageName(input.Body.ImageTag); repo != scope.Repo {
+				return nil, huma.NewError(http.StatusForbidden, fmt.Sprintf("deploy token is scoped to repository %q, not %q", scope.Repo, repo))
 			}
-			disc, err := steps.Discover(ctx, cli, input.Body.ImageTag, steps.Target{})
+			disc, err := steps.Discover(ctx, cli, input.Body.ImageTag, steps.Target{Project: scope.Project, Service: scope.Service})
 			if err != nil {
 				return nil, discoverError(cli, err)
 			}
-			if disc.Project != scope.Project || disc.Service != scope.Service {
+			if disc.Image != scope.Repo || disc.Project != scope.Project || disc.Service != scope.Service {
 				return nil, huma.NewError(http.StatusForbidden, "image_tag resolves to a different service than the deploy token was issued for")
 			}
 		}

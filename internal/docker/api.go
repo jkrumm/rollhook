@@ -310,6 +310,17 @@ func RepoFromRef(ref string) string {
 	return ref[:lastSlash+1+tagStart]
 }
 
+// AppFromRef returns the app name of an image reference: the last path segment
+// of its repository (RepoFromRef), without tag or digest. It is the single
+// definition of db.Job.App.
+//
+//	"ghcr.io/org/myapp:v1" → "myapp"
+//	"localhost:7700/myapp@sha256:deadbeef" → "myapp"
+func AppFromRef(ref string) string {
+	repo := RepoFromRef(ref)
+	return repo[strings.LastIndex(repo, "/")+1:]
+}
+
 func shortID(id string) string {
 	if len(id) > 12 {
 		return id[:12]

@@ -14,13 +14,15 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jkrumm/rollhook/internal/db"
 	"github.com/jkrumm/rollhook/internal/deploytoken"
+	"github.com/jkrumm/rollhook/internal/jobs/steps"
 )
 
 // jobVisible reports whether the caller may read job. Static-secret callers see
-// every job; deploy-token callers only see jobs of the app they are scoped to.
+// every job; deploy-token callers only see jobs whose image repository is the
+// one they are scoped to — the same binding POST /deploy enforces.
 func jobVisible(ctx context.Context, job *db.Job) bool {
 	scope, scoped := deploytoken.ScopeFromContext(ctx)
-	return !scoped || job.App == scope.App
+	return !scoped || steps.ExtractImageName(job.ImageTag) == scope.Repo
 }
 
 type listJobsInput struct {
