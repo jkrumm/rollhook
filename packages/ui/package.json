@@ -9,9 +9,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@tanstack/react-virtual": "3.14.24",
+    "@tanstack/react-virtual": "3.14.23",
     "clsx": "2.1.1",
-    "lucide-react": "1.66.0",
+    "lucide-react": "1.63.0",
     "recharts": "3.10.1",
     "tailwind-merge": "3.7.0"
   },

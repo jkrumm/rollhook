@@ -14,12 +14,12 @@
     "astro": "astro"
   },
   "dependencies": {
-    "@astrojs/react": "7.1.2",
+    "@astrojs/react": "7.1.1",
     "@astrojs/sitemap": "3.7.4",
-    "astro": "7.4.4",
+    "astro": "7.4.2",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
-    "lucide-react": "1.66.0",
+    "lucide-react": "1.63.0",
     "react": "19.3.1",
     "react-dom": "19.3.1",
     "tailwind-merge": "3.7.0"
