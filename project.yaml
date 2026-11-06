@@ -1,0 +1,11 @@
+# How the factory ships this project (software-factory docs/design.md §9).
+apiVersion: factory/v2
+name: rollhook
+deploy:
+  # A merge to master deploys nothing the factory can verify: the server image ships through the manual
+  # `Make Release` workflow (the VPS then pulls :latest) and the marketing site deploys from its own workflow.
+  # `make verify` stays a standalone production readiness probe.
+  mode: none
+ship:
+  - { paths: ['**'], via: pr } # rollhook is PR-required (dotfiles config/pr-required-repos.json)
+leads: 1
