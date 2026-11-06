@@ -37,6 +37,8 @@ CI runs Go natively (`go build ./...`, `go vet ./...`, `go test ./...`, `golangc
 
 The marketing site (`rollhook.com`) is separate: `.github/workflows/deploy-marketing.yml` deploys it on every push to `master` that touches it, via `jkrumm/rollhook-action@v1`.
 
+**Factory manifest:** `project.yaml` declares `deploy.mode none` (a merge deploys nothing the factory can verify) and `ship via pr` (this repo is PR-required). `make verify` remains a standalone production probe; there is no `make version` because the deployed image is not tied to a master commit.
+
 **Rollback:** pushed image tags are immutable. Roll the server back by pointing the VPS at the previous tag (or reverting the commit and cutting a new release). Revert a marketing change and push — the workflow redeploys it.
 
 ---
