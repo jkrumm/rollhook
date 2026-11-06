@@ -136,6 +136,8 @@ func (e *Executor) run(ctx context.Context, job db.Job) {
 		PushoverAppToken:  os.Getenv("PUSHOVER_APP_TOKEN"),
 		WebhookURL:        os.Getenv("NOTIFICATION_WEBHOOK_URL"),
 		SlackWebhookURL:   os.Getenv("SLACK_WEBHOOK_URL"),
+		NtfyURL:           os.Getenv("NTFY_URL"),
+		NtfyToken:         os.Getenv("NTFY_TOKEN"),
 		OTLPEndpoint:      os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"),
 		OTLPHeaders:       os.Getenv("OTEL_EXPORTER_OTLP_HEADERS"),
 		DeployEnvironment: os.Getenv("DEPLOY_ENVIRONMENT"),

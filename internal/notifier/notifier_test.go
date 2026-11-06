@@ -211,3 +211,134 @@ func TestNotifier_SlackError_DoesNotPanic(t *testing.T) {
 
 	Notify(context.Background(), Config{SlackWebhookURL: ts.URL}, makeJob(db.StatusSuccess, nil))
 }
+
+type ntfyCapture struct {
+	header http.Header
+	body   string
+	path   string
+	user   string
+	pass   string
+	hasAut bool
+}
+
+func newNtfyServer(t *testing.T, status int) (*httptest.Server, *ntfyCapture) {
+	t.Helper()
+	c := &ntfyCapture{}
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, _ := io.ReadAll(r.Body)
+		c.header = r.Header.Clone()
+		c.body = string(b)
+		c.path = r.URL.Path
+		c.user, c.pass, c.hasAut = r.BasicAuth()
+		w.WriteHeader(status)
+	}))
+	t.Cleanup(ts.Close)
+	return ts, c
+}
+
+func TestNotifier_Ntfy_Success(t *testing.T) {
+	ts, c := newNtfyServer(t, http.StatusOK)
+	Notify(context.Background(), Config{NtfyURL: ts.URL + "/updates"}, makeJob(db.StatusSuccess, nil))
+
+	if c.path != "/updates" {
+		t.Errorf("path = %q, want /updates", c.path)
+	}
+	if got := c.header.Get("Content-Type"); got != "text/plain; charset=utf-8" {
+		t.Errorf("Content-Type = %q", got)
+	}
+	if got := c.header.Get("Title"); got != "Deployed myapp" {
+		t.Errorf("Title = %q", got)
+	}
+	if got := c.header.Get("Tags"); got != "white_check_mark" {
+		t.Errorf("Tags = %q", got)
+	}
+	if _, ok := c.header["Priority"]; ok {
+		t.Error("Priority header must not be set on success")
+	}
+	if want := "Deployed myapp\nImage: localhost:7700/myapp:v2"; c.body != want {
+		t.Errorf("body = %q, want %q", c.body, want)
+	}
+}
+
+func TestNotifier_Ntfy_Failure(t *testing.T) {
+	ts, c := newNtfyServer(t, http.StatusOK)
+	errMsg := "container exited"
+	Notify(context.Background(), Config{NtfyURL: ts.URL + "/updates"}, makeJob(db.StatusFailed, &errMsg))
+
+	if got := c.header.Get("Title"); got != "Deployment failed: myapp" {
+		t.Errorf("Title = %q", got)
+	}
+	if got := c.header.Get("Tags"); got != "x" {
+		t.Errorf("Tags = %q", got)
+	}
+	if got := c.header.Get("Priority"); got != "high" {
+		t.Errorf("Priority = %q", got)
+	}
+	for _, want := range []string{"localhost:7700/myapp:v2", "Status: " + string(db.StatusFailed), "Error: container exited"} {
+		if !strings.Contains(c.body, want) {
+			t.Errorf("body %q missing %q", c.body, want)
+		}
+	}
+}
+
+func TestNotifier_Ntfy_BearerToken(t *testing.T) {
+	ts, c := newNtfyServer(t, http.StatusOK)
+	Notify(context.Background(), Config{NtfyURL: ts.URL + "/updates", NtfyToken: "tk_abc"}, makeJob(db.StatusSuccess, nil))
+
+	if got := c.header.Get("Authorization"); got != "Bearer tk_abc" {
+		t.Errorf("Authorization = %q", got)
+	}
+}
+
+func TestNotifier_Ntfy_BasicAuthFromURL(t *testing.T) {
+	ts, c := newNtfyServer(t, http.StatusOK)
+	u := strings.Replace(ts.URL, "http://", "http://:tk_abc@", 1) + "/updates"
+	Notify(context.Background(), Config{NtfyURL: u}, makeJob(db.StatusSuccess, nil))
+
+	if !c.hasAut || c.user != "" || c.pass != "tk_abc" {
+		t.Errorf("BasicAuth = (%q, %q, %v), want (\"\", tk_abc, true)", c.user, c.pass, c.hasAut)
+	}
+	if c.path != "/updates" {
+		t.Errorf("path = %q, want /updates", c.path)
+	}
+}
+
+func TestNotifier_Ntfy_TokenWinsOverUserinfo(t *testing.T) {
+	ts, c := newNtfyServer(t, http.StatusOK)
+	u := strings.Replace(ts.URL, "http://", "http://:url_tok@", 1) + "/updates"
+	Notify(context.Background(), Config{NtfyURL: u, NtfyToken: "env_tok"}, makeJob(db.StatusSuccess, nil))
+
+	if got := c.header.Get("Authorization"); got != "Bearer env_tok" {
+		t.Errorf("Authorization = %q, want Bearer env_tok", got)
+	}
+}
+
+func TestNotifier_Ntfy_NoAuth(t *testing.T) {
+	ts, c := newNtfyServer(t, http.StatusOK)
+	Notify(context.Background(), Config{NtfyURL: ts.URL + "/updates"}, makeJob(db.StatusSuccess, nil))
+
+	if got := c.header.Get("Authorization"); got != "" {
+		t.Errorf("Authorization = %q, want empty", got)
+	}
+}
+
+func TestNotifier_Ntfy_ServerError(t *testing.T) {
+	ts, _ := newNtfyServer(t, http.StatusInternalServerError)
+	// Must not panic.
+	Notify(context.Background(), Config{NtfyURL: ts.URL + "/updates"}, makeJob(db.StatusSuccess, nil))
+
+	err := sendNtfy(context.Background(), ts.URL+"/updates", "", makeJob(db.StatusSuccess, nil))
+	if err == nil || err.Error() != "ntfy returned 500" {
+		t.Errorf("err = %v, want ntfy returned 500", err)
+	}
+}
+
+func TestNotifier_Ntfy_InvalidURL(t *testing.T) {
+	err := sendNtfy(context.Background(), "://:secret@bad", "", makeJob(db.StatusSuccess, nil))
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if strings.Contains(err.Error(), "secret") {
+		t.Errorf("error leaks credentials: %v", err)
+	}
+}
