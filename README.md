@@ -140,6 +140,8 @@ See [`e2e/hello-world/`](e2e/hello-world/) for a complete reference app.
 | `PUSHOVER_APP_TOKEN`          | no       | Pushover mobile notifications                                                 |
 | `NOTIFICATION_WEBHOOK_URL`    | no       | POST full job result JSON on completion                                       |
 | `SLACK_WEBHOOK_URL`           | no       | Slack incoming-webhook URL for deploy notifications                           |
+| `NTFY_URL`                    | no       | ntfy topic URL, optional `https://:<token>@host/topic` basic auth             |
+| `NTFY_TOKEN`                  | no       | ntfy access token, sent as Bearer (wins over URL credentials)                 |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | no       | OTLP/HTTP base URL — emits one log per deploy as a marker                     |
 | `OTEL_EXPORTER_OTLP_HEADERS`  | no       | Comma-separated `key=value` headers (e.g. `Authorization=Bearer ...`)         |
 | `DEPLOY_ENVIRONMENT`          | no       | Sets `deployment.environment` on the OTLP log; omitted if unset               |
@@ -177,6 +179,7 @@ Keep **container and reverse-proxy healthchecks on `/health`**. Failing a contai
 Set `PUSHOVER_USER_KEY` + `PUSHOVER_APP_TOKEN` for mobile push on deploy completion.
 Set `NOTIFICATION_WEBHOOK_URL` to POST the full `JobResult` JSON anywhere.
 Set `SLACK_WEBHOOK_URL` (incoming webhook) for a plain-text deploy summary in Slack.
+Set `NTFY_URL` (full topic URL, optional `https://:<token>@host/topic` basic-auth form) and optional `NTFY_TOKEN` (Bearer) for native ntfy push with title, tags and high priority on failure.
 Set `OTEL_EXPORTER_OTLP_ENDPOINT` to emit one OTLP/HTTP log per deploy as a deployment marker. Optional `OTEL_EXPORTER_OTLP_HEADERS` (comma-separated `key=value`) for auth, and `DEPLOY_ENVIRONMENT` to set `deployment.environment` on the log.
 
 OTLP attribute schema:
