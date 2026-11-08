@@ -1,6 +1,7 @@
 import type { JobResult, JobStatus } from '@rollhook/ui'
 import { getApiToken } from '../api/client'
 import { getJobs } from '../api/generated/jobs/jobs'
+import { parseSseChunk } from './sse'
 
 const IS_DEMO = import.meta.env.DEV || import.meta.env.MODE === 'demo'
 
@@ -59,13 +60,10 @@ export function streamLogs(
     function pump(): Promise<void> {
       return reader.read().then(({ done, value }) => {
         if (done) return
-        buffer += decoder.decode(value, { stream: true })
-        const parts = buffer.split('\n\n')
-        buffer = parts.pop() ?? ''
-        for (const part of parts) {
-          const line = part.replace(/^data: /, '')
-          if (line) onLine(line)
-        }
+        const parsed = parseSseChunk(buffer, decoder.decode(value, { stream: true }))
+        buffer = parsed.rest
+        for (const line of parsed.lines) onLine(line)
+        if (parsed.done) return reader.cancel()
         return pump()
       })
     }

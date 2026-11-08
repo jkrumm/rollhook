@@ -1,25 +1,11 @@
-import type { ChartDataPoint, JobResult } from '@rollhook/ui'
+import type { JobResult } from '@rollhook/ui'
 import { DeployChart, Logo } from '@rollhook/ui'
 import { useCallback, useEffect, useState } from 'react'
 import { fetchJobs } from '../lib/api'
+import { computeChartData, filterByDay } from '../lib/chart'
 import { useUrlState } from '../lib/useUrlState'
 import { FilterBar } from './FilterBar'
 import { JobListContainer } from './JobListContainer'
-
-function computeChartData(jobs: JobResult[]): ChartDataPoint[] {
-  const map = new Map<string, { success: number; failed: number }>()
-  for (const job of jobs) {
-    if (job.status !== 'success' && job.status !== 'failed') continue
-    const day = job.created_at.slice(0, 10)
-    const entry = map.get(day) ?? { success: 0, failed: 0 }
-    entry[job.status]++
-    map.set(day, entry)
-  }
-  return [...map.entries()]
-    .toSorted(([a], [b]) => a.localeCompare(b))
-    .slice(-14)
-    .map(([day, counts]) => ({ day: day.slice(5), ...counts }))
-}
 
 interface DashboardProps {
   onLogout: () => void
@@ -35,10 +21,14 @@ export function Dashboard({ onLogout }: DashboardProps) {
       const data = await fetchJobs({ limit: 200 })
       setJobs(data)
       setLoadError(null)
-    } catch {
+    } catch (err) {
+      if (err instanceof Error && err.message === '401') {
+        onLogout()
+        return
+      }
       setLoadError('Failed to load jobs. Check token or server connectivity.')
     }
-  }, [])
+  }, [onLogout])
 
   // Poll every 5s
   useEffect(() => {
@@ -60,9 +50,7 @@ export function Dashboard({ onLogout }: DashboardProps) {
     (j) => (!params.app || j.app === params.app) && (!params.status || j.status === params.status),
   )
 
-  const filtered = appStatusFiltered.filter(
-    (j) => !params.day || j.created_at.slice(5, 10) === params.day,
-  )
+  const filtered = filterByDay(appStatusFiltered, params.day)
 
   const chartData = computeChartData(appStatusFiltered)
 
