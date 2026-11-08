@@ -1,10 +1,10 @@
 # RollHook Makefile — thin wrappers over the repo's own scripts and the exact CI gates.
 # Self-documenting: `make` (or `make help`) lists every target below.
-# Go is not installed locally (see AGENTS.md §Validate), so Go runs in the pinned image.
+# Go runs in the pinned image so `make check` needs only Docker (see AGENTS.md §Validate).
 
 .DEFAULT_GOAL := help
 
-GO_IMAGE   := golang:1.26-alpine
+GO_IMAGE   := golang:1.27.3-alpine
 GO_RUN     := docker run --rm -v "$(CURDIR)":/workspace -w /workspace $(GO_IMAGE)
 LINT_IMAGE := golangci/golangci-lint:v2.15.0
 
@@ -12,7 +12,7 @@ LINT_IMAGE := golangci/golangci-lint:v2.15.0
 ROLLHOOK_URL      ?= https://rollhook.jkrumm.com
 ROLLHOOK_SSH_HOST ?= vps
 
-.PHONY: help check deploy verify logs
+.PHONY: help check image image-smoke deploy verify logs
 
 help: ## List available targets
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-8s\033[0m %s\n", $$1, $$2}'
@@ -30,6 +30,17 @@ check: ## Run exactly the local validation CI runs (lint, format check, typechec
 	docker run --rm -v "$(CURDIR)":/workspace -w /workspace $(LINT_IMAGE) golangci-lint run
 	$(GO_RUN) go run ./cmd/gendocs 2>/dev/null > /tmp/rollhook-openapi.json
 	diff -u apps/dashboard/openapi.json /tmp/rollhook-openapi.json
+
+image: ## Build the server image (rollhook:local) from the Dockerfile
+	docker build -t rollhook:local .
+
+image-smoke: image ## Smoke-test the built image: non-root user, DATA_DIR=/data owned by rollhook, named-volume data survives recreate
+	docker run --rm --entrypoint sh rollhook:local -c 'test "$$(id -un)" = rollhook && test "$$DATA_DIR" = /data && test "$$(stat -c %U /data)" = rollhook'
+	docker volume rm -f rollhook-smoke >/dev/null
+	docker run --rm -v rollhook-smoke:/data --entrypoint sh rollhook:local -c 'echo kept > /data/probe'
+	docker run --rm -v rollhook-smoke:/data --entrypoint sh rollhook:local -c 'test "$$(cat /data/probe)" = kept'
+	docker volume rm rollhook-smoke >/dev/null
+	@echo "image-smoke: ok"
 
 deploy: ## CI-deployed: the server image ships via the manual Make Release workflow, the marketing site on push
 	@echo "deployed by CI on push (marketing site); the server image ships via the manual 'Make Release' workflow and the VPS pulls :latest - see AGENTS.md section Deploy. Nothing to run here."
