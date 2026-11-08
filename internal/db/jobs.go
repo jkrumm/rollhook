@@ -179,13 +179,23 @@ func parseTime(s string) time.Time {
 	return time.Time{}
 }
 
-// MarkInterruptedJobsFailed transitions any jobs stuck in 'running' to 'failed'.
-// Called on startup to clean up jobs that were in-flight when the server crashed.
+// MarkInterruptedJobsFailed transitions jobs left 'running' or 'queued' to
+// 'failed'. Called on startup: the queue is in-memory, so neither state can
+// survive a restart. Failures are logged, not returned, so startup proceeds.
 func (s *Store) MarkInterruptedJobsFailed() {
-	_, _ = s.db.Exec(
-		`UPDATE jobs SET status = 'failed', error = 'interrupted: server restarted',
-		 updated_at = CURRENT_TIMESTAMP WHERE status = 'running'`,
+	res, err := s.db.Exec(
+		`UPDATE jobs SET status = 'failed',
+		 error = CASE status WHEN 'queued' THEN 'interrupted: server restarted before the job started'
+		                     ELSE 'interrupted: server restarted while the job was running' END,
+		 updated_at = CURRENT_TIMESTAMP WHERE status IN ('running', 'queued')`,
 	)
+	if err != nil {
+		slog.Error("mark interrupted jobs failed", "err", err)
+		return
+	}
+	if n, _ := res.RowsAffected(); n > 0 {
+		slog.Warn("marked interrupted jobs failed", "count", n)
+	}
 }
 
 // --- Log file helpers ---

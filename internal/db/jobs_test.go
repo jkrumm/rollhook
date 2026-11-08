@@ -399,3 +399,46 @@ func TestLogHelpers(t *testing.T) {
 		}
 	})
 }
+
+func TestMarkInterruptedJobsFailed(t *testing.T) {
+	store := newTestStore(t)
+	for _, j := range []struct {
+		id     string
+		status JobStatus
+	}{{"q", StatusQueued}, {"r", StatusRunning}, {"s", StatusSuccess}, {"f", StatusFailed}} {
+		job := makeJob(j.id, "app", "app:v1")
+		if err := store.Insert(job); err != nil {
+			t.Fatalf("insert %s: %v", j.id, err)
+		}
+		if j.status != StatusQueued {
+			if err := store.UpdateStatus(j.id, j.status, nil); err != nil {
+				t.Fatalf("update %s: %v", j.id, err)
+			}
+		}
+	}
+
+	store.MarkInterruptedJobsFailed()
+
+	want := map[string]JobStatus{"q": StatusFailed, "r": StatusFailed, "s": StatusSuccess, "f": StatusFailed}
+	for id, st := range want {
+		got, err := store.Get(id)
+		if err != nil || got == nil {
+			t.Fatalf("get %s: %v", id, err)
+		}
+		if got.Status != st {
+			t.Errorf("job %s status = %q, want %q", id, got.Status, st)
+		}
+	}
+	for _, id := range []string{"q", "r"} {
+		got, _ := store.Get(id)
+		if got.Error == nil || !strings.Contains(*got.Error, "interrupted") {
+			t.Errorf("job %s error = %v, want interrupted message", id, got.Error)
+		}
+	}
+	if q, _ := store.Get("q"); q.Error == nil || !strings.Contains(*q.Error, "before the job started") {
+		t.Errorf("queued job error = %v, want 'before the job started'", q.Error)
+	}
+	if s, _ := store.Get("s"); s.Error != nil {
+		t.Errorf("successful job error = %v, want nil", s.Error)
+	}
+}
