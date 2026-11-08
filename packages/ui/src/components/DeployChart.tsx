@@ -35,6 +35,7 @@ export function DeployChart({ data, selectedDay, onDayClick }: DeployChartProps)
       >
         <XAxis
           dataKey="day"
+          tickFormatter={(day: string) => day.slice(5)}
           tick={{ fontSize: 10, fontFamily: 'monospace', fill: 'currentColor', opacity: 0.5 }}
           tickLine={false}
           axisLine={false}

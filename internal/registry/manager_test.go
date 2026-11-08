@@ -2,6 +2,7 @@ package registry
 
 import (
 	"context"
+	"github.com/jkrumm/rollhook/internal/config"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -11,7 +12,7 @@ import (
 )
 
 func testManager(t *testing.T, cmd func() *exec.Cmd, stable time.Duration) *Manager {
-	m := NewManager(t.TempDir(), "secret", DefaultKeepTags)
+	m := NewManager(t.TempDir(), "secret", config.DefaultRegistryKeepTags)
 	m.zotCmd = cmd
 	m.backoffs = []time.Duration{5 * time.Millisecond, 5 * time.Millisecond, 5 * time.Millisecond}
 	m.stableAfter = stable
@@ -47,6 +48,32 @@ func TestWatchGivesUpAfterThreeCrashes(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 	if got := starts.Load(); got != 4 {
 		t.Fatalf("starts = %d, want 4 (initial + 3 restarts)", got)
+	}
+}
+
+func TestWatchGivesUpWhenStartFails(t *testing.T) {
+	var starts atomic.Int32
+	first := true
+	m := testManager(t, func() *exec.Cmd {
+		starts.Add(1)
+		if first {
+			first = false
+			return exec.Command("sh", "-c", "exit 1")
+		}
+		return exec.Command("/nonexistent/zot-binary")
+	}, 10*time.Millisecond)
+	m.backoffs = []time.Duration{30 * time.Millisecond, 30 * time.Millisecond, 30 * time.Millisecond}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	if err := m.startProcess(); err != nil {
+		t.Fatal(err)
+	}
+	go m.watch(ctx)
+
+	waitFor(t, func() bool { return m.State() == StateUnavailable })
+	if got := starts.Load(); got != 4 {
+		t.Fatalf("starts = %d, want 4 (initial + 3 failed restarts)", got)
 	}
 }
 
