@@ -1,12 +1,11 @@
 // @ts-check
-import react from '@astrojs/react'
 import sitemap from '@astrojs/sitemap'
 import tailwindcss from '@tailwindcss/vite'
 import { defineConfig, fontProviders } from 'astro/config'
 
 export default defineConfig({
   site: 'https://rollhook.com',
-  integrations: [react(), sitemap()],
+  integrations: [sitemap()],
   server: { port: 7701 },
   // Astro 7 defaults to 'jsx', which drops whitespace between inline elements in prose.
   compressHTML: true,
