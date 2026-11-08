@@ -26,49 +26,45 @@ func MintRegistryToken(secret, imageName string) string {
 	return base64.RawURLEncoding.EncodeToString([]byte(raw))
 }
 
-// decodeRegistryToken decodes a registry token and returns (imageName, rest, mac, ok).
-// rest = "<expiry>:<imageName>" — the signed payload used to compute the HMAC.
-func decodeRegistryToken(token string) (imageName, rest, mac string, ok bool) {
+// parseRegistryToken verifies the HMAC and decodes a registry token, returning
+// the bound image name and expiry. ok is false for malformed or tampered tokens;
+// expiry is NOT checked here — callers compare it against the clock.
+func parseRegistryToken(secret, token string) (image string, expiry time.Time, ok bool) {
 	decoded, err := base64.RawURLEncoding.DecodeString(token)
 	if err != nil {
-		return "", "", "", false
+		return "", time.Time{}, false
 	}
 	s := string(decoded)
 
 	// Last segment (after final colon) is the HMAC hex.
 	lastColon := strings.LastIndex(s, ":")
 	if lastColon < 0 {
-		return "", "", "", false
+		return "", time.Time{}, false
 	}
-	mac = s[lastColon+1:]
-	rest = s[:lastColon] // "<expiry>:<imageName>"
+	mac := s[lastColon+1:]
+	payload := s[:lastColon] // "<expiry>:<imageName>"
 
 	// First colon separates expiry from imageName.
-	firstColon := strings.Index(rest, ":")
-	if firstColon < 0 {
-		return "", "", "", false
+	expiryStr, image, found := strings.Cut(payload, ":")
+	if !found {
+		return "", time.Time{}, false
 	}
-	imageName = rest[firstColon+1:]
-	return imageName, rest, mac, true
+	expiryUnix, err := strconv.ParseInt(expiryStr, 10, 64)
+	if err != nil {
+		return "", time.Time{}, false
+	}
+
+	expected := computeRegistryHMAC(secret, payload)
+	if subtle.ConstantTimeCompare([]byte(mac), []byte(expected)) != 1 {
+		return "", time.Time{}, false
+	}
+	return image, time.Unix(expiryUnix, 0), true
 }
 
 // ValidateRegistryToken returns true if token is a valid, unexpired HMAC registry token.
 func ValidateRegistryToken(secret, token string) bool {
-	imageName, rest, mac, ok := decodeRegistryToken(token)
-	_ = imageName
-	if !ok {
-		return false
-	}
-
-	// Validate expiry from the rest payload.
-	firstColon := strings.Index(rest, ":")
-	expiryUnix, err := strconv.ParseInt(rest[:firstColon], 10, 64)
-	if err != nil || time.Now().Unix() > expiryUnix {
-		return false
-	}
-
-	expected := computeRegistryHMAC(secret, rest)
-	return subtle.ConstantTimeCompare([]byte(mac), []byte(expected)) == 1
+	_, expiry, ok := parseRegistryToken(secret, token)
+	return ok && time.Now().Unix() <= expiry.Unix()
 }
 
 // ValidateRegistryTokenForRepo validates the token's signature, expiry, AND
@@ -78,22 +74,8 @@ func ValidateRegistryTokenForRepo(secret, token, repo string) bool {
 	if repo == "" {
 		return false // no target repo — deny scoped tokens
 	}
-	imageName, rest, mac, ok := decodeRegistryToken(token)
-	if !ok {
-		return false
-	}
-	if imageName != repo {
-		return false // scope mismatch
-	}
-
-	firstColon := strings.Index(rest, ":")
-	expiryUnix, err := strconv.ParseInt(rest[:firstColon], 10, 64)
-	if err != nil || time.Now().Unix() > expiryUnix {
-		return false
-	}
-
-	expected := computeRegistryHMAC(secret, rest)
-	return subtle.ConstantTimeCompare([]byte(mac), []byte(expected)) == 1
+	image, expiry, ok := parseRegistryToken(secret, token)
+	return ok && image == repo && time.Now().Unix() <= expiry.Unix()
 }
 
 func computeRegistryHMAC(secret, message string) string {

@@ -4,13 +4,14 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 )
@@ -26,41 +27,85 @@ const (
 // After len(restartBackoffs) consecutive crashes without recovery, Zot is not restarted.
 var restartBackoffs = []time.Duration{1 * time.Second, 5 * time.Second, 30 * time.Second}
 
+// stableAfter is how long a Zot process must stay up before it counts as
+// recovered and the consecutive-crash counter resets. A process that merely
+// started and then died again is still part of the same crash loop.
+var stableAfter = 30 * time.Second
+
+// Zot states reported by Manager.State.
+const (
+	StateOK          = "ok"          // process running (or being restarted within budget)
+	StateUnavailable = "unavailable" // not started yet, or gave up after repeated crashes
+)
+
+// maxLogLine is the largest single Zot log line kept intact; longer lines are
+// dropped from the log but the pipe is still drained so Zot never blocks.
+const maxLogLine = 1 << 20
+
 // Manager starts and manages Zot as a child subprocess.
 // Zot binds to 127.0.0.1:5000 — never exposed externally.
 type Manager struct {
 	dataDir    string
 	secret     string
+	keepTags   int
 	configPath string
 	mu         sync.Mutex
 	cmd        *exec.Cmd
 	done       chan struct{} // closed by the watcher goroutine when zot exits
+	startedAt  time.Time     // when the current process was launched
+
+	// Overridable in tests.
+	zotCmd      func() *exec.Cmd
+	backoffs    []time.Duration
+	stableAfter time.Duration
+
+	failed atomic.Bool // set once the watcher gives up restarting
 }
 
 // NewManager creates a registry Manager. Call Start to launch Zot.
-func NewManager(dataDir, secret string) *Manager {
-	return &Manager{dataDir: dataDir, secret: secret}
+func NewManager(dataDir, secret string, keepTags int) *Manager {
+	return &Manager{
+		dataDir:     dataDir,
+		secret:      secret,
+		keepTags:    keepTags,
+		backoffs:    restartBackoffs,
+		stableAfter: stableAfter,
+	}
 }
 
-// envInt reads an integer env var, returning defaultVal if unset, unparseable,
-// or negative. Zero is a valid, meaningful value (the documented "keep every
-// pushed tag forever" escape hatch) — only negative/unparseable values are
-// treated as configuration mistakes.
-func envInt(key string, defaultVal int) int {
-	v := os.Getenv(key)
-	if v == "" {
-		return defaultVal
+func (m *Manager) newCmd() *exec.Cmd {
+	if m.zotCmd != nil {
+		return m.zotCmd()
 	}
-	n, err := strconv.Atoi(v)
-	if err != nil {
-		slog.Warn("invalid integer env var, using default", "var", key, "value", v, "default", defaultVal)
-		return defaultVal
+	return exec.Command("zot", "serve", m.configPath) //nolint:gosec
+}
+
+// State reports StateOK while Zot is running or being restarted within the
+// crash budget, and StateUnavailable before the first start or once the
+// watcher has given up.
+func (m *Manager) State() string {
+	if m.failed.Load() {
+		return StateUnavailable
 	}
-	if n < 0 {
-		slog.Warn("negative env var not allowed, using default", "var", key, "value", n, "default", defaultVal)
-		return defaultVal
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.cmd == nil && m.startedAt.IsZero() {
+		return StateUnavailable
 	}
-	return n
+	return StateOK
+}
+
+// drain logs r line by line. A line over maxLogLine stops the scanner; the
+// rest of the stream is discarded so the child never blocks on a full pipe.
+func drain(r io.Reader, log func(msg string, args ...any)) {
+	scanner := bufio.NewScanner(r)
+	scanner.Buffer(make([]byte, 0, 64*1024), maxLogLine)
+	for scanner.Scan() {
+		log(scanner.Text(), "source", "zot")
+	}
+	if scanner.Err() != nil {
+		_, _ = io.Copy(io.Discard, r)
+	}
 }
 
 // Start writes Zot config + htpasswd, launches the Zot subprocess,
@@ -75,10 +120,9 @@ func (m *Manager) Start(ctx context.Context) error {
 	m.configPath = filepath.Join(registryDir, "config.json")
 	htpasswdPath := filepath.Join(registryDir, ".htpasswd")
 
-	keepTags := envInt("ROLLHOOK_REGISTRY_KEEP_TAGS", DefaultKeepTags)
-	slog.Info("registry retention configured", "keepTags", keepTags, "source", "zot")
+	slog.Info("registry retention configured", "keepTags", m.keepTags, "source", "zot")
 
-	configJSON := GenerateZotConfig(registryDir, htpasswdPath, zotPort, keepTags)
+	configJSON := GenerateZotConfig(registryDir, htpasswdPath, zotPort, m.keepTags)
 	if err := os.WriteFile(m.configPath, []byte(configJSON), 0o600); err != nil {
 		return fmt.Errorf("write zot config: %w", err)
 	}
@@ -102,7 +146,7 @@ func (m *Manager) Start(ctx context.Context) error {
 
 // startProcess launches a fresh Zot subprocess and sets m.cmd + m.done.
 func (m *Manager) startProcess() error {
-	cmd := exec.Command("zot", "serve", m.configPath) //nolint:gosec
+	cmd := m.newCmd()
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return fmt.Errorf("zot stdout pipe: %w", err)
@@ -121,24 +165,25 @@ func (m *Manager) startProcess() error {
 	m.mu.Lock()
 	m.cmd = cmd
 	m.done = done
+	m.startedAt = time.Now()
 	m.mu.Unlock()
 
+	// Both pipes must be fully read before cmd.Wait, which closes them.
+	var pipes sync.WaitGroup
+	pipes.Add(2)
 	go func() {
-		scanner := bufio.NewScanner(stdout)
-		for scanner.Scan() {
-			slog.Info(scanner.Text(), "source", "zot")
-		}
+		defer pipes.Done()
+		drain(stdout, slog.Info)
 	}()
 	go func() {
-		scanner := bufio.NewScanner(stderr)
-		for scanner.Scan() {
-			slog.Error(scanner.Text(), "source", "zot")
-		}
+		defer pipes.Done()
+		drain(stderr, slog.Error)
 	}()
 
 	// Single goroutine owns cmd.Wait() — must be called exactly once.
 	go func() {
 		defer close(done)
+		pipes.Wait()
 		if err := cmd.Wait(); err != nil {
 			slog.Error("zot process exited", "error", err, "source", "zot")
 		}
@@ -152,7 +197,8 @@ func (m *Manager) startProcess() error {
 
 // watch monitors the done channel and restarts Zot on unexpected exits.
 // Exits when ctx is cancelled (graceful shutdown via SIGTERM).
-// Uses exponential backoff: 1s, 5s, 30s. Gives up after len(restartBackoffs) consecutive failures.
+// Uses exponential backoff: 1s, 5s, 30s. Gives up after len(backoffs) consecutive
+// failures; a process that stayed up for stableAfter resets the count.
 func (m *Manager) watch(ctx context.Context) {
 	consecutiveCrashes := 0
 
@@ -176,13 +222,21 @@ func (m *Manager) watch(ctx context.Context) {
 		default:
 		}
 
+		m.mu.Lock()
+		uptime := time.Since(m.startedAt)
+		m.mu.Unlock()
+		if uptime >= m.stableAfter {
+			consecutiveCrashes = 0
+		}
+
 		consecutiveCrashes++
-		if consecutiveCrashes > len(restartBackoffs) {
+		if consecutiveCrashes > len(m.backoffs) {
 			slog.Error("zot crashed too many times, giving up", "crashes", consecutiveCrashes, "source", "zot")
+			m.failed.Store(true)
 			return
 		}
 
-		backoff := restartBackoffs[consecutiveCrashes-1]
+		backoff := m.backoffs[consecutiveCrashes-1]
 		slog.Warn("zot exited unexpectedly, restarting", "backoff", backoff, "attempt", consecutiveCrashes, "source", "zot")
 
 		select {
@@ -196,12 +250,7 @@ func (m *Manager) watch(ctx context.Context) {
 			continue
 		}
 
-		slog.Info("zot restarted successfully", "attempt", consecutiveCrashes, "source", "zot")
-
-		// Wait a moment for Zot to stabilise before checking liveness again.
-		// (waitUntilReady is only called on initial Start; here we trust the
-		// process to come up on its own from a saved state.)
-		consecutiveCrashes = 0
+		slog.Info("zot restarted", "attempt", consecutiveCrashes, "source", "zot")
 	}
 }
 
