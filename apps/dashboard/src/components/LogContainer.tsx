@@ -1,20 +1,21 @@
-import type { JobStatus, LogLine } from '@rollhook/ui'
+import type { LogLine } from '@rollhook/ui'
 import { LogDrawer } from '@rollhook/ui'
 import { useEffect, useRef, useState } from 'react'
 import { streamLogs } from '../lib/api'
 
+const MAX_RECONNECTS = 5
+const RECONNECT_BASE_MS = 1000
 const TIMESTAMP_RE = /^\[(\d{4}-\d{2}-\d{2}T[\d:.]+Z)\]\s+(.*)/
 
 interface LogContainerProps {
   jobId: string
-  status: JobStatus
 }
 
-export function LogContainer({ jobId, status }: LogContainerProps) {
+export function LogContainer({ jobId }: LogContainerProps) {
   const [logLines, setLogLines] = useState<LogLine[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const startTimeRef = useRef<number | null>(null)
-  // Tracks how many lines have already been rendered — used to skip duplicates on re-stream
+  // Tracks how many lines have already been rendered — used to skip duplicates on reconnect
   const seenCountRef = useRef(0)
 
   useEffect(() => {
@@ -26,62 +27,59 @@ export function LogContainer({ jobId, status }: LogContainerProps) {
 
     const ctrl = new AbortController()
 
-    async function streamOnce(): Promise<void> {
-      const pass = { lineIndex: 0 }
+    // The server follows the log until the job is terminal, so one stream suffices.
+    // Reconnect only after an error; already-rendered lines are skipped via seenCountRef.
+    async function streamWithRetry(): Promise<void> {
+      for (let attempt = 0; attempt <= MAX_RECONNECTS; attempt++) {
+        const pass = { lineIndex: 0 }
+        try {
+          await streamLogs(
+            jobId,
+            (raw) => {
+              if (pass.lineIndex++ < seenCountRef.current) return
 
-      await streamLogs(
-        jobId,
-        (raw) => {
-          // Skip lines already rendered from a previous stream cycle
-          if (pass.lineIndex < seenCountRef.current) {
-            pass.lineIndex++
-            return
-          }
-          pass.lineIndex++
+              const match = raw.match(TIMESTAMP_RE)
+              let text: string
+              let elapsed: number | undefined
 
-          const match = raw.match(TIMESTAMP_RE)
-          let text: string
-          let elapsed: number | undefined
+              if (match) {
+                const lineMs = new Date(match[1]).getTime()
+                if (startTimeRef.current === null) startTimeRef.current = lineMs
+                elapsed = Math.round((lineMs - startTimeRef.current) / 1000)
+                text = match[2]
+              } else {
+                text = raw
+              }
 
-          if (match) {
-            const lineMs = new Date(match[1]).getTime()
-            if (startTimeRef.current === null) startTimeRef.current = lineMs
-            elapsed = Math.round((lineMs - startTimeRef.current) / 1000)
-            text = match[2]
-          } else {
-            text = raw
-          }
-
-          seenCountRef.current++
-          setLogLines((prev) => [...prev, { text, elapsed }])
-          setIsLoading(false)
-        },
-        ctrl.signal,
-      ).catch(() => {})
-
-      setIsLoading(false)
-
-      // For running jobs: re-stream after 2s to pick up new log lines.
-      // Each cycle skips already-seen lines via seenCountRef.
-      if (!ctrl.signal.aborted && status === 'running') {
-        await new Promise<void>((resolve) => {
-          const t = setTimeout(resolve, 2000)
-          function onAbort() {
-            clearTimeout(t)
-            resolve()
-          }
-          // eslint-disable-next-line react-web-api/no-leaked-event-listener -- ctrl.abort() fires this in cleanup; { once: true } auto-removes it
-          ctrl.signal.addEventListener('abort', onAbort, { once: true })
-        })
-        if (!ctrl.signal.aborted) return streamOnce()
+              seenCountRef.current++
+              setLogLines((prev) => [...prev, { text, elapsed }])
+              setIsLoading(false)
+            },
+            ctrl.signal,
+          )
+          break
+        } catch {
+          if (ctrl.signal.aborted || attempt === MAX_RECONNECTS) break
+          await new Promise<void>((resolve) => {
+            const t = setTimeout(resolve, RECONNECT_BASE_MS * 2 ** attempt)
+            function onAbort() {
+              clearTimeout(t)
+              resolve()
+            }
+            // eslint-disable-next-line react-web-api/no-leaked-event-listener -- ctrl.abort() fires this in cleanup; { once: true } auto-removes it
+            ctrl.signal.addEventListener('abort', onAbort, { once: true })
+          })
+          if (ctrl.signal.aborted) break
+        }
       }
+      setIsLoading(false)
     }
 
-    void streamOnce()
+    void streamWithRetry()
     return () => {
       ctrl.abort()
     }
-  }, [jobId, status])
+  }, [jobId])
 
   return <LogDrawer logLines={logLines} isLoading={isLoading} />
 }
