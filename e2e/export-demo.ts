@@ -28,13 +28,13 @@ async function fetchLogs(jobId: string): Promise<string[]> {
     buffer = parts.pop() ?? ''
     for (const part of parts) {
       const line = part.replace(/^data: /, '').trim()
-      if (line) lines.push(line)
+      if (line && line !== '[DONE]') lines.push(line)
     }
   }
   // Flush decoder and emit any trailing buffered event not terminated by \n\n
   buffer += decoder.decode()
   const tail = buffer.replace(/^data: /, '').trim()
-  if (tail) lines.push(tail)
+  if (tail && tail !== '[DONE]') lines.push(tail)
   return lines
 }
 

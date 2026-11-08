@@ -21,8 +21,9 @@ let failedJob: JobResult
 
 beforeAll(async () => {
   // Deploy synchronously — endpoint blocks until the job reaches a terminal state.
-  // The unhealthy container takes ~8s to be marked "unhealthy" (3 checks × 2s each),
-  // so the total beforeAll time is roughly: pull + scale-up + 8s healthcheck + rollback.
+  // The compose healthcheck (2s interval, 3 retries, 5s start_period with 1s start_interval)
+  // marks the unhealthy container after ~11s, so the total beforeAll time is roughly:
+  // pull + scale-up + ~11s healthcheck + rollback.
   const res = await fetch(`${BASE_URL}/deploy`, {
     method: 'POST',
     headers: adminHeaders(),
