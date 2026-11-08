@@ -2,6 +2,7 @@ package registry
 
 import (
 	"encoding/json"
+	"github.com/jkrumm/rollhook/internal/config"
 	"strings"
 	"testing"
 
@@ -9,7 +10,7 @@ import (
 )
 
 func TestGenerateZotConfig_ContainsDockerCompat(t *testing.T) {
-	cfg := GenerateZotConfig("/tmp/registry", "/tmp/registry/.htpasswd", 5000, DefaultKeepTags)
+	cfg := GenerateZotConfig("/tmp/registry", "/tmp/registry/.htpasswd", 5000, config.DefaultRegistryKeepTags)
 
 	var parsed map[string]any
 	if err := json.Unmarshal([]byte(cfg), &parsed); err != nil {
@@ -36,7 +37,7 @@ func TestGenerateZotConfig_ContainsDockerCompat(t *testing.T) {
 }
 
 func TestGenerateZotConfig_LoopbackAddress(t *testing.T) {
-	cfg := GenerateZotConfig("/tmp/registry", "/tmp/registry/.htpasswd", 5000, DefaultKeepTags)
+	cfg := GenerateZotConfig("/tmp/registry", "/tmp/registry/.htpasswd", 5000, config.DefaultRegistryKeepTags)
 
 	var parsed map[string]any
 	if err := json.Unmarshal([]byte(cfg), &parsed); err != nil {
@@ -50,7 +51,7 @@ func TestGenerateZotConfig_LoopbackAddress(t *testing.T) {
 }
 
 func TestGenerateZotConfig_PortAsString(t *testing.T) {
-	cfg := GenerateZotConfig("/tmp/registry", "/tmp/registry/.htpasswd", 5000, DefaultKeepTags)
+	cfg := GenerateZotConfig("/tmp/registry", "/tmp/registry/.htpasswd", 5000, config.DefaultRegistryKeepTags)
 
 	var parsed map[string]any
 	if err := json.Unmarshal([]byte(cfg), &parsed); err != nil {
@@ -64,7 +65,7 @@ func TestGenerateZotConfig_PortAsString(t *testing.T) {
 }
 
 func TestGenerateZotConfig_RetentionDefaultKeepTags(t *testing.T) {
-	cfg := GenerateZotConfig("/tmp/registry", "/tmp/registry/.htpasswd", 5000, DefaultKeepTags)
+	cfg := GenerateZotConfig("/tmp/registry", "/tmp/registry/.htpasswd", 5000, config.DefaultRegistryKeepTags)
 
 	var parsed map[string]any
 	if err := json.Unmarshal([]byte(cfg), &parsed); err != nil {

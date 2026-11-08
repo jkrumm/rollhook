@@ -10,10 +10,6 @@ import (
 // ZotUser is the fixed internal username for Zot — never exposed to end users.
 const ZotUser = "rollhook"
 
-// DefaultKeepTags is the number of most-recently-pushed tags retained per
-// repository when ROLLHOOK_REGISTRY_KEEP_TAGS is unset.
-const DefaultKeepTags = 5
-
 const (
 	// zotGCDelay is the grace period Zot waits before an untagged/orphaned blob
 	// becomes eligible for garbage collection.

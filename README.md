@@ -141,7 +141,6 @@ See [`e2e/hello-world/`](e2e/hello-world/) for a complete reference app.
 | `ROLLHOOK_HEALTH_TIMEOUT_MS`  | no       | Max wait for a new container to turn healthy (default `60000`)                |
 | `ROLLHOOK_SYNC_TIMEOUT_MIN`   | no       | Max wait of a synchronous `/deploy` (default: health timeout + 5 min)         |
 | `DOCKER_HOST`                 | no       | Docker daemon endpoint (default: local socket)                                |
-| `PORT`                        | no       | Listen port (default: `7700`)                                                 |
 | `PUSHOVER_USER_KEY`           | no       | Pushover mobile notifications                                                 |
 | `PUSHOVER_APP_TOKEN`          | no       | Pushover mobile notifications                                                 |
 | `NOTIFICATION_WEBHOOK_URL`    | no       | POST full job result JSON on completion                                       |

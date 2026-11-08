@@ -53,6 +53,7 @@ type Manager struct {
 	cmd        *exec.Cmd
 	done       chan struct{} // closed by the watcher goroutine when zot exits
 	startedAt  time.Time     // when the current process was launched
+	exitedAt   time.Time     // when the current process exited
 
 	// Overridable in tests.
 	zotCmd      func() *exec.Cmd
@@ -189,6 +190,7 @@ func (m *Manager) startProcess() error {
 		}
 		m.mu.Lock()
 		m.cmd = nil
+		m.exitedAt = time.Now()
 		m.mu.Unlock()
 	}()
 
@@ -201,6 +203,7 @@ func (m *Manager) startProcess() error {
 // failures; a process that stayed up for stableAfter resets the count.
 func (m *Manager) watch(ctx context.Context) {
 	consecutiveCrashes := 0
+	startFailed := false
 
 	for {
 		m.mu.Lock()
@@ -222,11 +225,15 @@ func (m *Manager) watch(ctx context.Context) {
 		default:
 		}
 
-		m.mu.Lock()
-		uptime := time.Since(m.startedAt)
-		m.mu.Unlock()
-		if uptime >= m.stableAfter {
-			consecutiveCrashes = 0
+		// Only a process that actually ran can have been stable; a failed start
+		// leaves the previous process's timestamps behind and counts as a crash.
+		if !startFailed {
+			m.mu.Lock()
+			uptime := m.exitedAt.Sub(m.startedAt)
+			m.mu.Unlock()
+			if uptime >= m.stableAfter {
+				consecutiveCrashes = 0
+			}
 		}
 
 		consecutiveCrashes++
@@ -247,8 +254,10 @@ func (m *Manager) watch(ctx context.Context) {
 
 		if err := m.startProcess(); err != nil {
 			slog.Error("zot restart failed", "error", err, "source", "zot")
+			startFailed = true
 			continue
 		}
+		startFailed = false
 
 		slog.Info("zot restarted", "attempt", consecutiveCrashes, "source", "zot")
 	}
