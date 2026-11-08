@@ -79,6 +79,8 @@ services:
 
 **No `!` or `BREAKING CHANGE` in commits** — greenfield, no external consumers. All changes are `feat:` or `fix:`.
 
+**TypeScript:** root (`ui`, `dashboard`) is on 7.x; `apps/marketing` stays on 6.0.x because `astro check` refuses TypeScript 7 (revisit when Astro ships stable TS 7 support or `@astrojs/ts-content-mapper` is viable). Bump marketing together with that.
+
 **Types shared between packages** (`JobResult`, `JobStatus`) live in `packages/ui/src/types.ts`, exported from `@rollhook/ui`.
 
 **Styling: Tailwind v4 + basalt-ui tokens only.** basalt-ui 2.x is a Mantine/React framework; both apps consume only its `--vx-*` token layer, via the `basalt-ui tokens:css` committed emit, and stay on Tailwind. Never import `basalt-ui/css` (dropped in 1.0), `basalt-ui/tokens.css` (dropped in 2.0) or `basalt-ui/styles.css` (needs Mantine). Both apps declare `"basalt": { "profile": "tokens-only" }` — without it `check-theme` reports 16 Mantine-only kinds (e.g. "use `TextInput` from `@mantine/core`") against apps that have no React chrome.
