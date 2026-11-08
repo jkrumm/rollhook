@@ -98,18 +98,3 @@ func TestSetEnvLine(t *testing.T) {
 		})
 	}
 }
-
-func TestEnvInt_Default(t *testing.T) {
-	got := envInt("ROLLHOOK_NO_SUCH_ENV_VAR_12345", 42)
-	if got != 42 {
-		t.Errorf("expected default 42, got %d", got)
-	}
-}
-
-func TestEnvInt_Set(t *testing.T) {
-	t.Setenv("ROLLHOOK_TEST_TIMEOUT_MS", "30000")
-	got := envInt("ROLLHOOK_TEST_TIMEOUT_MS", 1000)
-	if got != 30000 {
-		t.Errorf("expected 30000, got %d", got)
-	}
-}

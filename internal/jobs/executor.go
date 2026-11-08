@@ -5,13 +5,16 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"strings"
+	"path"
+	"sync"
 	"time"
 
 	"github.com/docker/docker/client"
 	"github.com/google/uuid"
 
+	"github.com/jkrumm/rollhook/internal/config"
 	"github.com/jkrumm/rollhook/internal/db"
+	dockerpkg "github.com/jkrumm/rollhook/internal/docker"
 	"github.com/jkrumm/rollhook/internal/jobs/steps"
 	"github.com/jkrumm/rollhook/internal/notifier"
 )
@@ -23,17 +26,23 @@ type Executor struct {
 	queue   *Queue
 	secret  string
 	dataDir string
+	cfg     config.Config
+
+	notifyWG sync.WaitGroup
+	// notify overrides notifier.Notify; nil means the real notifier (tests inject a fake).
+	notify func(context.Context, notifier.Config, db.Job)
 }
 
 // NewExecutor creates an Executor with a started internal queue.
 // ctx is forwarded to the queue so SIGTERM can interrupt in-flight deploys.
-func NewExecutor(ctx context.Context, store *db.Store, cli *client.Client, secret, dataDir string) *Executor {
+func NewExecutor(ctx context.Context, store *db.Store, cli *client.Client, secret string, cfg config.Config) *Executor {
 	return &Executor{
 		store:   store,
 		docker:  cli,
 		queue:   NewQueue(ctx),
 		secret:  secret,
-		dataDir: dataDir,
+		dataDir: cfg.DataDir,
+		cfg:     cfg,
 	}
 }
 
@@ -75,17 +84,11 @@ func (e *Executor) Submit(job db.Job) error {
 	return nil
 }
 
-// extractApp derives the app name from an image tag.
-// "registry.example.com/myapp:v1" → "myapp"
+// extractApp derives the app name from an image reference, ignoring registry
+// host:port, tag and digest.
+// "registry.example.com/myapp:v1" → "myapp"; "reg/app@sha256:abc" → "app"
 func extractApp(imageTag string) string {
-	last := imageTag
-	if idx := strings.LastIndex(imageTag, "/"); idx >= 0 {
-		last = imageTag[idx+1:]
-	}
-	if idx := strings.Index(last, ":"); idx >= 0 {
-		last = last[:idx]
-	}
-	return last
+	return path.Base(dockerpkg.RepoFromRef(imageTag))
 }
 
 func (e *Executor) run(ctx context.Context, job db.Job) {
@@ -131,7 +134,12 @@ func (e *Executor) run(ctx context.Context, job db.Job) {
 	notifyJob := job
 	notifyJob.Status = finalStatus
 	notifyJob.Error = finalErr
-	notifier.Notify(context.Background(), notifier.Config{
+	e.notifyAsync(notifyConfigFromEnv(), notifyJob)
+}
+
+// notifyConfigFromEnv reads notification settings from the environment.
+func notifyConfigFromEnv() notifier.Config {
+	return notifier.Config{
 		PushoverUserKey:   os.Getenv("PUSHOVER_USER_KEY"),
 		PushoverAppToken:  os.Getenv("PUSHOVER_APP_TOKEN"),
 		WebhookURL:        os.Getenv("NOTIFICATION_WEBHOOK_URL"),
@@ -141,7 +149,43 @@ func (e *Executor) run(ctx context.Context, job db.Job) {
 		OTLPEndpoint:      os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"),
 		OTLPHeaders:       os.Getenv("OTEL_EXPORTER_OTLP_HEADERS"),
 		DeployEnvironment: os.Getenv("DEPLOY_ENVIRONMENT"),
-	}, notifyJob)
+	}
+}
+
+// notifyAsync sends notifications off the queue worker so a slow sink never
+// delays the next deploy. The goroutine is tracked so Drain can wait for it.
+// It deliberately uses context.Background(): a SIGTERM-cancelled job context
+// must not suppress the final notification (notifier bounds each send itself).
+func (e *Executor) notifyAsync(cfg notifier.Config, job db.Job) {
+	notify := e.notify
+	if notify == nil {
+		notify = notifier.Notify
+	}
+	e.notifyWG.Add(1)
+	go func() {
+		defer e.notifyWG.Done()
+		notify(context.Background(), cfg, job)
+	}()
+}
+
+// Drain stops accepting new jobs, waits for queued and in-flight jobs, then for
+// in-flight notifications, all within one shared timeout. Returns false on timeout.
+func (e *Executor) Drain(timeout time.Duration) bool {
+	deadline := time.Now().Add(timeout)
+	if !e.queue.Drain(timeout) {
+		return false
+	}
+	done := make(chan struct{})
+	go func() {
+		e.notifyWG.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+		return true
+	case <-time.After(time.Until(deadline)):
+		return false
+	}
 }
 
 func (e *Executor) execute(ctx context.Context, job db.Job, log func(string)) error {
@@ -168,13 +212,12 @@ func (e *Executor) execute(ctx context.Context, job db.Job, log func(string)) er
 	}
 
 	// Step 4: Rollout
-	if err := steps.Rollout(ctx, e.docker, result.ComposePath, result.Service, result.Project, job.ImageTag, log); err != nil {
+	if err := steps.Rollout(ctx, e.docker, result.ComposePath, result.Service, result.Project, job.ImageTag, e.cfg.HealthTimeoutMS, log); err != nil {
 		return err
 	}
 
 	// Step 5: Prune — best-effort, never fails a successful deploy.
-	keep := steps.ImageKeepCount()
-	if err := steps.Prune(ctx, e.docker, job.ImageTag, keep, log); err != nil {
+	if err := steps.Prune(ctx, e.docker, job.ImageTag, e.cfg.ImageKeepCount, log); err != nil {
 		log(fmt.Sprintf("[prune] WARNING: %s", err))
 	}
 

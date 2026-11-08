@@ -25,6 +25,23 @@ var pullLogPrefixes = []string{
 	"Status:",
 }
 
+// ContainerAPI is the narrow slice of the Docker client used for container
+// lifecycle operations. *client.Client satisfies it; tests inject a fake.
+type ContainerAPI interface {
+	ContainerList(ctx context.Context, options container.ListOptions) ([]container.Summary, error)
+	ContainerInspect(ctx context.Context, containerID string) (container.InspectResponse, error)
+	ContainerStop(ctx context.Context, containerID string, options container.StopOptions) error
+	ContainerRemove(ctx context.Context, containerID string, options container.RemoveOptions) error
+}
+
+// wrapAPIErr adds daemon-unreachable context when api is a real client.
+func wrapAPIErr(api ContainerAPI, err error) error {
+	if cli, ok := api.(*client.Client); ok {
+		return wrapConnErr(cli, err)
+	}
+	return err
+}
+
 // ListRunningContainers returns all running containers on the Docker host.
 func ListRunningContainers(ctx context.Context, cli *client.Client) ([]container.Summary, error) {
 	containers, err := cli.ContainerList(ctx, container.ListOptions{})
@@ -36,8 +53,9 @@ func ListRunningContainers(ctx context.Context, cli *client.Client) ([]container
 
 // ListServiceContainers returns all containers (any state) matching the given
 // Compose project and service labels. Includes created/starting containers so
-// rollout health polling can track newly scaled replicas.
-func ListServiceContainers(ctx context.Context, cli *client.Client, project, service string) ([]container.Summary, error) {
+// rollout health polling can track newly scaled replicas. Callers sizing
+// replica counts must filter with IsStale / the State field.
+func ListServiceContainers(ctx context.Context, cli ContainerAPI, project, service string) ([]container.Summary, error) {
 	f := filters.NewArgs()
 	f.Add("label", "com.docker.compose.project="+project)
 	f.Add("label", "com.docker.compose.service="+service)
@@ -46,22 +64,32 @@ func ListServiceContainers(ctx context.Context, cli *client.Client, project, ser
 		Filters: f,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("listing service containers for %s/%s: %w", project, service, wrapConnErr(cli, err))
+		return nil, fmt.Errorf("listing service containers for %s/%s: %w", project, service, wrapAPIErr(cli, err))
 	}
 	return containers, nil
 }
 
+// IsStale reports whether a container is a leftover that serves no traffic
+// (exited, created or dead) and must not count toward the live replica count.
+func IsStale(c container.Summary) bool {
+	switch c.State {
+	case "exited", "created", "dead":
+		return true
+	}
+	return false
+}
+
 // InspectContainer returns detailed info about a container.
-func InspectContainer(ctx context.Context, cli *client.Client, id string) (container.InspectResponse, error) {
+func InspectContainer(ctx context.Context, cli ContainerAPI, id string) (container.InspectResponse, error) {
 	resp, err := cli.ContainerInspect(ctx, id)
 	if err != nil {
-		return container.InspectResponse{}, fmt.Errorf("inspecting container %s: %w", shortID(id), wrapConnErr(cli, err))
+		return container.InspectResponse{}, fmt.Errorf("inspecting container %s: %w", shortID(id), wrapAPIErr(cli, err))
 	}
 	return resp, nil
 }
 
 // StopContainer stops a container. Already-stopped (304) is treated as success.
-func StopContainer(ctx context.Context, cli *client.Client, id string) error {
+func StopContainer(ctx context.Context, cli ContainerAPI, id string) error {
 	err := cli.ContainerStop(ctx, id, container.StopOptions{})
 	if err != nil && !cerrdefs.IsNotModified(err) {
 		return fmt.Errorf("stopping container %s: %w", shortID(id), err)
@@ -70,7 +98,7 @@ func StopContainer(ctx context.Context, cli *client.Client, id string) error {
 }
 
 // RemoveContainer removes a container. Already-removed (404) is treated as success.
-func RemoveContainer(ctx context.Context, cli *client.Client, id string) error {
+func RemoveContainer(ctx context.Context, cli ContainerAPI, id string) error {
 	err := cli.ContainerRemove(ctx, id, container.RemoveOptions{})
 	if err != nil && !cerrdefs.IsNotFound(err) {
 		return fmt.Errorf("removing container %s: %w", shortID(id), err)
