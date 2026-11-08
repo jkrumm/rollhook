@@ -73,6 +73,9 @@ func RegisterAuthToken(humaAPI huma.API, secret string, cli *client.Client) {
 				// allowed_repos cannot be verified, so this is deliberately a 403,
 				// not a lookup-miss status.
 				return nil, huma.NewError(http.StatusForbidden, "service not found — ensure the app is running before requesting a registry credential")
+			case errors.Is(err, steps.ErrAmbiguousImage):
+				// The caller can fix this by naming the full repository; not a server fault.
+				return nil, huma.NewError(http.StatusConflict, err.Error())
 			default:
 				return nil, huma.NewError(http.StatusInternalServerError, "service discovery failed: "+err.Error())
 			}

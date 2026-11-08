@@ -17,4 +17,6 @@ export interface ReadyOutputBody {
   docker_host?: string;
   /** ready, docker_unreachable, or shutting_down */
   status: string;
+  /** Bundled registry state: ok or unavailable (gave up restarting after repeated crashes). Informational — does not change the status code. */
+  zot?: string;
 }

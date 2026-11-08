@@ -58,6 +58,7 @@ type readyOutput struct {
 	Body   struct {
 		Status     string `json:"status" doc:"ready, docker_unreachable, or shutting_down"`
 		Docker     string `json:"docker" doc:"ok, unreachable, or unknown (not probed during shutdown)"`
+		Zot        string `json:"zot,omitempty" doc:"Bundled registry state: ok or unavailable (gave up restarting after repeated crashes). Informational — does not change the status code."`
 		DockerHost string `json:"docker_host,omitempty" doc:"Docker API endpoint being dialled. Authenticated callers only."`
 		Detail     string `json:"detail,omitempty" doc:"Underlying connection error. Authenticated callers only."`
 	}
@@ -87,7 +88,10 @@ var dockerUnreachable atomic.Bool
 // callers. Traefik routes every path here, which would otherwise publish the
 // internal Docker endpoint to the internet. Operators get the full detail from
 // stderr and from an authenticated request.
-func RegisterReady(api huma.API, cli *client.Client, secret string) {
+//
+// zotState optionally reports the bundled registry's state (registry.Manager.State)
+// in the additive "zot" field; omit it and the field is left out.
+func RegisterReady(api huma.API, cli *client.Client, secret string, zotState ...func() string) {
 	huma.Register(api, huma.Operation{
 		OperationID: "get-ready",
 		Method:      http.MethodGet,
@@ -99,6 +103,9 @@ func RegisterReady(api huma.API, cli *client.Client, secret string) {
 		out := &readyOutput{}
 		out.Status = http.StatusOK
 		trusted := middleware.MatchesSecret(input.Authorization, secret)
+		if len(zotState) > 0 && zotState[0] != nil {
+			out.Body.Zot = zotState[0]()
+		}
 
 		if state.IsShuttingDown() {
 			out.Status = http.StatusServiceUnavailable
