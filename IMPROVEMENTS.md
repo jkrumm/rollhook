@@ -60,16 +60,16 @@ Gives up after 3 consecutive crashes. Exits cleanly on `ctx.Done()`.
 
 ### 8. ✅ No HEALTHCHECK = hard deploy failure with no validate-time warning
 
-**Fix applied:** `Validate` accepts an optional `logFn func(string)` parameter. If `svc.HealthCheck == nil`
-in the compose service, a warning is emitted to the job log before scale-up. The hard
+**Fix applied:** `Validate` rejects a service without a (non-disabled) `healthcheck` before
+scale-up, so the failure surfaces at validate time instead of mid-rollout. The hard
 runtime error in `waitHealthy` remains as the safety net.
+`TestValidate_HealthcheckRequiredFails` and `TestValidate_HealthcheckDisabledFails` cover it.
 
 ### 9. ✅ `validate.go` image check uses `strings.Contains` — both too loose and too strict
 
 **Fix applied:** Image check removed entirely. Discovery does an exact container-image match;
 mismatches surface as "no container found" at runtime, which is more reliable than a
 compose-file string comparison that breaks on env-var interpolation.
-`TestValidate_ImageMismatchNoLongerErrors` documents the intentional change.
 
 ### 10. ✅ `parseTime` silently returns zero value on parse failure
 
@@ -123,19 +123,19 @@ goroutine from polling for 30 minutes after that.
 
 ### Unit tests
 
-| Gap                                    | Status                                                                      |
-| -------------------------------------- | --------------------------------------------------------------------------- |
-| `extractApp()` table tests             | ✅ `internal/jobs/executor_test.go` — 13 cases covering all input shapes    |
-| Queue overflow / backpressure          | ✅ `TestQueue_Full_ReturnsErrQueueFull`                                     |
-| `parseTime` with unrecognised format   | ✅ `TestParseTime_UnrecognisedFormat`, `TestParseTime_EmptyString`          |
-| `Validate` image mismatch case         | ✅ `TestValidate_ImageMismatchNoLongerErrors` (documents removal)           |
-| `setEnvLine` with commented key        | ✅ Two cases added to `TestSetEnvLine`                                      |
-| Auth middleware: empty Bearer token    | ✅ `TestRequireAuth` updated — empty Bearer → 403                           |
-| Auth middleware: `Enqueue` after Drain | ✅ `TestQueue_EnqueueAfterDrain_ReturnsError`                               |
-| `OpenLog` + `AppendLogLine`            | ✅ `TestOpenLogAndAppendLogLine`                                            |
-| `parseTime` RFC3339 + SQLite format    | ✅ `TestParseTime_ValidRFC3339`, `TestParseTime_SQLiteFormat`               |
-| Healthcheck warning in `Validate`      | ✅ `TestValidate_NoHealthcheckWarning`, `TestValidate_NoHealthcheckNoLogFn` |
-| Invalid status in `GET /jobs`          | ✅ `TestListJobs_InvalidStatus`                                             |
+| Gap                                    | Status                                                                              |
+| -------------------------------------- | ----------------------------------------------------------------------------------- |
+| `extractApp()` table tests             | ✅ `internal/jobs/executor_test.go` — 13 cases covering all input shapes            |
+| Queue overflow / backpressure          | ✅ `TestQueue_Full_ReturnsErrQueueFull`                                             |
+| `parseTime` with unrecognised format   | ✅ `TestParseTime_UnrecognisedFormat`, `TestParseTime_EmptyString`                  |
+| `Validate` image mismatch case         | ⏳ Check removed; no test covers its absence                                        |
+| `setEnvLine` with commented key        | ✅ Two cases added to `TestSetEnvLine`                                              |
+| Auth middleware: empty Bearer token    | ✅ `TestRequireAuth` updated — empty Bearer → 403                                   |
+| Auth middleware: `Enqueue` after Drain | ✅ `TestQueue_EnqueueAfterDrain_ReturnsError`                                       |
+| `OpenLog` + `AppendLogLine`            | ✅ `TestOpenLogAndAppendLogLine`                                                    |
+| `parseTime` RFC3339 + SQLite format    | ✅ `TestParseTime_ValidRFC3339`, `TestParseTime_SQLiteFormat`                       |
+| Healthcheck required in `Validate`     | ✅ `TestValidate_HealthcheckRequiredFails`, `TestValidate_HealthcheckDisabledFails` |
+| Invalid status in `GET /jobs`          | ✅ `TestListJobs_InvalidStatus`                                                     |
 
 ### E2E tests
 
