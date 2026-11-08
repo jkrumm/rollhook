@@ -142,7 +142,7 @@ huma routes and chi direct routes coexist on the same underlying chi router — 
 **Auth:** SSE handler must use `middleware.RequireAuth(secret)` explicitly (chi middleware), not huma's security middleware.
 
 ### `huma.Register` is safe with nil handler deps for spec generation
-`api.RegisterDeploy(humaAPI, nil, nil)` works in `cmd/gendocs` because huma only invokes the handler closure on HTTP requests, not during registration. Spec is generated without any running deps.
+`api.RegisterDeploy(humaAPI, nil, nil, nil)` works in `cmd/gendocs` because huma only invokes the handler closure on HTTP requests, not during registration. Spec is generated without any running deps.
 
 ---
 
