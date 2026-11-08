@@ -24,21 +24,20 @@ export function LogContainer({ jobId, status }: LogContainerProps) {
     startTimeRef.current = null
     seenCountRef.current = 0
 
-    let cancelled = false
     const ctrl = new AbortController()
 
     async function streamOnce(): Promise<void> {
-      let lineIndex = 0
+      const pass = { lineIndex: 0 }
 
       await streamLogs(
         jobId,
         (raw) => {
           // Skip lines already rendered from a previous stream cycle
-          if (lineIndex < seenCountRef.current) {
-            lineIndex++
+          if (pass.lineIndex < seenCountRef.current) {
+            pass.lineIndex++
             return
           }
-          lineIndex++
+          pass.lineIndex++
 
           const match = raw.match(TIMESTAMP_RE)
           let text: string
@@ -64,7 +63,7 @@ export function LogContainer({ jobId, status }: LogContainerProps) {
 
       // For running jobs: re-stream after 2s to pick up new log lines.
       // Each cycle skips already-seen lines via seenCountRef.
-      if (!cancelled && status === 'running') {
+      if (!ctrl.signal.aborted && status === 'running') {
         await new Promise<void>((resolve) => {
           const t = setTimeout(resolve, 2000)
           function onAbort() {
@@ -74,13 +73,12 @@ export function LogContainer({ jobId, status }: LogContainerProps) {
           // eslint-disable-next-line react-web-api/no-leaked-event-listener -- ctrl.abort() fires this in cleanup; { once: true } auto-removes it
           ctrl.signal.addEventListener('abort', onAbort, { once: true })
         })
-        if (!cancelled) return streamOnce()
+        if (!ctrl.signal.aborted) return streamOnce()
       }
     }
 
     void streamOnce()
     return () => {
-      cancelled = true
       ctrl.abort()
     }
   }, [jobId, status])
