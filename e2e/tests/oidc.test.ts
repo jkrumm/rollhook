@@ -1,8 +1,24 @@
-import { describe, expect, it } from 'vitest'
-import { adminHeaders, BASE_URL, REGISTRY_HOST } from '../setup/fixtures.ts'
+import { afterAll, describe, expect, it } from 'vitest'
+import { adminHeaders, BASE_URL, pollJobUntilDone, REGISTRY_HOST } from '../setup/fixtures.ts'
 
 const MOCK_OIDC_URL = 'http://localhost:18080'
 const IMAGE_V2 = `${REGISTRY_HOST}/rollhook-e2e-hello:v2`
+// Accepted async deploys use a tag that does not exist, so they fail fast instead of
+// rolling out v2 while later suites assert on container counts.
+const IMAGE_NONEXISTENT = `${REGISTRY_HOST}/rollhook-e2e-hello:nonexistent`
+
+// Async deploys accepted by tests below; drained in afterAll so they cannot overlap other suites.
+const acceptedJobIds: string[] = []
+
+async function trackAccepted(res: Response): Promise<void> {
+  if (res.status !== 200) return
+  const { job_id } = (await res.json()) as { job_id: string }
+  acceptedJobIds.push(job_id)
+}
+
+afterAll(async () => {
+  await Promise.all(acceptedJobIds.map((id) => pollJobUntilDone(id, 120_000)))
+}, 130_000)
 
 /**
  * Request a signed JWT from the mock OIDC server.
@@ -117,8 +133,9 @@ describe('oidc authentication', () => {
     const res = await fetch(`${BASE_URL}/deploy?async=true`, {
       method: 'POST',
       headers: adminHeaders(),
-      body: JSON.stringify({ image_tag: `${REGISTRY_HOST}/rollhook-e2e-hello:nonexistent` }),
+      body: JSON.stringify({ image_tag: IMAGE_NONEXISTENT }),
     })
+    await trackAccepted(res)
     // 200 = deploy accepted (queued). 503 = queue full (also acceptable under load).
     expect([200, 503]).toContain(res.status)
   })
@@ -144,8 +161,9 @@ describe('oidc authentication', () => {
     const deployRes = await fetch(`${BASE_URL}/deploy?async=true`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${secret}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ image_tag: IMAGE_V2 }),
+      body: JSON.stringify({ image_tag: IMAGE_NONEXISTENT }),
     })
+    await trackAccepted(deployRes)
     // 200 = deploy accepted (queued). 503 = queue full (also acceptable under load).
     expect([200, 503]).toContain(deployRes.status)
   })

@@ -12,10 +12,15 @@ services:
           -e,
           "fetch('http://localhost:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
         ]
-      interval: 5s
-      timeout: 5s
-      start_period: 10s
-      retries: 5
+      # Compose must define a healthcheck (RollHook's validate step requires one), and it
+      # overrides the image's HEALTHCHECK. Keep these timings equal to Dockerfile.unhealthy's
+      # (2s interval, 3 retries) so the unhealthy variant is flagged after ~start_period + 6s.
+      # start_interval probes every 1s during start_period so a healthy container is ready fast.
+      interval: 2s
+      timeout: 2s
+      start_period: 5s
+      start_interval: 1s
+      retries: 3
     labels:
       - rollhook.allowed_repos=rollhook-e2e/hello
       - traefik.enable=true

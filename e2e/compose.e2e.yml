@@ -16,7 +16,7 @@ services:
   # Mock OIDC server — serves a fake GitHub Actions OIDC provider for E2E tests.
   # RollHook is configured to use this as its OIDC issuer via ROLLHOOK_OIDC_ISSUER.
   mock-oidc:
-    image: oven/bun:1
+    image: oven/bun:1.3.10-slim
     command: bun run /mock-oidc/server.ts
     ports:
       - '18080:8080'
@@ -45,10 +45,13 @@ services:
   rollhook:
     image: rollhook-e2e-server:latest
     pull_policy: never
-    # Run as root in E2E so the container can access the host Docker socket
-    # regardless of the host docker group GID. Production deployments use
-    # the non-root rollhook user defined in the Dockerfile.
-    user: root
+    # Mirror production: the image's non-root rollhook user, granted the Docker socket
+    # through the socket's group. global.ts resolves DOCKER_GID from inside a container
+    # (correct on Linux and Docker Desktop alike) and sets E2E_USER=root only when it
+    # cannot, so a local oddity degrades to the old behaviour instead of failing.
+    user: ${E2E_USER:-rollhook}
+    group_add:
+      - '${DOCKER_GID:-0}'
     ports:
       - '7700:7700'
     environment:
