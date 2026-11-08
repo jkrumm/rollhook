@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/docker/docker/api/types/container"
@@ -15,6 +16,10 @@ import (
 // ErrServiceNotFound is returned by Discover when no running container matches the image.
 // Callers can use errors.Is to distinguish this from infrastructure errors.
 var ErrServiceNotFound = errors.New("service not found")
+
+// ErrAmbiguousImage is returned by FindMatchingContainer (and Discover) when a
+// bare image name matches running containers from more than one repository.
+var ErrAmbiguousImage = errors.New("ambiguous image")
 
 // DiscoveryResult holds Compose metadata extracted from a running container.
 type DiscoveryResult struct {
@@ -34,7 +39,10 @@ func Discover(ctx context.Context, cli *client.Client, imageTag string) (*Discov
 		return nil, fmt.Errorf("discover: %w", err)
 	}
 
-	match := FindMatchingContainer(containers, imageName)
+	match, err := FindMatchingContainer(containers, imageName)
+	if err != nil {
+		return nil, fmt.Errorf("discover: %w", err)
+	}
 	if match == nil {
 		return nil, fmt.Errorf("%w: no running container found matching image: %s", ErrServiceNotFound, imageName)
 	}
@@ -58,20 +66,42 @@ func ExtractImageName(imageTag string) string {
 	return dockerpkg.RepoFromRef(imageTag)
 }
 
-// FindMatchingContainer returns the first container whose Image field matches
-// imageName. Matching is tried in order: exact name match, then base-name
-// fallback (last path segment) to handle registry-prefixed images when
-// searching by bare name (e.g. "myapp" matches "registry.example.com/myapp").
-func FindMatchingContainer(containers []container.Summary, imageName string) *container.Summary {
+// FindMatchingContainer returns the container whose Image matches imageName.
+// An exact full-repository match always wins (so ghcr.io/a/api never matches
+// ghcr.io/b/api when the former is running). Only when no exact match exists
+// does it fall back to the base name (last path segment), which lets a bare
+// name such as "myapp" match "registry.example.com/myapp". The fallback is
+// accepted only if all base-name candidates share one repository; candidates
+// from different repositories yield an "ambiguous image" error. Replicas of the
+// same service share a repository and are not ambiguous. Returns (nil, nil)
+// when nothing matches.
+func FindMatchingContainer(containers []container.Summary, imageName string) (*container.Summary, error) {
 	searchBase := baseName(imageName)
+	var fallback *container.Summary
+	repos := map[string]struct{}{}
 	for i := range containers {
 		c := &containers[i]
 		cName := ExtractImageName(c.Image)
-		if cName == imageName || baseName(cName) == searchBase {
-			return c
+		if cName == imageName {
+			return c, nil
 		}
+		if baseName(cName) != searchBase {
+			continue
+		}
+		if fallback == nil {
+			fallback = c
+		}
+		repos[cName] = struct{}{}
 	}
-	return nil
+	if len(repos) > 1 {
+		names := make([]string, 0, len(repos))
+		for r := range repos {
+			names = append(names, r)
+		}
+		sort.Strings(names)
+		return nil, fmt.Errorf("%w %q: matches running containers from %s", ErrAmbiguousImage, imageName, strings.Join(names, ", "))
+	}
+	return fallback, nil
 }
 
 // baseName returns the last path segment of an image name (after the final slash).

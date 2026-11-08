@@ -8,12 +8,6 @@ import (
 	dockerpkg "github.com/jkrumm/rollhook/internal/docker"
 )
 
-// ImageKeepCount returns the configured ROLLHOOK_IMAGE_KEEP_COUNT, defaulting
-// to defaultImageKeepCount when unset or unparseable.
-func ImageKeepCount() int {
-	return envInt("ROLLHOOK_IMAGE_KEEP_COUNT", defaultImageKeepCount)
-}
-
 // Prune delegates to dockerpkg.PruneImages. Best-effort: if ctx is already
 // cancelled (e.g. SIGTERM arrived during rollout), it skips quietly rather
 // than logging a scary error for work that was never attempted.

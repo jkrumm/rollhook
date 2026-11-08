@@ -1,6 +1,7 @@
 package steps_test
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/docker/docker/api/types/container"
@@ -48,7 +49,11 @@ func TestFindMatchingContainer(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		got := steps.FindMatchingContainer(containers, tc.imageName)
+		got, err := steps.FindMatchingContainer(containers, tc.imageName)
+		if err != nil {
+			t.Errorf("FindMatchingContainer(%q) unexpected error: %v", tc.imageName, err)
+			continue
+		}
 		if tc.wantID == "" {
 			if got != nil {
 				t.Errorf("FindMatchingContainer(%q) = %q, want nil", tc.imageName, got.ID)
@@ -60,6 +65,51 @@ func TestFindMatchingContainer(t *testing.T) {
 				t.Errorf("FindMatchingContainer(%q) = %q, want %q", tc.imageName, got.ID, tc.wantID)
 			}
 		}
+	}
+}
+
+func TestFindMatchingContainer_PrefersExactRepo(t *testing.T) {
+	containers := []container.Summary{
+		{ID: "other", Image: "ghcr.io/b/api:1"},
+		{ID: "want", Image: "ghcr.io/a/api:1"},
+	}
+	got, err := steps.FindMatchingContainer(containers, "ghcr.io/a/api")
+	if err != nil || got == nil || got.ID != "want" {
+		t.Fatalf("got (%v, %v), want container want", got, err)
+	}
+}
+
+func TestFindMatchingContainer_NoCrossRepoMatchWhenOnlyOtherRunning(t *testing.T) {
+	// Single base-name candidate: fallback is allowed (bare-name lookups rely on it).
+	containers := []container.Summary{{ID: "only", Image: "ghcr.io/b/api:1"}}
+	got, err := steps.FindMatchingContainer(containers, "api")
+	if err != nil || got == nil || got.ID != "only" {
+		t.Fatalf("got (%v, %v), want container only", got, err)
+	}
+}
+
+func TestFindMatchingContainer_Ambiguous(t *testing.T) {
+	containers := []container.Summary{
+		{ID: "x", Image: "ghcr.io/a/api:1"},
+		{ID: "y", Image: "ghcr.io/b/api:1"},
+	}
+	got, err := steps.FindMatchingContainer(containers, "api")
+	if err == nil || got != nil {
+		t.Fatalf("got (%v, %v), want ambiguous error", got, err)
+	}
+	if !errors.Is(err, steps.ErrAmbiguousImage) {
+		t.Errorf("error %q should mention ambiguity", err)
+	}
+}
+
+func TestFindMatchingContainer_ReplicasNotAmbiguous(t *testing.T) {
+	containers := []container.Summary{
+		{ID: "r1", Image: "ghcr.io/a/api:1"},
+		{ID: "r2", Image: "ghcr.io/a/api:1"},
+	}
+	got, err := steps.FindMatchingContainer(containers, "api")
+	if err != nil || got == nil || got.ID != "r1" {
+		t.Fatalf("got (%v, %v), want r1", got, err)
 	}
 }
 

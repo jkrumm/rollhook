@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+
+	"github.com/docker/docker/api/types/container"
 )
 
 // --- Unit tests for unexported helpers (no Docker required) ---
@@ -226,6 +228,17 @@ func TestRepoFromRef(t *testing.T) {
 		got := RepoFromRef(tc.ref)
 		if got != tc.want {
 			t.Errorf("RepoFromRef(%q) = %q, want %q", tc.ref, got, tc.want)
+		}
+	}
+}
+
+func TestIsStale(t *testing.T) {
+	for state, want := range map[string]bool{
+		"running": false, "restarting": false, "paused": false,
+		"exited": true, "created": true, "dead": true,
+	} {
+		if got := IsStale(container.Summary{State: state}); got != want {
+			t.Errorf("IsStale(%q) = %v, want %v", state, got, want)
 		}
 	}
 }

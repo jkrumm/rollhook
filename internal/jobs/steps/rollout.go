@@ -6,8 +6,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/docker/docker/api/types/container"
@@ -16,26 +16,59 @@ import (
 	dockerpkg "github.com/jkrumm/rollhook/internal/docker"
 )
 
-const (
-	defaultHealthTimeoutMS = 60_000
-	pollIntervalMS         = 1_000
-	defaultImageKeepCount  = 5
+const pollIntervalMS = 1_000
+
+// Timing knobs; package vars so tests can shrink them.
+var (
+	newContainerPollInterval = 500 * time.Millisecond
+	newContainerPollAttempts = 10
+	healthPollInterval       = pollIntervalMS * time.Millisecond
+	rollbackTimeout          = 30 * time.Second
 )
+
+// composeRunner runs `docker compose <args...>` in dir and returns the combined output.
+type composeRunner func(ctx context.Context, dir string, args ...string) ([]byte, error)
+
+// runCompose is the production composeRunner. It passes only an allow-listed
+// environment so RollHook's own VERSION/PORT/DATA_DIR never shadow the app's .env.
+func runCompose(ctx context.Context, dir string, args ...string) ([]byte, error) {
+	cmd := exec.CommandContext(ctx, "docker", append([]string{"compose"}, args...)...)
+	cmd.Dir = dir
+	cmd.Env = composeEnv(os.Environ())
+	return cmd.CombinedOutput()
+}
 
 // Rollout performs a zero-downtime rolling deploy:
 // scale up new containers, wait for health, drain old containers.
-// On any failure it rolls back new containers before returning the error.
-func Rollout(ctx context.Context, cli *client.Client, composePath, service, project, imageTag string, logFn func(string)) error {
-	healthTimeoutMS := envInt("ROLLHOOK_HEALTH_TIMEOUT_MS", defaultHealthTimeoutMS)
+// On any failure after scale-up it rolls back new containers before returning the error.
+func Rollout(ctx context.Context, cli *client.Client, composePath, service, project, imageTag string, healthTimeoutMS int, logFn func(string)) error {
+	return rollout(ctx, cli, runCompose, composePath, service, project, imageTag, healthTimeoutMS, logFn)
+}
+
+func rollout(ctx context.Context, api dockerpkg.ContainerAPI, compose composeRunner, composePath, service, project, imageTag string, healthTimeoutMS int, rawLog func(string)) (err error) {
 	cwd := filepath.Dir(composePath)
 
-	// 1. Capture old container IDs before scale-up.
-	oldContainers, err := dockerpkg.ListServiceContainers(ctx, cli, project, service)
+	// Replicas are awaited in parallel, so the log callback must be goroutine-safe.
+	var logMu sync.Mutex
+	logFn := func(line string) {
+		logMu.Lock()
+		defer logMu.Unlock()
+		rawLog(line)
+	}
+
+	// 1. Capture old container IDs before scale-up. Stale leftovers (exited/created/dead)
+	// are removed first: they do not serve traffic, must not inflate the replica count,
+	// and `compose up --no-recreate` would otherwise restart them as "new" replicas.
+	existing, err := dockerpkg.ListServiceContainers(ctx, api, project, service)
 	if err != nil {
 		return err
 	}
-	oldIDs := make(map[string]struct{}, len(oldContainers))
-	for _, c := range oldContainers {
+	oldIDs := make(map[string]struct{}, len(existing))
+	for _, c := range existing {
+		if dockerpkg.IsStale(c) {
+			removeStale(ctx, api, c.ID, logFn)
+			continue
+		}
 		oldIDs[c.ID] = struct{}{}
 	}
 
@@ -56,15 +89,20 @@ func Rollout(ctx context.Context, cli *client.Client, composePath, service, proj
 		}
 	}()
 
+	// From here on any failure may have left new containers behind.
+	defer func() {
+		if err != nil {
+			cleanupNewContainers(api, project, service, oldIDs, err.Error(), logFn)
+		}
+	}()
+
 	// 2. Scale up via docker compose subprocess.
-	cmd := exec.CommandContext(ctx, "docker", "compose",
+	out, err := compose(ctx, cwd,
 		"-f", composePath,
 		"--env-file", tmpEnv,
 		"up", "-d", "--no-recreate",
 		"--scale", fmt.Sprintf("%s=%d", service, scaleCount),
 	)
-	cmd.Dir = cwd
-	out, err := cmd.CombinedOutput()
 	if err != nil {
 		for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
 			if line = strings.TrimSpace(line); line != "" {
@@ -79,40 +117,90 @@ func Rollout(ctx context.Context, cli *client.Client, composePath, service, proj
 	if expectedNew < 1 {
 		expectedNew = 1
 	}
-	newContainers, err := pollNewContainers(ctx, cli, project, service, oldIDs, expectedNew)
+	newContainers, err := pollNewContainers(ctx, api, project, service, oldIDs, expectedNew)
 	if err != nil {
 		return err
 	}
-	newIDs := make([]string, len(newContainers))
-	for i, c := range newContainers {
-		newIDs[i] = c.ID
-	}
 
-	// 4. Wait for each new container — each gets its own deadline.
-	for i, c := range newContainers {
-		id := c.ID
-		logFn(fmt.Sprintf("[rollout] Waiting for %s (%d/%d)", id[:min(12, len(id))], i+1, len(newContainers)))
-
-		if err := waitHealthy(ctx, cli, id, healthTimeoutMS, logFn); err != nil {
-			rollbackContainers(cli, newIDs, err.Error(), logFn)
-			return fmt.Errorf("rolling deploy failed: %w", err)
-		}
+	// 4. Wait for all new containers in parallel against one shared deadline.
+	if err := waitAllHealthy(ctx, api, newContainers, healthTimeoutMS, logFn); err != nil {
+		return fmt.Errorf("rolling deploy failed: %w", err)
 	}
 
 	// 5. All new containers healthy — drain old containers.
 	for id := range oldIDs {
 		short := id[:min(12, len(id))]
 		logFn(fmt.Sprintf("[rollout] Draining old container %s", short))
-		if err := dockerpkg.StopContainer(ctx, cli, id); err != nil {
+		if err := dockerpkg.StopContainer(ctx, api, id); err != nil {
 			logFn(fmt.Sprintf("[rollout] Warning stopping %s: %s", short, err))
 		}
-		if err := dockerpkg.RemoveContainer(ctx, cli, id); err != nil {
+		if err := dockerpkg.RemoveContainer(ctx, api, id); err != nil {
 			logFn(fmt.Sprintf("[rollout] Warning removing %s: %s", short, err))
 		}
 	}
 
 	logFn(fmt.Sprintf("[rollout] Service %s rolled out successfully", service))
 	return nil
+}
+
+// removeStale best-effort removes a leftover non-running container.
+func removeStale(ctx context.Context, api dockerpkg.ContainerAPI, id string, logFn func(string)) {
+	short := id[:min(12, len(id))]
+	logFn(fmt.Sprintf("[rollout] Removing stale container %s", short))
+	if err := dockerpkg.RemoveContainer(ctx, api, id); err != nil {
+		logFn(fmt.Sprintf("[rollout] Warning removing stale %s: %s", short, err))
+	}
+}
+
+// waitAllHealthy waits for every container concurrently; the first failure
+// cancels the rest. All replicas share one deadline (healthTimeoutMS from now).
+func waitAllHealthy(ctx context.Context, api dockerpkg.ContainerAPI, containers []container.Summary, timeoutMS int, logFn func(string)) error {
+	wctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	var (
+		wg       sync.WaitGroup
+		firstMu  sync.Mutex
+		firstErr error
+	)
+	for i, c := range containers {
+		id := c.ID
+		logFn(fmt.Sprintf("[rollout] Waiting for %s (%d/%d)", id[:min(12, len(id))], i+1, len(containers)))
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if err := waitHealthy(wctx, api, id, timeoutMS, logFn); err != nil {
+				firstMu.Lock()
+				if firstErr == nil {
+					firstErr = err
+					cancel()
+				}
+				firstMu.Unlock()
+			}
+		}()
+	}
+	wg.Wait()
+	return firstErr
+}
+
+// cleanupNewContainers rolls back every container that is not in oldIDs. It uses
+// a fresh context so a cancelled deploy context does not skip the cleanup.
+func cleanupNewContainers(api dockerpkg.ContainerAPI, project, service string, oldIDs map[string]struct{}, reason string, logFn func(string)) {
+	lctx, cancel := context.WithTimeout(context.Background(), rollbackTimeout)
+	defer cancel()
+	created, err := findNewContainers(lctx, api, project, service, oldIDs)
+	if err != nil {
+		logFn(fmt.Sprintf("[rollout] Rollback cleanup error: %s", err))
+		return
+	}
+	if len(created) == 0 {
+		return
+	}
+	ids := make([]string, len(created))
+	for i, c := range created {
+		ids[i] = c.ID
+	}
+	rollbackContainers(api, ids, reason, logFn)
 }
 
 // scaleTarget returns the number of replicas to scale up to.
@@ -125,7 +213,7 @@ func scaleTarget(currentCount int) int {
 }
 
 // waitHealthy polls container health until healthy, unhealthy, or timeout.
-func waitHealthy(ctx context.Context, cli *client.Client, id string, timeoutMS int, logFn func(string)) error {
+func waitHealthy(ctx context.Context, cli dockerpkg.ContainerAPI, id string, timeoutMS int, logFn func(string)) error {
 	short := id[:min(12, len(id))]
 	deadline := time.Now().Add(time.Duration(timeoutMS) * time.Millisecond)
 	start := time.Now()
@@ -162,7 +250,7 @@ func waitHealthy(ctx context.Context, cli *client.Client, id string, timeoutMS i
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case <-time.After(pollIntervalMS * time.Millisecond):
+		case <-time.After(healthPollInterval):
 		}
 	}
 }
@@ -170,14 +258,14 @@ func waitHealthy(ctx context.Context, cli *client.Client, id string, timeoutMS i
 // rollbackContainers stops and removes the given container IDs.
 // Uses a background context with 30s timeout per container so cleanup completes even if
 // the parent context is cancelled, but doesn't hang indefinitely.
-func rollbackContainers(cli *client.Client, ids []string, reason string, logFn func(string)) {
+func rollbackContainers(cli dockerpkg.ContainerAPI, ids []string, reason string, logFn func(string)) {
 	logFn(fmt.Sprintf("[rollout] Rollback triggered: %s", reason))
 	for _, id := range ids {
 		short := id[:min(12, len(id))]
 		logFn(fmt.Sprintf("[rollout] Rollback: stopping new container %s", short))
 
 		// Give each container operation 30s to complete, independent of parent context.
-		bctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		bctx, cancel := context.WithTimeout(context.Background(), rollbackTimeout)
 		if err := dockerpkg.StopContainer(bctx, cli, id); err != nil {
 			logFn(fmt.Sprintf("[rollout] Rollback cleanup error: %s", err))
 		}
@@ -191,7 +279,7 @@ func rollbackContainers(cli *client.Client, ids []string, reason string, logFn f
 // pollNewContainers retries findNewContainers up to 10 times with 500ms delays
 // to handle Docker API propagation delay after compose scale-up.
 // Respects context cancellation to avoid blocking after SIGTERM.
-func pollNewContainers(ctx context.Context, cli *client.Client, project, service string, oldIDs map[string]struct{}, expectedNew int) ([]container.Summary, error) {
+func pollNewContainers(ctx context.Context, cli dockerpkg.ContainerAPI, project, service string, oldIDs map[string]struct{}, expectedNew int) ([]container.Summary, error) {
 	found, err := findNewContainers(ctx, cli, project, service, oldIDs)
 	if err != nil {
 		return nil, err
@@ -200,10 +288,10 @@ func pollNewContainers(ctx context.Context, cli *client.Client, project, service
 		return found, nil
 	}
 
-	ticker := time.NewTicker(500 * time.Millisecond)
+	ticker := time.NewTicker(newContainerPollInterval)
 	defer ticker.Stop()
 
-	for attempt := 0; attempt < 10; attempt++ {
+	for attempt := 0; attempt < newContainerPollAttempts; attempt++ {
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
@@ -218,10 +306,10 @@ func pollNewContainers(ctx context.Context, cli *client.Client, project, service
 		}
 	}
 
-	return nil, fmt.Errorf("scale-up produced only %d/%d new containers for service %s after 5s", len(found), expectedNew, service)
+	return nil, fmt.Errorf("scale-up produced only %d/%d new containers for service %s after %s", len(found), expectedNew, service, time.Duration(newContainerPollAttempts)*newContainerPollInterval)
 }
 
-func findNewContainers(ctx context.Context, cli *client.Client, project, service string, oldIDs map[string]struct{}) ([]container.Summary, error) {
+func findNewContainers(ctx context.Context, cli dockerpkg.ContainerAPI, project, service string, oldIDs map[string]struct{}) ([]container.Summary, error) {
 	all, err := dockerpkg.ListServiceContainers(ctx, cli, project, service)
 	if err != nil {
 		return nil, err
@@ -287,14 +375,4 @@ func setEnvLine(content, key, value string) string {
 		return content + newLine + "\n"
 	}
 	return content + "\n" + newLine
-}
-
-// envInt reads an integer env var, returning defaultVal if unset or unparseable.
-func envInt(key string, defaultVal int) int {
-	if v := os.Getenv(key); v != "" {
-		if n, err := strconv.Atoi(v); err == nil {
-			return n
-		}
-	}
-	return defaultVal
 }
