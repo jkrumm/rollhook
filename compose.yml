@@ -38,6 +38,15 @@ services:
       # Set to your public RollHook URL to enable OIDC audience (aud) claim verification.
       # Recommended — prevents tokens issued for other services from being accepted here.
       ROLLHOOK_URL: ${ROLLHOOK_URL:-}
+      # Database, job logs and the built-in registry live here; the volume below persists them.
+      DATA_DIR: /data
+    # RollHook runs as a non-root user. Add the group that owns the Docker socket, or the
+    # socket is unreadable and /ready returns 503. Set DOCKER_GID in your .env:
+    #   echo "DOCKER_GID=$(stat -c %g /var/run/docker.sock)" >> .env
+    # Alternative: docker-socket-proxy — set DOCKER_HOST=tcp://<proxy>:2375, drop the
+    # socket mount and this group_add.
+    group_add:
+      - '${DOCKER_GID:?set DOCKER_GID to the group id of /var/run/docker.sock}'
     volumes:
       # RollHook needs read-write socket access to manage container lifecycle.
       # To limit socket exposure, replace with: github.com/Tecnativa/docker-socket-proxy

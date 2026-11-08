@@ -21,6 +21,7 @@ Copy [`compose.yml`](compose.yml) from this repo to your server and create a `.e
 ACME_EMAIL=you@example.com
 ROLLHOOK_SECRET=changeme          # openssl rand -hex 32
 COMPOSE_DIR=/home/user/myapp      # directory where your compose.yml lives
+DOCKER_GID=999                    # stat -c %g /var/run/docker.sock
 ```
 
 Secrets managers like [Doppler](https://doppler.com) and [Infisical](https://infisical.com) both support Docker Compose natively as `.env` alternatives.
@@ -134,6 +135,11 @@ See [`e2e/hello-world/`](e2e/hello-world/) for a complete reference app.
 | ----------------------------- | -------- | ----------------------------------------------------------------------------- |
 | `ROLLHOOK_SECRET`             | yes      | Admin/static bearer token (min 7 chars)                                       |
 | `ROLLHOOK_URL`                | no       | Public server URL — enables OIDC `aud` claim check                            |
+| `ROLLHOOK_OIDC_ISSUER`        | no       | OIDC issuer URL (default: GitHub Actions)                                     |
+| `DATA_DIR`                    | no       | SQLite DB, job logs and registry storage (image: `/data`, mount a volume)     |
+| `PORT`                        | no       | HTTP listen port (default `7700`)                                             |
+| `ROLLHOOK_HEALTH_TIMEOUT_MS`  | no       | Max wait for a new container to turn healthy (default `60000`)                |
+| `ROLLHOOK_SYNC_TIMEOUT_MIN`   | no       | Max wait of a synchronous `/deploy` (default: health timeout + 5 min)         |
 | `DOCKER_HOST`                 | no       | Docker daemon endpoint (default: local socket)                                |
 | `PORT`                        | no       | Listen port (default: `7700`)                                                 |
 | `PUSHOVER_USER_KEY`           | no       | Pushover mobile notifications                                                 |
@@ -148,6 +154,20 @@ See [`e2e/hello-world/`](e2e/hello-world/) for a complete reference app.
 | `ROLLHOOK_REGISTRY_KEEP_TAGS` | no       | Tags kept per repo in the built-in registry (default `5`, `0` = keep forever) |
 | `ROLLHOOK_IMAGE_KEEP_COUNT`   | no       | Docker images kept per app on the host (default `5`, `0` = disable pruning)   |
 | `ROLLHOOK_LOG_RETENTION_DAYS` | no       | Days a job log file is kept (default `30`, `0` = disable pruning)             |
+
+---
+
+## Persistence and Docker socket access
+
+**Data.** The image sets `DATA_DIR=/data`, owned by the non-root `rollhook` user. [`compose.yml`](compose.yml) mounts the `rollhook-data` volume there, so the database, job logs and every image pushed to the built-in registry survive container recreation. If you mount your own volume or bind mount, mount it at `/data` (or change `DATA_DIR`) and make it writable for the `rollhook` user.
+
+**Socket.** RollHook runs as a non-root user without the `docker` group, so a bind-mounted `/var/run/docker.sock` (`root:docker`, mode `0660`) is unreadable and `/ready` returns `503`. Grant the socket's group with `group_add`, and put the host's gid in your `.env`:
+
+```bash
+echo "DOCKER_GID=$(stat -c %g /var/run/docker.sock)" >> .env
+```
+
+The alternative is [docker-socket-proxy](https://github.com/Tecnativa/docker-socket-proxy): point `DOCKER_HOST` at the proxy (for example `tcp://socket-proxy:2375`) and drop the socket mount and `group_add`. RollHook's deploys need container, image, network and compose-related endpoints, so the proxy must allow them with write access.
 
 ---
 

@@ -4,24 +4,25 @@
 
 `make check` runs exactly the local gates CI runs (`.github/workflows/ci.yml`): `bun install --frozen-lockfile`, `bun run lint` (oxlint --type-aware), `bun run format:check` (oxfmt), `bun run typecheck`, `bun run check:basalt`, `bun run test:unit` (dashboard `bun test`), then Go `build` / `vet` / `test` and `golangci-lint` in Docker, then the OpenAPI drift check.
 
-**Go is not installed locally.** All Go commands run via Docker:
+**Go:** use the native `go` if it is installed (the repo targets Go 1.27), otherwise run the same commands in the pinned image (`make check` already does):
 
 ```bash
-# Build
-docker run --rm -v "$(pwd)":/workspace -w /workspace golang:1.26-alpine go build ./...
-
-# Test
-docker run --rm -v "$(pwd)":/workspace -w /workspace golang:1.26-alpine go test ./...
+# Build / test (native: drop the docker prefix)
+docker run --rm -v "$(pwd)":/workspace -w /workspace golang:1.27.3-alpine go build ./...
+docker run --rm -v "$(pwd)":/workspace -w /workspace golang:1.27.3-alpine go test ./...
 
 # Regenerate openapi.json (redirect stderr first or go module logs corrupt the JSON):
-docker run --rm -v "$(pwd)":/workspace -w /workspace golang:1.26-alpine \
-  go run ./cmd/gendocs 2>/dev/null > apps/dashboard/openapi.json
+go run ./cmd/gendocs 2>/dev/null > apps/dashboard/openapi.json
+# or: docker run --rm -v "$(pwd)":/workspace -w /workspace golang:1.27.3-alpine \
+#       go run ./cmd/gendocs 2>/dev/null > apps/dashboard/openapi.json
 
 # Then regenerate TypeScript types:
 bun run --filter @rollhook/dashboard generate:api
 ```
 
-CI runs Go natively (`go build ./...`, `go vet ./...`, `go test ./...`, `golangci-lint`).
+CI runs Go natively (`go build ./...`, `go vet ./...`, `go test ./...`, `govulncheck ./...`, `golangci-lint`). Go 1.27.3 and Bun 1.3.10 are pinned in the Dockerfile, Makefile, workflows and e2e fixtures — bump them together.
+
+The dashboard builds into `apps/dashboard/dist` (gitignored); the Dockerfile copies it to `/app/public`, which the server serves. `make image` builds the server image and `make image-smoke` checks its user, `DATA_DIR` and volume persistence.
 
 **Not covered by `make check`:** the E2E suite (`bun run test:e2e`, CI job `e2e-test`) — it builds and starts Docker containers and runs ~12 min; run it separately.
 
@@ -35,7 +36,7 @@ CI runs Go natively (`go build ./...`, `go vet ./...`, `go test ./...`, `golangc
 
 `make deploy` ships nothing: it prints `deployed by CI on push` (plus a note that the server image goes through the manual release workflow) and exits 0.
 
-The marketing site (`rollhook.com`) is separate: `.github/workflows/deploy-marketing.yml` deploys it on every push to `master` that touches it, via `jkrumm/rollhook-action@v1`.
+The marketing site (`rollhook.com`) is separate: `.github/workflows/deploy-marketing.yml` deploys it after CI succeeds on a `master` push that touches it, via `jkrumm/rollhook-action@v1`.
 
 **Factory manifest:** `project.yaml` declares `deploy.mode none` (a merge deploys nothing the factory can verify) and `ship via pr` (this repo is PR-required). `make verify` remains a standalone production probe; there is no `make version` because the deployed image is not tied to a master commit.
 
@@ -104,6 +105,7 @@ Each `global.css` maps `--vx-*` onto Tailwind's `@theme inline` namespaces (`--c
 
 - `docs/GO_GOTCHAS.md` — battle-tested fixes for Go stdlib, SQLite, Docker SDK, Zot, huma, orval, compose-go
 - `compose.yml` — canonical production stack (Traefik + RollHook + example app service)
+- `IMPROVEMENTS.md` — open backlog items (SSE polling, remaining E2E gaps)
 - `e2e/hello-world/` — reference app with healthcheck + graceful shutdown
 
 ---

@@ -8,7 +8,7 @@
     "**/dist/**",
     "**/.output/**",
     "**/.astro/**",
-    "apps/server/public/**",
+    "apps/dashboard/dist/**",
     "apps/dashboard/src/api/generated/**",
     "docs/**",
     "e2e/fixtures/**"
