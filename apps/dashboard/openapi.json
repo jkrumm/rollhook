@@ -244,6 +244,10 @@
           "status": {
             "description": "ready, docker_unreachable, or shutting_down",
             "type": "string"
+          },
+          "zot": {
+            "description": "Bundled registry state: ok or unavailable (gave up restarting after repeated crashes). Informational — does not change the status code.",
+            "type": "string"
           }
         },
         "required": [

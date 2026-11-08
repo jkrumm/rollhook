@@ -16,6 +16,7 @@ import (
 	"github.com/danielgtaylor/huma/v2/adapters/humachi"
 	"github.com/go-chi/chi/v5"
 	"github.com/jkrumm/rollhook/internal/api"
+	"github.com/jkrumm/rollhook/internal/config"
 	"github.com/jkrumm/rollhook/internal/db"
 	dockerpkg "github.com/jkrumm/rollhook/internal/docker"
 	"github.com/jkrumm/rollhook/internal/jobs"
@@ -45,26 +46,28 @@ func newTestServer(t *testing.T) (http.Handler, *db.Store, string) {
 		t.Cleanup(func() { cli.Close() })
 	}
 
+	cfg := config.Load()
+	cfg.DataDir = dataDir
 	ctx, cancel := context.WithCancel(context.Background())
-	exec := jobs.NewExecutor(ctx, store, cli, testSecret, dataDir)
+	exec := jobs.NewExecutor(ctx, store, cli, testSecret, cfg)
 	// Drain the queue before TempDir cleanup so in-flight jobs close their log
 	// files — otherwise RemoveAll fails on the non-empty logs/ directory.
 	t.Cleanup(func() {
 		cancel()
-		if !exec.Queue().Drain(2 * time.Second) {
+		if !exec.Drain(2 * time.Second) {
 			t.Error("executor queue did not drain before cleanup — TempDir removal may fail")
 		}
 	})
 
 	r := chi.NewRouter()
-	config := huma.DefaultConfig("RollHook", "test")
-	config.DocsPath = ""
-	humaAPI := humachi.New(r, config)
+	humaCfg := huma.DefaultConfig("RollHook", "test")
+	humaCfg.DocsPath = ""
+	humaAPI := humachi.New(r, humaCfg)
 
 	// Auth middleware matching production setup.
 	humaAPI.UseMiddleware(middleware.HumaAuth(humaAPI, testSecret, nil))
 
-	api.RegisterDeploy(humaAPI, exec, store, cli)
+	api.RegisterDeploy(humaAPI, exec, store, cli, cfg.SyncTimeout())
 	api.RegisterJobsAPI(humaAPI, store)
 	r.With(middleware.RequireAuth(testSecret)).Get("/jobs/{id}/logs", api.StreamLogsHandler(store, dataDir))
 
@@ -164,9 +167,9 @@ func TestListJobs_WithFilter(t *testing.T) {
 	// We need a fresh server pointing at the same store — rebuild with same store.
 	// Re-use test convenience: build a minimal chi router inline.
 	r := chi.NewRouter()
-	config := huma.DefaultConfig("RollHook", "test")
-	config.DocsPath = ""
-	humaAPI := humachi.New(r, config)
+	humaCfg := huma.DefaultConfig("RollHook", "test")
+	humaCfg.DocsPath = ""
+	humaAPI := humachi.New(r, humaCfg)
 	humaAPI.UseMiddleware(middleware.HumaAuth(humaAPI, testSecret, nil))
 	api.RegisterJobsAPI(humaAPI, store)
 

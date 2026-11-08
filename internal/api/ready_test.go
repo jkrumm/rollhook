@@ -15,12 +15,12 @@ import (
 )
 
 // newReadyTestServer registers only RegisterReady against cli.
-func newReadyTestServer(cli *client.Client) http.Handler {
+func newReadyTestServer(cli *client.Client, zotState ...func() string) http.Handler {
 	r := chi.NewRouter()
 	config := huma.DefaultConfig("RollHook", "test")
 	config.DocsPath = ""
 	humaAPI := humachi.New(r, config)
-	api.RegisterReady(humaAPI, cli, testSecret)
+	api.RegisterReady(humaAPI, cli, testSecret, zotState...)
 	return r
 }
 
@@ -145,5 +145,36 @@ func TestReady_DaemonReachable(t *testing.T) {
 	}
 	if !strings.Contains(body, `"docker":"ok"`) {
 		t.Errorf("expected docker ok, got: %s", body)
+	}
+}
+
+func TestReady_ZotField(t *testing.T) {
+	tests := []struct {
+		name string
+		zot  []func() string
+		want string // substring that must appear; empty means "zot" must be absent
+	}{
+		{"ok", []func() string{func() string { return "ok" }}, `"zot":"ok"`},
+		{"unavailable", []func() string{func() string { return "unavailable" }}, `"zot":"unavailable"`},
+		{"no func", nil, ""},
+		{"nil func", []func() string{nil}, ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			w := getReady(newReadyTestServer(fakeDockerClient(t), tt.zot...), false)
+			if w.Code != http.StatusOK {
+				t.Fatalf("zot state must not change the status code, got %d: %s", w.Code, w.Body.String())
+			}
+			body := w.Body.String()
+			if tt.want == "" {
+				if strings.Contains(body, `"zot"`) {
+					t.Errorf("zot field must be absent, got: %s", body)
+				}
+				return
+			}
+			if !strings.Contains(body, tt.want) {
+				t.Errorf("expected %s, got: %s", tt.want, body)
+			}
+		})
 	}
 }

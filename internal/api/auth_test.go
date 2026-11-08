@@ -198,3 +198,36 @@ func TestAuthToken_OIDCMiddlewareGate(t *testing.T) {
 		t.Errorf("middleware incorrectly blocked OIDC on post-auth-token: %s", w.Body.String())
 	}
 }
+
+// An image name matching running containers from different repositories is a
+// client-fixable ambiguity (409), not a server fault (500).
+func TestAuthToken_AmbiguousImageIsConflict(t *testing.T) {
+	daemon := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !strings.HasSuffix(r.URL.Path, "/containers/json") {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`[{"Id":"a","Image":"ghcr.io/org-a/myapp:1"},{"Id":"b","Image":"ghcr.io/org-b/myapp:1"}]`))
+	}))
+	t.Cleanup(daemon.Close)
+	cli, err := client.NewClientWithOpts(client.WithHost(daemon.URL))
+	if err != nil {
+		t.Fatalf("NewClientWithOpts: %v", err)
+	}
+	t.Cleanup(func() { cli.Close() })
+
+	claims := &oidcpkg.Claims{Repository: "myorg/myapp", Ref: "refs/heads/main", Actor: "testuser"}
+	srv := newAuthTestServer(t, claims, cli)
+	req := httptest.NewRequest(http.MethodPost, "/auth/token", strings.NewReader(`{"image_name":"myapp"}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer test-token")
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+	if w.Code != http.StatusConflict {
+		t.Fatalf("expected 409, got %d: %s", w.Code, w.Body.String())
+	}
+	if !strings.Contains(w.Body.String(), "ambiguous image") {
+		t.Errorf("expected ambiguity message, got: %s", w.Body.String())
+	}
+}

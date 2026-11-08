@@ -5,8 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -32,25 +30,6 @@ type DeployOutput struct {
 		Status string  `json:"status" doc:"Job status: queued, running, success, or failed"`
 		Error  *string `json:"error,omitempty" doc:"Error message present only when status is failed"`
 	}
-}
-
-// syncTimeout returns the timeout for synchronous deploy polling.
-// Derived from ROLLHOOK_HEALTH_TIMEOUT_MS + 5 minutes for pull/queue buffer.
-// Override with ROLLHOOK_SYNC_TIMEOUT_MIN (integer minutes).
-func syncTimeout() time.Duration {
-	if v := os.Getenv("ROLLHOOK_SYNC_TIMEOUT_MIN"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			return time.Duration(n) * time.Minute
-		}
-	}
-	const defaultHealthTimeoutMS = 60_000
-	healthMS := defaultHealthTimeoutMS
-	if v := os.Getenv("ROLLHOOK_HEALTH_TIMEOUT_MS"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			healthMS = n
-		}
-	}
-	return time.Duration(healthMS)*time.Millisecond + 5*time.Minute
 }
 
 // checkOIDCLabels validates OIDC claims against service labels.
@@ -88,7 +67,7 @@ func checkOIDCLabels(claims oidcpkg.Claims, labels map[string]string) error {
 	return fmt.Errorf("ref %q is not in rollhook.allowed_refs", claims.Ref)
 }
 
-func RegisterDeploy(humaAPI huma.API, exec *jobspkg.Executor, store *db.Store, cli *client.Client) {
+func RegisterDeploy(humaAPI huma.API, exec *jobspkg.Executor, store *db.Store, cli *client.Client, syncTimeout time.Duration) {
 	huma.Register(humaAPI, huma.Operation{
 		OperationID: "post-deploy",
 		Method:      http.MethodPost,
@@ -121,12 +100,12 @@ func RegisterDeploy(humaAPI huma.API, exec *jobspkg.Executor, store *db.Store, c
 		}
 
 		// Synchronous mode: poll DB until the job reaches a terminal state.
-		// Timeout = ROLLHOOK_HEALTH_TIMEOUT_MS + 5 min for image pull + queue wait.
+		// Timeout = Config.SyncTimeout: ROLLHOOK_HEALTH_TIMEOUT_MS + 5 min for image pull + queue wait.
 		// Defaults to 10 minutes — well within Traefik's read timeout and long
 		// enough for most deploys. Set ROLLHOOK_SYNC_TIMEOUT_MIN to override.
 		ticker := time.NewTicker(200 * time.Millisecond)
 		defer ticker.Stop()
-		deadline := time.After(syncTimeout())
+		deadline := time.After(syncTimeout)
 
 		for {
 			select {

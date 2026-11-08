@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -18,6 +17,7 @@ import (
 	"github.com/danielgtaylor/huma/v2/adapters/humachi"
 	"github.com/go-chi/chi/v5"
 	"github.com/jkrumm/rollhook/internal/api"
+	"github.com/jkrumm/rollhook/internal/config"
 	"github.com/jkrumm/rollhook/internal/db"
 	dockerpkg "github.com/jkrumm/rollhook/internal/docker"
 	"github.com/jkrumm/rollhook/internal/jobs"
@@ -36,27 +36,6 @@ const scalarHTML = `<!doctype html>
 </body>
 </html>`
 
-// envInt reads an integer env var, returning defaultVal if unset, unparseable,
-// or negative. Zero is a valid, meaningful value (the documented "disable" escape
-// hatch for both log retention and image pruning) — only negative/unparseable
-// values are treated as configuration mistakes.
-func envInt(key string, defaultVal int) int {
-	v := os.Getenv(key)
-	if v == "" {
-		return defaultVal
-	}
-	n, err := strconv.Atoi(v)
-	if err != nil {
-		slog.Warn("invalid integer env var, using default", "var", key, "value", v, "default", defaultVal)
-		return defaultVal
-	}
-	if n < 0 {
-		slog.Warn("negative env var not allowed, using default", "var", key, "value", n, "default", defaultVal)
-		return defaultVal
-	}
-	return n
-}
-
 func main() {
 	secret := os.Getenv("ROLLHOOK_SECRET")
 	if len(secret) < 7 {
@@ -66,13 +45,11 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	dataDir := os.Getenv("DATA_DIR")
-	if dataDir == "" {
-		dataDir = "data"
-	}
+	cfg := config.Load()
+	dataDir := cfg.DataDir
 
 	// Start Zot registry subprocess before opening the HTTP port.
-	mgr := registry.NewManager(dataDir, secret)
+	mgr := registry.NewManager(dataDir, secret, cfg.RegistryKeepTags)
 	if err := mgr.Start(ctx); err != nil {
 		log.Fatalf("failed to start registry: %v", err)
 	}
@@ -86,7 +63,7 @@ func main() {
 	store.MarkInterruptedJobsFailed()
 
 	// Job log reaper — startup sweep, then every 24h for the process lifetime.
-	logRetentionDays := envInt("ROLLHOOK_LOG_RETENTION_DAYS", 30)
+	logRetentionDays := cfg.LogRetentionDays
 	pruneLogs := func() {
 		removed, pruneErr := db.PruneLogs(dataDir, logRetentionDays)
 		if pruneErr != nil {
@@ -132,7 +109,7 @@ func main() {
 	jobCtx, cancelJobs := context.WithCancel(context.Background())
 	defer cancelJobs()
 
-	exec := jobs.NewExecutor(jobCtx, store, cli, secret, dataDir)
+	exec := jobs.NewExecutor(jobCtx, store, cli, secret, cfg)
 
 	// Initialize OIDC verifier. Non-fatal on failure — log warning and disable OIDC.
 	// ROLLHOOK_OIDC_ISSUER overrides the default GitHub issuer (for E2E tests).
@@ -151,18 +128,18 @@ func main() {
 
 	r := chi.NewRouter()
 
-	config := huma.DefaultConfig("RollHook API", "0.1.0")
-	config.Info.Description = "Webhook-driven rolling deployment orchestrator for Docker Compose stacks"
-	config.Components.SecuritySchemes = map[string]*huma.SecurityScheme{
+	apiConfig := huma.DefaultConfig("RollHook API", "0.1.0")
+	apiConfig.Info.Description = "Webhook-driven rolling deployment orchestrator for Docker Compose stacks"
+	apiConfig.Components.SecuritySchemes = map[string]*huma.SecurityScheme{
 		"bearer": {
 			Type:   "http",
 			Scheme: "bearer",
 		},
 	}
 	// Disable huma's built-in docs UI — we serve Scalar at /openapi ourselves.
-	config.DocsPath = ""
+	apiConfig.DocsPath = ""
 
-	humaAPI := humachi.New(r, config)
+	humaAPI := humachi.New(r, apiConfig)
 
 	// Auth enforcement via huma middleware — operations with Security requirements
 	// are checked; public operations (health, openapi) pass through.
@@ -177,8 +154,8 @@ func main() {
 	})
 
 	api.RegisterHealth(humaAPI)
-	api.RegisterReady(humaAPI, cli, secret)
-	api.RegisterDeploy(humaAPI, exec, store, cli)
+	api.RegisterReady(humaAPI, cli, secret, mgr.State)
+	api.RegisterDeploy(humaAPI, exec, store, cli, cfg.SyncTimeout())
 	api.RegisterAuthToken(humaAPI, secret, cli)
 	api.RegisterJobsAPI(humaAPI, store)
 
@@ -235,7 +212,7 @@ func main() {
 		// Wait for any in-flight job to complete (up to 5 minutes).
 		// jobCtx is independent of the signal context, so in-flight deploys run to completion.
 		// If they don't finish within the timeout, cancelJobs() force-kills them.
-		if !exec.Queue().Drain(5 * time.Minute) {
+		if !exec.Drain(5 * time.Minute) {
 			cancelJobs()
 		}
 		// Stop registry and HTTP server.
