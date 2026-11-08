@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/jkrumm/rollhook/internal/db"
 )
@@ -30,36 +31,43 @@ type Config struct {
 // pushoverEndpoint is the Pushover API URL. Override in tests.
 var pushoverEndpoint = "https://api.pushover.net/1/messages.json"
 
-// httpClient is used for outgoing notification requests. Override in tests.
-var httpClient = http.DefaultClient //nolint:gochecknoglobals
+// sendTimeout bounds every individual notification request. Override in tests.
+var sendTimeout = 10 * time.Second
 
-// Notify sends Pushover and/or webhook notifications for a completed job.
+// httpClient is used for outgoing notification requests. The client timeout is a
+// backstop; each send additionally runs under a sendTimeout context. Override in tests.
+var httpClient = &http.Client{Timeout: 10 * time.Second} //nolint:gochecknoglobals
+
+// Notify sends Pushover, webhook, Slack, ntfy and OTLP notifications for a
+// completed job. Sinks run sequentially, each bounded by sendTimeout, so Notify
+// returns within roughly (number of sinks x sendTimeout) even if every sink hangs.
 // Notification failures are logged but never cause the deploy to fail.
 func Notify(ctx context.Context, cfg Config, job db.Job) {
-	if cfg.PushoverUserKey != "" && cfg.PushoverAppToken != "" {
-		if err := sendPushover(ctx, cfg.PushoverUserKey, cfg.PushoverAppToken, job); err != nil {
-			slog.Warn("pushover notification failed", "job", job.ID, "err", err)
+	send := func(name string, fn func(context.Context) error) {
+		sctx, cancel := context.WithTimeout(ctx, sendTimeout)
+		defer cancel()
+		if err := fn(sctx); err != nil {
+			slog.Warn(name+" notification failed", "job", job.ID, "err", err)
 		}
+	}
+	if cfg.PushoverUserKey != "" && cfg.PushoverAppToken != "" {
+		send("pushover", func(c context.Context) error {
+			return sendPushover(c, cfg.PushoverUserKey, cfg.PushoverAppToken, job)
+		})
 	}
 	if cfg.WebhookURL != "" {
-		if err := sendWebhook(ctx, cfg.WebhookURL, job); err != nil {
-			slog.Warn("webhook notification failed", "job", job.ID, "err", err)
-		}
+		send("webhook", func(c context.Context) error { return sendWebhook(c, cfg.WebhookURL, job) })
 	}
 	if cfg.SlackWebhookURL != "" {
-		if err := sendSlack(ctx, cfg.SlackWebhookURL, job); err != nil {
-			slog.Warn("slack notification failed", "job", job.ID, "err", err)
-		}
+		send("slack", func(c context.Context) error { return sendSlack(c, cfg.SlackWebhookURL, job) })
 	}
 	if cfg.NtfyURL != "" {
-		if err := sendNtfy(ctx, cfg.NtfyURL, cfg.NtfyToken, job); err != nil {
-			slog.Warn("ntfy notification failed", "job", job.ID, "err", err)
-		}
+		send("ntfy", func(c context.Context) error { return sendNtfy(c, cfg.NtfyURL, cfg.NtfyToken, job) })
 	}
 	if cfg.OTLPEndpoint != "" {
-		if err := sendOTLP(ctx, cfg.OTLPEndpoint, cfg.OTLPHeaders, cfg.DeployEnvironment, job); err != nil {
-			slog.Warn("otlp notification failed", "job", job.ID, "err", err)
-		}
+		send("otlp", func(c context.Context) error {
+			return sendOTLP(c, cfg.OTLPEndpoint, cfg.OTLPHeaders, cfg.DeployEnvironment, job)
+		})
 	}
 }
 

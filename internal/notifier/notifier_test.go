@@ -342,3 +342,34 @@ func TestNotifier_Ntfy_InvalidURL(t *testing.T) {
 		t.Errorf("error leaks credentials: %v", err)
 	}
 }
+
+func TestNotify_HangingSinkIsBounded(t *testing.T) {
+	release := make(chan struct{})
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		select {
+		case <-release:
+		case <-r.Context().Done():
+		}
+	}))
+	defer ts.Close()
+	defer close(release)
+
+	orig := sendTimeout
+	sendTimeout = 150 * time.Millisecond
+	defer func() { sendTimeout = orig }()
+
+	start := time.Now()
+	Notify(context.Background(), Config{WebhookURL: ts.URL, SlackWebhookURL: ts.URL}, makeJob(db.StatusSuccess, nil))
+	elapsed := time.Since(start)
+
+	// Two hanging sinks, each bounded by sendTimeout.
+	if elapsed > 2*time.Second {
+		t.Errorf("Notify took %s with hanging sinks, want bounded by per-send timeout", elapsed)
+	}
+}
+
+func TestHTTPClient_HasTimeout(t *testing.T) {
+	if httpClient.Timeout <= 0 {
+		t.Error("httpClient must have a non-zero timeout")
+	}
+}
