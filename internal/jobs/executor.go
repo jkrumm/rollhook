@@ -146,6 +146,7 @@ func notifyConfigFromEnv() notifier.Config {
 		SlackWebhookURL:   os.Getenv("SLACK_WEBHOOK_URL"),
 		NtfyURL:           os.Getenv("NTFY_URL"),
 		NtfyToken:         os.Getenv("NTFY_TOKEN"),
+		DashboardURL:      os.Getenv("ROLLHOOK_URL"),
 		OTLPEndpoint:      os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"),
 		OTLPHeaders:       os.Getenv("OTEL_EXPORTER_OTLP_HEADERS"),
 		DeployEnvironment: os.Getenv("DEPLOY_ENVIRONMENT"),
