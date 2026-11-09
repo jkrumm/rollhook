@@ -1,3 +1,39 @@
+# [1.21.0](https://github.com/jkrumm/rollhook/compare/v1.20.1...v1.21.0) (2026-11-09)
+
+
+### Bug Fixes
+
+* bump basalt-ui to 2.29.0 and regenerate token emits ([fc32213](https://github.com/jkrumm/rollhook/commit/fc32213b332f5612065b85dbd258bbcda9ec2cc5))
+* bump golangci-lint to v2.15.0 for Go 1.26 ([f94911b](https://github.com/jkrumm/rollhook/commit/f94911bc3470690d433e11993e6c2102498d874d))
+* bump orval to 8.46.0 and regenerate API client ([45f1240](https://github.com/jkrumm/rollhook/commit/45f12402a7ceeffd930888abb08b8161b7330139))
+* bump patch and minor JS dependencies ([768ba83](https://github.com/jkrumm/rollhook/commit/768ba8308695401c3d028a1229c376741da790f1))
+* **dashboard:** drop reassigned locals in log streaming effect ([2ea5447](https://github.com/jkrumm/rollhook/commit/2ea544738513e062dfc97ae9670ef98ec85b951d))
+* **dashboard:** hide [DONE] sentinel, stop log refetch flicker, compare full dates ([c68b085](https://github.com/jkrumm/rollhook/commit/c68b0852e747f6f5b502ab90d77756262b8c3903))
+* **db:** mark queued jobs failed on restart ([01443a5](https://github.com/jkrumm/rollhook/commit/01443a50742dfeb9e10d3f569b7df63357d63655))
+* **docker:** persist data in /data, document socket group_add, per-arch CLI, Go 1.27 ([bff2a60](https://github.com/jkrumm/rollhook/commit/bff2a60eccbeea8101ca91146770a0e3d99634c5))
+* **jobs:** roll back partial rollouts, isolate compose env, parallel health wait ([72a207a](https://github.com/jkrumm/rollhook/commit/72a207a505ef12701ea5977351fb4d2dbad3cf3b))
+* move Go toolchain to 1.26 ([6c12f5e](https://github.com/jkrumm/rollhook/commit/6c12f5e18d2303a421c4e3d5e300f9f51130b23c))
+* **notifier:** bound notification sends and drain them on shutdown ([84ceb93](https://github.com/jkrumm/rollhook/commit/84ceb9332188794988c6adf123c142e1a5c96ecd))
+* **notifier:** make ntfy deploy messages readable ([508721e](https://github.com/jkrumm/rollhook/commit/508721e0884b8147d1e1520bc8adc2a82ff7454a))
+* **registry:** count failed zot starts as crashes, drop duplicate defaults, shorten chart ticks ([3c2b5db](https://github.com/jkrumm/rollhook/commit/3c2b5db99b0827cf08d188e1dd790fd15bf33ac2))
+* **registry:** give up on crash-looping zot, drain long log lines, dedupe token validation ([6fff56d](https://github.com/jkrumm/rollhook/commit/6fff56d72e41d8fc1f083c061bf89d1233331792))
+* replace deprecated ReverseProxy Director in registry proxy ([b629ff0](https://github.com/jkrumm/rollhook/commit/b629ff09ff049318fe1000d453352687a8993dfe))
+* upgrade commitlint to 21.2.4 ([e3f853e](https://github.com/jkrumm/rollhook/commit/e3f853ebed69cbbe8c31742ab9ee6f0a62286891))
+* upgrade dashboard to Vite 8 and @vitejs/plugin-react 6 ([ef5648c](https://github.com/jkrumm/rollhook/commit/ef5648c97b56a9704952ac719c58daffa07b90ba))
+* upgrade lucide-react to 1.66.0 ([c9af502](https://github.com/jkrumm/rollhook/commit/c9af502f31da93d6730564eabcd63de2dd774b68))
+* upgrade marketing site to Astro 7 ([28cc89b](https://github.com/jkrumm/rollhook/commit/28cc89b58813201c0ab417290545dcdbcbe9add8))
+* upgrade modernc sqlite and golang.org/x dependencies ([3462fc5](https://github.com/jkrumm/rollhook/commit/3462fc5af098c4a3325abea09b6b65560b916de2))
+* upgrade remaining Go module dependencies ([962f0fc](https://github.com/jkrumm/rollhook/commit/962f0fce441f7bf05ea796bc88ef25161678db12))
+* upgrade TypeScript to 6.0.3 ([f14526a](https://github.com/jkrumm/rollhook/commit/f14526a64deb3e47889345f8477be2b312319961))
+* upgrade vitest to 5.0.5 for the e2e suite ([25bccec](https://github.com/jkrumm/rollhook/commit/25bccec064d952bf7e7b459ab4b97d9f2c489205))
+
+
+### Features
+
+* bump basalt-ui to 2.11.1 ([17f5cc3](https://github.com/jkrumm/rollhook/commit/17f5cc361cec93d940324ce71e4a2098ac55477a))
+* bump basalt-ui to 2.9.0 ([9861ffa](https://github.com/jkrumm/rollhook/commit/9861ffa93d36911b90b6d16282073fdd331f8402))
+* **notifier:** native ntfy sender for deploy notices ([c33f8fa](https://github.com/jkrumm/rollhook/commit/c33f8fae6f431bf3580a825a3213054bbb8e9d8d))
+
 ## [1.20.1](https://github.com/jkrumm/rollhook/compare/v1.20.0...v1.20.1) (2026-10-15)
 
 
