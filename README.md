@@ -134,7 +134,7 @@ See [`e2e/hello-world/`](e2e/hello-world/) for a complete reference app.
 | Var                           | Required | Description                                                                   |
 | ----------------------------- | -------- | ----------------------------------------------------------------------------- |
 | `ROLLHOOK_SECRET`             | yes      | Admin/static bearer token (min 7 chars)                                       |
-| `ROLLHOOK_URL`                | no       | Public server URL — enables OIDC `aud` claim check                            |
+| `ROLLHOOK_URL`                | no       | Public server URL — OIDC `aud` check, ntfy click-through links                |
 | `ROLLHOOK_OIDC_ISSUER`        | no       | OIDC issuer URL (default: GitHub Actions)                                     |
 | `DATA_DIR`                    | no       | SQLite DB, job logs and registry storage (image: `/data`, mount a volume)     |
 | `PORT`                        | no       | HTTP listen port (default `7700`)                                             |
@@ -198,7 +198,7 @@ Keep **container and reverse-proxy healthchecks on `/health`**. Failing a contai
 Set `PUSHOVER_USER_KEY` + `PUSHOVER_APP_TOKEN` for mobile push on deploy completion.
 Set `NOTIFICATION_WEBHOOK_URL` to POST the full `JobResult` JSON anywhere.
 Set `SLACK_WEBHOOK_URL` (incoming webhook) for a plain-text deploy summary in Slack.
-Set `NTFY_URL` (full topic URL, optional `https://:<token>@host/topic` basic-auth form) and optional `NTFY_TOKEN` (Bearer) for native ntfy push with title, tags and high priority on failure.
+Set `NTFY_URL` (full topic URL, optional `https://:<token>@host/topic` basic-auth form) and optional `NTFY_TOKEN` (Bearer) for native ntfy push: title, tags, a short image reference, high priority on failure, and, when `ROLLHOOK_URL` is set, a click-through to the job in the dashboard.
 Set `OTEL_EXPORTER_OTLP_ENDPOINT` to emit one OTLP/HTTP log per deploy as a deployment marker. Optional `OTEL_EXPORTER_OTLP_HEADERS` (comma-separated `key=value`) for auth, and `DEPLOY_ENVIRONMENT` to set `deployment.environment` on the log.
 
 OTLP attribute schema:

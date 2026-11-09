@@ -255,8 +255,11 @@ func TestNotifier_Ntfy_Success(t *testing.T) {
 	if _, ok := c.header["Priority"]; ok {
 		t.Error("Priority header must not be set on success")
 	}
-	if want := "Deployed myapp\nImage: localhost:7700/myapp:v2"; c.body != want {
+	if want := "myapp:v2"; c.body != want {
 		t.Errorf("body = %q, want %q", c.body, want)
+	}
+	if _, ok := c.header["Click"]; ok {
+		t.Error("Click header must not be set without a dashboard URL")
 	}
 }
 
@@ -274,9 +277,45 @@ func TestNotifier_Ntfy_Failure(t *testing.T) {
 	if got := c.header.Get("Priority"); got != "high" {
 		t.Errorf("Priority = %q", got)
 	}
-	for _, want := range []string{"localhost:7700/myapp:v2", "Status: " + string(db.StatusFailed), "Error: container exited"} {
-		if !strings.Contains(c.body, want) {
-			t.Errorf("body %q missing %q", c.body, want)
+	if want := "container exited\n\nmyapp:v2"; c.body != want {
+		t.Errorf("body = %q, want %q", c.body, want)
+	}
+}
+
+func TestNotifier_Ntfy_ClickURL(t *testing.T) {
+	ts, c := newNtfyServer(t, http.StatusOK)
+	cfg := Config{NtfyURL: ts.URL + "/updates", DashboardURL: "https://rollhook.example.com/"}
+	Notify(context.Background(), cfg, makeJob(db.StatusSuccess, nil))
+
+	if got := c.header.Get("Click"); got != "https://rollhook.example.com/?job=test-job-id" {
+		t.Errorf("Click = %q", got)
+	}
+}
+
+func TestNotifier_Ntfy_TruncatesLongError(t *testing.T) {
+	ts, c := newNtfyServer(t, http.StatusOK)
+	errMsg := strings.Repeat("é", ntfyMaxErrorRunes+50)
+	Notify(context.Background(), Config{NtfyURL: ts.URL + "/updates"}, makeJob(db.StatusFailed, &errMsg))
+
+	want := strings.Repeat("é", ntfyMaxErrorRunes) + "…\n\nmyapp:v2"
+	if c.body != want {
+		t.Errorf("body has %d bytes, want %d", len(c.body), len(want))
+	}
+}
+
+func TestShortImage(t *testing.T) {
+	sha := "b6ec0b4008cb73da336d73139925e2cc8fbee198"
+	cases := map[string]string{
+		"rollhook.example.com/app:" + sha: "app:b6ec0b40",
+		"localhost:7700/app:v2":           "app:v2",
+		"ghcr.io/owner/app:1.2.3":         "owner/app:1.2.3",
+		"owner/app:latest":                "owner/app:latest",
+		"app":                             "app",
+		"registry.example.com/app":        "app",
+	}
+	for in, want := range cases {
+		if got := shortImage(in); got != want {
+			t.Errorf("shortImage(%q) = %q, want %q", in, got, want)
 		}
 	}
 }
@@ -327,14 +366,14 @@ func TestNotifier_Ntfy_ServerError(t *testing.T) {
 	// Must not panic.
 	Notify(context.Background(), Config{NtfyURL: ts.URL + "/updates"}, makeJob(db.StatusSuccess, nil))
 
-	err := sendNtfy(context.Background(), ts.URL+"/updates", "", makeJob(db.StatusSuccess, nil))
+	err := sendNtfy(context.Background(), ts.URL+"/updates", "", "", makeJob(db.StatusSuccess, nil))
 	if err == nil || err.Error() != "ntfy returned 500" {
 		t.Errorf("err = %v, want ntfy returned 500", err)
 	}
 }
 
 func TestNotifier_Ntfy_InvalidURL(t *testing.T) {
-	err := sendNtfy(context.Background(), "://:secret@bad", "", makeJob(db.StatusSuccess, nil))
+	err := sendNtfy(context.Background(), "://:secret@bad", "", "", makeJob(db.StatusSuccess, nil))
 	if err == nil {
 		t.Fatal("expected error")
 	}
