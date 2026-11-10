@@ -70,7 +70,7 @@ func fastTiming(t *testing.T) {
 func runRollout(t *testing.T, ctx context.Context, f *fakeDocker, compose composeRunner) ([]string, error) {
 	t.Helper()
 	var logs []string
-	err := rollout(ctx, f, compose, t.TempDir()+"/compose.yml", "web", "proj", "app:v2", 2000, func(l string) { logs = append(logs, l) })
+	err := rollout(ctx, f, compose, t.TempDir()+"/compose.yml", "web", "proj", "app:v2", 2000, 0, func(l string) { logs = append(logs, l) })
 	return logs, err
 }
 
@@ -206,7 +206,7 @@ func TestRollout_ReplicasWaitInParallel(t *testing.T) {
 			f.add(id, "running")
 		}
 		return nil, nil
-	}, t.TempDir()+"/compose.yml", "web", "proj", "app:v2", 700, func(string) {})
+	}, t.TempDir()+"/compose.yml", "web", "proj", "app:v2", 700, 0, func(string) {})
 	if err != nil {
 		t.Fatalf("rollout: %v", err)
 	}
@@ -224,4 +224,63 @@ func TestRunCompose_DropsRollHookEnv(t *testing.T) {
 	if !slices.Equal(got, want) {
 		t.Errorf("composeEnv = %v, want %v", got, want)
 	}
+}
+
+func TestRollout_DrainDelay(t *testing.T) {
+	fastTiming(t)
+	const delay = 150 * time.Millisecond
+
+	run := func(ctx context.Context, f *fakeDocker) error {
+		compose := func(context.Context, string, ...string) ([]byte, error) {
+			f.add("new1", "running")
+			return nil, nil
+		}
+		return rollout(ctx, f, compose, t.TempDir()+"/compose.yml", "web", "proj", "app:v2", 2000, int(delay/time.Millisecond), func(string) {})
+	}
+
+	t.Run("old container is drained only after the delay", func(t *testing.T) {
+		f := &fakeDocker{health: map[string]string{"new1": "healthy"}}
+		f.add("old1", "running")
+
+		start := time.Now()
+		if err := run(context.Background(), f); err != nil {
+			t.Fatalf("rollout: %v", err)
+		}
+		if elapsed := time.Since(start); elapsed < delay {
+			t.Errorf("rollout took %s, want at least %s before draining", elapsed, delay)
+		}
+		if !slices.Contains(f.stopped, "old1") {
+			t.Errorf("old1 must be stopped after the delay, stopped = %v", f.stopped)
+		}
+	})
+
+	t.Run("first deploy does not wait", func(t *testing.T) {
+		f := &fakeDocker{health: map[string]string{"new1": "healthy"}}
+
+		start := time.Now()
+		if err := run(context.Background(), f); err != nil {
+			t.Fatalf("rollout: %v", err)
+		}
+		if elapsed := time.Since(start); elapsed >= delay {
+			t.Errorf("first deploy took %s, must not wait for the drain delay", elapsed)
+		}
+	})
+
+	t.Run("cancel during the delay rolls back new containers", func(t *testing.T) {
+		f := &fakeDocker{health: map[string]string{"new1": "healthy"}}
+		f.add("old1", "running")
+		ctx, cancel := context.WithTimeout(context.Background(), delay/3)
+		defer cancel()
+
+		err := run(ctx, f)
+		if err == nil || !strings.Contains(err.Error(), "context deadline exceeded") {
+			t.Fatalf("err = %v, want context deadline exceeded", err)
+		}
+		if slices.Contains(f.stopped, "old1") || slices.Contains(f.removed, "old1") {
+			t.Errorf("old1 must be untouched, stopped = %v removed = %v", f.stopped, f.removed)
+		}
+		if !slices.Contains(f.removed, "new1") {
+			t.Errorf("new1 must be rolled back, removed = %v", f.removed)
+		}
+	})
 }
