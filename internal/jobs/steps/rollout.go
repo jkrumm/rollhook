@@ -41,11 +41,11 @@ func runCompose(ctx context.Context, dir string, args ...string) ([]byte, error)
 // Rollout performs a zero-downtime rolling deploy:
 // scale up new containers, wait for health, drain old containers.
 // On any failure after scale-up it rolls back new containers before returning the error.
-func Rollout(ctx context.Context, cli *client.Client, composePath, service, project, imageTag string, healthTimeoutMS int, logFn func(string)) error {
-	return rollout(ctx, cli, runCompose, composePath, service, project, imageTag, healthTimeoutMS, logFn)
+func Rollout(ctx context.Context, cli *client.Client, composePath, service, project, imageTag string, healthTimeoutMS, drainDelayMS int, logFn func(string)) error {
+	return rollout(ctx, cli, runCompose, composePath, service, project, imageTag, healthTimeoutMS, drainDelayMS, logFn)
 }
 
-func rollout(ctx context.Context, api dockerpkg.ContainerAPI, compose composeRunner, composePath, service, project, imageTag string, healthTimeoutMS int, rawLog func(string)) (err error) {
+func rollout(ctx context.Context, api dockerpkg.ContainerAPI, compose composeRunner, composePath, service, project, imageTag string, healthTimeoutMS, drainDelayMS int, rawLog func(string)) (err error) {
 	cwd := filepath.Dir(composePath)
 
 	// Replicas are awaited in parallel, so the log callback must be goroutine-safe.
@@ -125,6 +125,19 @@ func rollout(ctx context.Context, api dockerpkg.ContainerAPI, compose composeRun
 	// 4. Wait for all new containers in parallel against one shared deadline.
 	if err := waitAllHealthy(ctx, api, newContainers, healthTimeoutMS, logFn); err != nil {
 		return fmt.Errorf("rolling deploy failed: %w", err)
+	}
+
+	// A reverse proxy only routes to a new container after its own discovery lag
+	// (e.g. Traefik's provider throttle), while it drops a SIGTERMed old one within
+	// ~0.5s. Draining immediately opens a window with no healthy backend.
+	if len(oldIDs) > 0 && drainDelayMS > 0 {
+		delay := time.Duration(drainDelayMS) * time.Millisecond
+		logFn(fmt.Sprintf("[rollout] New containers healthy; waiting %s before draining old containers (reverse-proxy discovery)", delay))
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("rolling deploy cancelled while waiting to drain: %w", ctx.Err())
+		case <-time.After(delay):
+		}
 	}
 
 	// 5. All new containers healthy — drain old containers.

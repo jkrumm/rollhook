@@ -7,13 +7,13 @@ import (
 
 func TestLoad_Defaults(t *testing.T) {
 	for _, k := range []string{
-		"DATA_DIR", "ROLLHOOK_HEALTH_TIMEOUT_MS", "ROLLHOOK_SYNC_TIMEOUT_MIN",
+		"DATA_DIR", "ROLLHOOK_HEALTH_TIMEOUT_MS", "ROLLHOOK_SYNC_TIMEOUT_MIN", "ROLLHOOK_DRAIN_DELAY_MS",
 		"ROLLHOOK_IMAGE_KEEP_COUNT", "ROLLHOOK_LOG_RETENTION_DAYS", "ROLLHOOK_REGISTRY_KEEP_TAGS",
 	} {
 		t.Setenv(k, "")
 	}
 	want := Config{
-		DataDir: "data", HealthTimeoutMS: 60_000, ImageKeepCount: 5,
+		DataDir: "data", HealthTimeoutMS: 60_000, DrainDelayMS: 5_000, ImageKeepCount: 5,
 		LogRetentionDays: 30, RegistryKeepTags: 5,
 	}
 	if got := Load(); got != want {
@@ -25,11 +25,12 @@ func TestLoad_ValidValues(t *testing.T) {
 	t.Setenv("DATA_DIR", "/data")
 	t.Setenv("ROLLHOOK_HEALTH_TIMEOUT_MS", "30000")
 	t.Setenv("ROLLHOOK_SYNC_TIMEOUT_MIN", "20")
+	t.Setenv("ROLLHOOK_DRAIN_DELAY_MS", "1500")
 	t.Setenv("ROLLHOOK_IMAGE_KEEP_COUNT", "9")
 	t.Setenv("ROLLHOOK_LOG_RETENTION_DAYS", "7")
 	t.Setenv("ROLLHOOK_REGISTRY_KEEP_TAGS", "11")
 	want := Config{
-		DataDir: "/data", HealthTimeoutMS: 30000, SyncTimeoutMin: 20,
+		DataDir: "/data", HealthTimeoutMS: 30000, SyncTimeoutMin: 20, DrainDelayMS: 1500,
 		ImageKeepCount: 9, LogRetentionDays: 7, RegistryKeepTags: 11,
 	}
 	if got := Load(); got != want {
@@ -86,6 +87,25 @@ func TestSyncTimeout(t *testing.T) {
 	for _, tt := range tests {
 		if got := tt.cfg.SyncTimeout(); got != tt.want {
 			t.Errorf("%s: SyncTimeout() = %s, want %s", tt.name, got, tt.want)
+		}
+	}
+}
+
+func TestLoad_DrainDelay(t *testing.T) {
+	tests := []struct {
+		env  string
+		want int
+	}{
+		{"", DefaultDrainDelayMS},
+		{"2000", 2000},
+		{"0", 0},
+		{"-1", DefaultDrainDelayMS},
+		{"abc", DefaultDrainDelayMS},
+	}
+	for _, tt := range tests {
+		t.Setenv("ROLLHOOK_DRAIN_DELAY_MS", tt.env)
+		if got := Load().DrainDelayMS; got != tt.want {
+			t.Errorf("drain=%q -> %d, want %d", tt.env, got, tt.want)
 		}
 	}
 }

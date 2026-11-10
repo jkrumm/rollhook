@@ -131,28 +131,29 @@ See [`e2e/hello-world/`](e2e/hello-world/) for a complete reference app.
 
 ## Environment Variables
 
-| Var                           | Required | Description                                                                   |
-| ----------------------------- | -------- | ----------------------------------------------------------------------------- |
-| `ROLLHOOK_SECRET`             | yes      | Admin/static bearer token (min 7 chars)                                       |
-| `ROLLHOOK_URL`                | no       | Public server URL — OIDC `aud` check, ntfy click-through links                |
-| `ROLLHOOK_OIDC_ISSUER`        | no       | OIDC issuer URL (default: GitHub Actions)                                     |
-| `DATA_DIR`                    | no       | SQLite DB, job logs and registry storage (image: `/data`, mount a volume)     |
-| `PORT`                        | no       | HTTP listen port (default `7700`)                                             |
-| `ROLLHOOK_HEALTH_TIMEOUT_MS`  | no       | Max wait for a new container to turn healthy (default `60000`)                |
-| `ROLLHOOK_SYNC_TIMEOUT_MIN`   | no       | Max wait of a synchronous `/deploy` (default: health timeout + 5 min)         |
-| `DOCKER_HOST`                 | no       | Docker daemon endpoint (default: local socket)                                |
-| `PUSHOVER_USER_KEY`           | no       | Pushover mobile notifications                                                 |
-| `PUSHOVER_APP_TOKEN`          | no       | Pushover mobile notifications                                                 |
-| `NOTIFICATION_WEBHOOK_URL`    | no       | POST full job result JSON on completion                                       |
-| `SLACK_WEBHOOK_URL`           | no       | Slack incoming-webhook URL for deploy notifications                           |
-| `NTFY_URL`                    | no       | ntfy topic URL, optional `https://:<token>@host/topic` basic auth             |
-| `NTFY_TOKEN`                  | no       | ntfy access token, sent as Bearer (wins over URL credentials)                 |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | no       | OTLP/HTTP base URL — emits one log per deploy as a marker                     |
-| `OTEL_EXPORTER_OTLP_HEADERS`  | no       | Comma-separated `key=value` headers (e.g. `Authorization=Bearer ...`)         |
-| `DEPLOY_ENVIRONMENT`          | no       | Sets `deployment.environment` on the OTLP log; omitted if unset               |
-| `ROLLHOOK_REGISTRY_KEEP_TAGS` | no       | Tags kept per repo in the built-in registry (default `5`, `0` = keep forever) |
-| `ROLLHOOK_IMAGE_KEEP_COUNT`   | no       | Docker images kept per app on the host (default `5`, `0` = disable pruning)   |
-| `ROLLHOOK_LOG_RETENTION_DAYS` | no       | Days a job log file is kept (default `30`, `0` = disable pruning)             |
+| Var                           | Required | Description                                                                                                                                              |
+| ----------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ROLLHOOK_SECRET`             | yes      | Admin/static bearer token (min 7 chars)                                                                                                                  |
+| `ROLLHOOK_URL`                | no       | Public server URL — OIDC `aud` check, ntfy click-through links                                                                                           |
+| `ROLLHOOK_OIDC_ISSUER`        | no       | OIDC issuer URL (default: GitHub Actions)                                                                                                                |
+| `DATA_DIR`                    | no       | SQLite DB, job logs and registry storage (image: `/data`, mount a volume)                                                                                |
+| `PORT`                        | no       | HTTP listen port (default `7700`)                                                                                                                        |
+| `ROLLHOOK_HEALTH_TIMEOUT_MS`  | no       | Max wait for a new container to turn healthy (default `60000`)                                                                                           |
+| `ROLLHOOK_DRAIN_DELAY_MS`     | no       | Wait after new containers turn healthy before the old ones are stopped, so the reverse proxy routes to the new ones first (default `5000`, `0` disables) |
+| `ROLLHOOK_SYNC_TIMEOUT_MIN`   | no       | Max wait of a synchronous `/deploy` (default: health timeout + 5 min)                                                                                    |
+| `DOCKER_HOST`                 | no       | Docker daemon endpoint (default: local socket)                                                                                                           |
+| `PUSHOVER_USER_KEY`           | no       | Pushover mobile notifications                                                                                                                            |
+| `PUSHOVER_APP_TOKEN`          | no       | Pushover mobile notifications                                                                                                                            |
+| `NOTIFICATION_WEBHOOK_URL`    | no       | POST full job result JSON on completion                                                                                                                  |
+| `SLACK_WEBHOOK_URL`           | no       | Slack incoming-webhook URL for deploy notifications                                                                                                      |
+| `NTFY_URL`                    | no       | ntfy topic URL, optional `https://:<token>@host/topic` basic auth                                                                                        |
+| `NTFY_TOKEN`                  | no       | ntfy access token, sent as Bearer (wins over URL credentials)                                                                                            |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | no       | OTLP/HTTP base URL — emits one log per deploy as a marker                                                                                                |
+| `OTEL_EXPORTER_OTLP_HEADERS`  | no       | Comma-separated `key=value` headers (e.g. `Authorization=Bearer ...`)                                                                                    |
+| `DEPLOY_ENVIRONMENT`          | no       | Sets `deployment.environment` on the OTLP log; omitted if unset                                                                                          |
+| `ROLLHOOK_REGISTRY_KEEP_TAGS` | no       | Tags kept per repo in the built-in registry (default `5`, `0` = keep forever)                                                                            |
+| `ROLLHOOK_IMAGE_KEEP_COUNT`   | no       | Docker images kept per app on the host (default `5`, `0` = disable pruning)                                                                              |
+| `ROLLHOOK_LOG_RETENTION_DAYS` | no       | Days a job log file is kept (default `30`, `0` = disable pruning)                                                                                        |
 
 ---
 

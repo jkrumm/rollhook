@@ -13,6 +13,7 @@ import (
 const (
 	DefaultDataDir          = "data"
 	DefaultHealthTimeoutMS  = 60_000
+	DefaultDrainDelayMS     = 5_000
 	DefaultImageKeepCount   = 5
 	DefaultLogRetentionDays = 30
 	DefaultRegistryKeepTags = 5
@@ -27,6 +28,7 @@ type Config struct {
 
 	HealthTimeoutMS int // ROLLHOOK_HEALTH_TIMEOUT_MS (positive)
 	SyncTimeoutMin  int // ROLLHOOK_SYNC_TIMEOUT_MIN (positive); 0 = derive from the health timeout
+	DrainDelayMS    int // ROLLHOOK_DRAIN_DELAY_MS; 0 = drain old containers immediately
 
 	// Zero is a documented "disable" escape hatch for these three.
 	ImageKeepCount   int // ROLLHOOK_IMAGE_KEEP_COUNT
@@ -45,6 +47,7 @@ func Load() Config {
 		DataDir:          dataDir,
 		HealthTimeoutMS:  envInt("ROLLHOOK_HEALTH_TIMEOUT_MS", DefaultHealthTimeoutMS, false),
 		SyncTimeoutMin:   envInt("ROLLHOOK_SYNC_TIMEOUT_MIN", 0, false),
+		DrainDelayMS:     envInt("ROLLHOOK_DRAIN_DELAY_MS", DefaultDrainDelayMS, true),
 		ImageKeepCount:   envInt("ROLLHOOK_IMAGE_KEEP_COUNT", DefaultImageKeepCount, true),
 		LogRetentionDays: envInt("ROLLHOOK_LOG_RETENTION_DAYS", DefaultLogRetentionDays, true),
 		RegistryKeepTags: envInt("ROLLHOOK_REGISTRY_KEEP_TAGS", DefaultRegistryKeepTags, true),

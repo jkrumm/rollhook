@@ -213,7 +213,7 @@ func (e *Executor) execute(ctx context.Context, job db.Job, log func(string)) er
 	}
 
 	// Step 4: Rollout
-	if err := steps.Rollout(ctx, e.docker, result.ComposePath, result.Service, result.Project, job.ImageTag, e.cfg.HealthTimeoutMS, log); err != nil {
+	if err := steps.Rollout(ctx, e.docker, result.ComposePath, result.Service, result.Project, job.ImageTag, e.cfg.HealthTimeoutMS, e.cfg.DrainDelayMS, log); err != nil {
 		return err
 	}
 
