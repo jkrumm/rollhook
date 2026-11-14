@@ -2,29 +2,27 @@
 
 ## Validate
 
-`make check` runs exactly the local gates CI runs (`.github/workflows/ci.yml`): `bun install --frozen-lockfile`, `bun run lint` (oxlint --type-aware), `bun run format:check` (oxfmt), `bun run typecheck`, `bun run check:basalt`, `bun run test:unit` (dashboard `bun test`), then Go `build` / `vet` / `test` and `golangci-lint` in Docker, then the OpenAPI drift check.
+`make check` runs exactly the local gates CI runs (`.github/workflows/ci.yml`): `bun install --frozen-lockfile`, `bun run lint` (oxlint --type-aware), `bun run format:check` (oxfmt), `bun run typecheck`, `bun run check:basalt`, `bun run test:unit` (dashboard `bun test`), then Go `build` / `vet` / `test`, `golangci-lint` and the OpenAPI drift check (`make check-go`). **`make check` needs no Docker:** Go runs natively. The image steps are separate: `make image` and `make image-smoke` (Docker VM required), plus the E2E suite below.
 
-**Go:** use the native `go` if it is installed (the repo targets Go 1.27), otherwise run the same commands in the pinned image (`make check` already does):
+**Go:** `make check-go` runs the native `go` (go.mod's `toolchain go1.27.3` line makes `go` fetch that exact toolchain if the installed one is older) and requires `golangci-lint` v2.15.0 (the Makefile's `LINT_VERSION`; it fails with the wanted version otherwise). `GO_VIA=docker make check-go` runs the same steps in the pinned images (`golang:1.27.3-alpine`, `golangci/golangci-lint:v2.15.0`) for a machine without Go; the bind-mounted checkout must be visible to the Docker VM. Direct commands:
 
 ```bash
-# Build / test (native: drop the docker prefix)
-docker run --rm -v "$(pwd)":/workspace -w /workspace golang:1.27.3-alpine go build ./...
-docker run --rm -v "$(pwd)":/workspace -w /workspace golang:1.27.3-alpine go test ./...
+# Build / test
+go build ./...
+go test ./...
 
 # Regenerate openapi.json (redirect stderr first or go module logs corrupt the JSON):
 go run ./cmd/gendocs 2>/dev/null > apps/dashboard/openapi.json
-# or: docker run --rm -v "$(pwd)":/workspace -w /workspace golang:1.27.3-alpine \
-#       go run ./cmd/gendocs 2>/dev/null > apps/dashboard/openapi.json
 
 # Then regenerate TypeScript types:
 bun run --filter @rollhook/dashboard generate:api
 ```
 
-CI runs Go natively (`go build ./...`, `go vet ./...`, `go test ./...`, `govulncheck ./...`, `golangci-lint`). Go 1.27.3 and Bun 1.3.10 are pinned in the Dockerfile, Makefile, workflows and e2e fixtures — bump them together.
+CI runs Go natively (`go build ./...`, `go vet ./...`, `go test ./...`, `govulncheck ./...`, `golangci-lint`). Go 1.27.3 and Bun 1.3.10 are pinned in the Dockerfile, go.mod (`toolchain`), Makefile, workflows and e2e fixtures — bump them together.
 
 The dashboard builds into `apps/dashboard/dist` (gitignored); the Dockerfile copies it to `/app/public`, which the server serves. `make image` builds the server image and `make image-smoke` checks its user, `DATA_DIR` and volume persistence.
 
-**Not covered by `make check`:** the E2E suite (`bun run test:e2e`, CI job `e2e-test`) — it builds and starts Docker containers and runs ~12 min; run it separately.
+**Not covered by `make check` (these need the Docker VM):** `make image` / `make image-smoke`, and the E2E suite (`bun run test:e2e`, CI job `e2e-test`) — it builds and starts Docker containers and runs ~12 min; run it separately.
 
 **OpenAPI generation chain:** huma operations → `cmd/gendocs` → `openapi.json` → orval → `src/api/generated/`. Commit `openapi.json` + `src/api/generated/` together.
 
