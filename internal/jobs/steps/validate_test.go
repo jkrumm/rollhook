@@ -63,6 +63,28 @@ services:
 	}
 }
 
+func TestValidate_RequiredVarResolvedFromDotEnv(t *testing.T) {
+	dir := t.TempDir()
+	path := writeCompose(t, dir, `
+services:
+  web:
+    image: ${IMAGE_TAG:-localhost:7700/myapp:v1}
+    environment:
+      TOKEN: ${APP_TOKEN:?APP_TOKEN must be set}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+`)
+	if err := steps.Validate(path, "web", "localhost:7700/myapp:v1", nil); err == nil {
+		t.Fatal("expected error when required variable is missing")
+	}
+	if err := os.WriteFile(filepath.Join(dir, ".env"), []byte("APP_TOKEN=secret\n"), 0o600); err != nil {
+		t.Fatalf("write .env: %v", err)
+	}
+	if err := steps.Validate(path, "web", "localhost:7700/myapp:v1", nil); err != nil {
+		t.Errorf("unexpected error with .env present: %v", err)
+	}
+}
+
 func TestValidate_BuildOnlyService(t *testing.T) {
 	dir := t.TempDir()
 	path := writeCompose(t, dir, `
