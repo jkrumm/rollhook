@@ -38,7 +38,12 @@ func Validate(composePath, service, imageTag string, logFn func(string)) error {
 
 	opts, err := cli.NewProjectOptions(
 		[]string{composePath},
+		cli.WithWorkingDirectory(filepath.Dir(composePath)),
 		cli.WithEnv(composeEnv(os.Environ())),
+		// Load the app's .env like the rollout does, so `${VAR:?msg}` required
+		// variables resolve instead of failing validation.
+		cli.WithEnvFiles(),
+		cli.WithDotEnv,
 		cli.WithLoadOptions(func(o *loader.Options) {
 			o.SkipValidation = true // skip strict JSON schema checks
 		}),
