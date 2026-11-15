@@ -1,3 +1,11 @@
+## [1.21.1](https://github.com/jkrumm/rollhook/compare/v1.21.0...v1.21.1) (2026-11-15)
+
+
+### Bug Fixes
+
+* **rollout:** wait before draining old containers so the proxy routes to the new ones first ([b394ffe](https://github.com/jkrumm/rollhook/commit/b394ffeb323b6839772ea5110d65f11ecf78c1a0))
+* **validate:** load the app's .env so required compose variables resolve ([0a411b6](https://github.com/jkrumm/rollhook/commit/0a411b6ce3f975ff8788cc43838cb9c916c18bc0))
+
 # [1.21.0](https://github.com/jkrumm/rollhook/compare/v1.20.1...v1.21.0) (2026-11-09)
 
 
