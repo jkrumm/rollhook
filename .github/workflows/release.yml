@@ -23,7 +23,7 @@ jobs:
       published: ${{ steps.get_version.outputs.published }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           token: ${{ secrets.RELEASE_TOKEN }} # PAT as jkrumm — bypasses branch protection ruleset
@@ -106,7 +106,7 @@ jobs:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.release.outputs.version }}
 
