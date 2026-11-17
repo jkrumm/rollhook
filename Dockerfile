@@ -25,7 +25,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 
 # Download Docker CLI static binary and Zot in a throw-away stage.
 # Static binaries work on any Linux regardless of libc version.
-FROM alpine:3.21 AS tool-downloader
+FROM alpine:3.24 AS tool-downloader
 ARG TARGETARCH
 ARG DOCKER_VERSION=29.9.3
 ARG DOCKER_AMD64_SHA256=3fb5d1f13014c18cc54945bc177c58a9056a482dada031e17d12cf2e6922c973
