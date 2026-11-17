@@ -39,7 +39,7 @@
     "typescript": "7.0.2"
   },
   "overrides": {
-    "fast-uri": "3.1.7",
+    "fast-uri": "3.1.9",
     "js-yaml": "4.3.2",
     "source-map-js": "1.2.2",
     "zod": "4.6.7"
