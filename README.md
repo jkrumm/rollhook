@@ -150,7 +150,8 @@ See [`e2e/hello-world/`](e2e/hello-world/) for a complete reference app.
 | `NTFY_TOKEN`                  | no       | ntfy access token, sent as Bearer (wins over URL credentials)                                                                                            |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | no       | OTLP/HTTP base URL — emits one log per deploy as a marker                                                                                                |
 | `OTEL_EXPORTER_OTLP_HEADERS`  | no       | Comma-separated `key=value` headers (e.g. `Authorization=Bearer ...`)                                                                                    |
-| `DEPLOY_ENVIRONMENT`          | no       | Sets `deployment.environment` on the OTLP log; omitted if unset                                                                                          |
+| `DEPLOY_ENVIRONMENT`          | no       | Sets `deployment.environment.name` on the OTLP log (`prod` or `dev`); omitted if unset                                                                   |
+| `OTEL_RESOURCE_ATTRIBUTES`    | no       | Comma-separated `key=value` resource attributes (percent-encoded values); override the defaults below except `service.name`                              |
 | `ROLLHOOK_REGISTRY_KEEP_TAGS` | no       | Tags kept per repo in the built-in registry (default `5`, `0` = keep forever)                                                                            |
 | `ROLLHOOK_IMAGE_KEEP_COUNT`   | no       | Docker images kept per app on the host (default `5`, `0` = disable pruning)                                                                              |
 | `ROLLHOOK_LOG_RETENTION_DAYS` | no       | Days a job log file is kept (default `30`, `0` = disable pruning)                                                                                        |
@@ -200,18 +201,20 @@ Set `PUSHOVER_USER_KEY` + `PUSHOVER_APP_TOKEN` for mobile push on deploy complet
 Set `NOTIFICATION_WEBHOOK_URL` to POST the full `JobResult` JSON anywhere.
 Set `SLACK_WEBHOOK_URL` (incoming webhook) for a plain-text deploy summary in Slack.
 Set `NTFY_URL` (full topic URL, optional `https://:<token>@host/topic` basic-auth form) and optional `NTFY_TOKEN` (Bearer) for native ntfy push: title, tags, a short image reference, high priority on failure, and, when `ROLLHOOK_URL` is set, a click-through to the job in the dashboard.
-Set `OTEL_EXPORTER_OTLP_ENDPOINT` to emit one OTLP/HTTP log per deploy as a deployment marker. Optional `OTEL_EXPORTER_OTLP_HEADERS` (comma-separated `key=value`) for auth, and `DEPLOY_ENVIRONMENT` to set `deployment.environment` on the log.
+Set `OTEL_EXPORTER_OTLP_ENDPOINT` to emit one OTLP/HTTP log per deploy as a deployment marker. Optional `OTEL_EXPORTER_OTLP_HEADERS` (comma-separated `key=value`) for auth, and `DEPLOY_ENVIRONMENT` to set `deployment.environment.name` on the log. `OTEL_RESOURCE_ATTRIBUTES` adds or overrides resource attributes.
 
 OTLP attribute schema:
 
-| Attribute                | Value                                        |
-| ------------------------ | -------------------------------------------- |
-| `service.name`           | `rollhook` (the emitter)                     |
-| `deploy.service`         | deployed app name                            |
-| `deploy.image_tag`       | full image reference                         |
-| `deploy.status`          | `success` \| `failed`                        |
-| `deploy.job_id`          | RollHook job ID                              |
-| `deployment.environment` | from `DEPLOY_ENVIRONMENT` (omitted if unset) |
+| Attribute                     | Value                                                                  |
+| ----------------------------- | ---------------------------------------------------------------------- |
+| `service.name`                | `rollhook` (the emitter; fixed)                                        |
+| `service.namespace`           | `rollhook`                                                             |
+| `service.version`             | short git SHA of the build (release images; omitted when not baked in) |
+| `deployment.environment.name` | from `DEPLOY_ENVIRONMENT` (omitted if unset)                           |
+| `deploy.service`              | deployed app name                                                      |
+| `deploy.image_tag`            | full image reference                                                   |
+| `deploy.status`               | `success` \| `failed`                                                  |
+| `deploy.job_id`               | RollHook job ID                                                        |
 
 Notification failures are written to the job log — they never affect job status.
 

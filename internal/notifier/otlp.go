@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -16,6 +17,7 @@ const (
 	otlpSeverityInfo   = 9
 	otlpSeverityError  = 17
 	otlpScopeNameValue = "rollhook"
+	otlpServiceName    = "rollhook"
 )
 
 type otlpAnyValue struct {
@@ -59,7 +61,58 @@ type otlpPayload struct {
 	ResourceLogs []otlpResourceLogs `json:"resourceLogs"`
 }
 
-func sendOTLP(ctx context.Context, endpoint, headers, environment string, job db.Job) error {
+// otlpResourceConfig is what the emitter knows about itself. ResourceAttributes
+// is the raw OTEL_RESOURCE_ATTRIBUTES value.
+type otlpResourceConfig struct {
+	Environment        string
+	Version            string
+	ResourceAttributes string
+}
+
+// buildResourceAttrs follows the vps telemetry contract: service.name is fixed
+// to rollhook; service.namespace, service.version and deployment.environment.name
+// are defaults; OTEL_RESOURCE_ATTRIBUTES overrides any default except
+// service.name. Keys are unique, so a duplicate never reaches the collector.
+func buildResourceAttrs(res otlpResourceConfig) []otlpKeyValue {
+	attrs := []otlpKeyValue{{Key: "service.name", Value: otlpAnyValue{StringValue: otlpServiceName}}}
+	index := map[string]int{"service.name": 0}
+	set := func(key, value string) {
+		if value == "" {
+			return
+		}
+		if i, ok := index[key]; ok {
+			attrs[i].Value.StringValue = value
+			return
+		}
+		index[key] = len(attrs)
+		attrs = append(attrs, otlpKeyValue{Key: key, Value: otlpAnyValue{StringValue: value}})
+	}
+
+	set("service.namespace", otlpServiceName)
+	set("service.version", res.Version)
+	set("deployment.environment.name", res.Environment)
+	for k, v := range parseResourceAttributes(res.ResourceAttributes) {
+		if k != "service.name" {
+			set(k, v)
+		}
+	}
+	return attrs
+}
+
+// parseResourceAttributes parses OTEL_RESOURCE_ATTRIBUTES: comma-separated
+// key=value pairs with percent-encoded values; malformed pairs are skipped.
+func parseResourceAttributes(raw string) map[string]string {
+	out := map[string]string{}
+	for k, v := range parseOTLPHeaders(raw) {
+		if decoded, err := url.PathUnescape(v); err == nil {
+			v = decoded
+		}
+		out[k] = v
+	}
+	return out
+}
+
+func sendOTLP(ctx context.Context, endpoint, headers string, res otlpResourceConfig, job db.Job) error {
 	severity := otlpSeverityInfo
 	severityText := "INFO"
 	status := "success"
@@ -69,15 +122,7 @@ func sendOTLP(ctx context.Context, endpoint, headers, environment string, job db
 		status = "failed"
 	}
 
-	resourceAttrs := []otlpKeyValue{
-		{Key: "service.name", Value: otlpAnyValue{StringValue: "rollhook"}},
-	}
-	if environment != "" {
-		resourceAttrs = append(resourceAttrs, otlpKeyValue{
-			Key:   "deployment.environment",
-			Value: otlpAnyValue{StringValue: environment},
-		})
-	}
+	resourceAttrs := buildResourceAttrs(res)
 
 	logAttrs := []otlpKeyValue{
 		{Key: "deploy.service", Value: otlpAnyValue{StringValue: job.App}},
@@ -107,8 +152,8 @@ func sendOTLP(ctx context.Context, endpoint, headers, environment string, job db
 		return err
 	}
 
-	url := strings.TrimRight(endpoint, "/") + "/v1/logs"
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
+	target := strings.TrimRight(endpoint, "/") + "/v1/logs"
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, target, bytes.NewReader(body))
 	if err != nil {
 		return err
 	}

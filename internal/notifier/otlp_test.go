@@ -128,12 +128,78 @@ func TestNotifier_OTLP_DeployEnvironment(t *testing.T) {
 	defer ts.Close()
 
 	job := makeJob(db.StatusSuccess, nil)
-	Notify(context.Background(), Config{OTLPEndpoint: ts.URL, DeployEnvironment: "production"}, job)
+	Notify(context.Background(), Config{OTLPEndpoint: ts.URL, DeployEnvironment: "prod"}, job)
 
-	env, ok := findAttr(received.ResourceLogs[0].Resource.Attributes, "deployment.environment")
-	if !ok || env != "production" {
-		t.Errorf("deployment.environment = %q (found=%v), want production", env, ok)
+	attrs := received.ResourceLogs[0].Resource.Attributes
+	env, ok := findAttr(attrs, "deployment.environment.name")
+	if !ok || env != "prod" {
+		t.Errorf("deployment.environment.name = %q (found=%v), want prod", env, ok)
 	}
+	if _, ok := findAttr(attrs, "deployment.environment"); ok {
+		t.Error("deprecated deployment.environment must not be sent")
+	}
+}
+
+func TestBuildResourceAttrs(t *testing.T) {
+	get := func(attrs []otlpKeyValue) map[string]string {
+		m := map[string]string{}
+		for _, a := range attrs {
+			if _, dup := m[a.Key]; dup {
+				t.Errorf("duplicate resource key %q", a.Key)
+			}
+			m[a.Key] = a.Value.StringValue
+		}
+		return m
+	}
+
+	t.Run("defaults", func(t *testing.T) {
+		got := get(buildResourceAttrs(otlpResourceConfig{Environment: "prod", Version: "abc1234"}))
+		want := map[string]string{
+			"service.name":                "rollhook",
+			"service.namespace":           "rollhook",
+			"service.version":             "abc1234",
+			"deployment.environment.name": "prod",
+		}
+		if len(got) != len(want) {
+			t.Fatalf("attrs = %v, want %v", got, want)
+		}
+		for k, v := range want {
+			if got[k] != v {
+				t.Errorf("%s = %q, want %q", k, got[k], v)
+			}
+		}
+	})
+
+	t.Run("unset values are omitted", func(t *testing.T) {
+		got := get(buildResourceAttrs(otlpResourceConfig{}))
+		if len(got) != 2 || got["service.name"] != "rollhook" || got["service.namespace"] != "rollhook" {
+			t.Errorf("attrs = %v, want only service.name and service.namespace", got)
+		}
+	})
+
+	t.Run("OTEL_RESOURCE_ATTRIBUTES overrides defaults but not service.name", func(t *testing.T) {
+		got := get(buildResourceAttrs(otlpResourceConfig{
+			Environment: "dev",
+			Version:     "abc1234",
+			ResourceAttributes: "service.name=other,service.namespace=rollhook-x," +
+				"deployment.environment.name=prod,host.name=vps,note=a%20b,malformed",
+		}))
+		for k, v := range map[string]string{
+			"service.name":                "rollhook",
+			"service.namespace":           "rollhook-x",
+			"service.version":             "abc1234",
+			"deployment.environment.name": "prod",
+			"host.name":                   "vps",
+			"note":                        "a b",
+		} {
+			if got[k] != v {
+				t.Errorf("%s = %q, want %q", k, got[k], v)
+			}
+		}
+		if len(got) != 6 {
+			t.Errorf("attrs = %v, want 6 keys", got)
+		}
+	})
 }
 
 func TestNotifier_OTLP_Headers(t *testing.T) {

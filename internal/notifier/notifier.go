@@ -27,7 +27,9 @@ type Config struct {
 	DashboardURL      string // ROLLHOOK_URL (base for links to a job in the dashboard)
 	OTLPEndpoint      string // OTEL_EXPORTER_OTLP_ENDPOINT
 	OTLPHeaders       string // OTEL_EXPORTER_OTLP_HEADERS (comma-separated key=value)
-	DeployEnvironment string // DEPLOY_ENVIRONMENT
+	DeployEnvironment string // DEPLOY_ENVIRONMENT (value of deployment.environment.name)
+	ServiceVersion    string // GIT_SHA (short SHA baked at build; service.version)
+	ResourceAttrs     string // OTEL_RESOURCE_ATTRIBUTES
 }
 
 // pushoverEndpoint is the Pushover API URL. Override in tests.
@@ -74,7 +76,11 @@ func Notify(ctx context.Context, cfg Config, job db.Job) {
 	}
 	if cfg.OTLPEndpoint != "" {
 		send("otlp", func(c context.Context) error {
-			return sendOTLP(c, cfg.OTLPEndpoint, cfg.OTLPHeaders, cfg.DeployEnvironment, job)
+			return sendOTLP(c, cfg.OTLPEndpoint, cfg.OTLPHeaders, otlpResourceConfig{
+				Environment:        cfg.DeployEnvironment,
+				Version:            cfg.ServiceVersion,
+				ResourceAttributes: cfg.ResourceAttrs,
+			}, job)
 		})
 	}
 }

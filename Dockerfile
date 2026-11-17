@@ -74,6 +74,9 @@ COPY --from=dashboard-builder /app/apps/dashboard/dist/ /app/public/
 
 ARG VERSION=dev
 ENV VERSION=$VERSION
+# Short git SHA of the build; reported as the OTLP service.version (omitted when empty).
+ARG GIT_SHA=
+ENV GIT_SHA=$GIT_SHA
 
 # /data holds the SQLite DB, job logs and the embedded registry. It is created
 # owned by rollhook so a named volume mounted here inherits that ownership on

@@ -150,6 +150,8 @@ func notifyConfigFromEnv() notifier.Config {
 		OTLPEndpoint:      os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"),
 		OTLPHeaders:       os.Getenv("OTEL_EXPORTER_OTLP_HEADERS"),
 		DeployEnvironment: os.Getenv("DEPLOY_ENVIRONMENT"),
+		ServiceVersion:    os.Getenv("GIT_SHA"),
+		ResourceAttrs:     os.Getenv("OTEL_RESOURCE_ATTRIBUTES"),
 	}
 }
 
