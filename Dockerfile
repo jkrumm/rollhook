@@ -58,8 +58,8 @@ RUN ZOT_ARCH=$([ "$TARGETARCH" = "arm64" ] && echo "arm64" || echo "amd64") \
   && echo "${ZOT_SHA}  /usr/local/bin/zot" | sha256sum -c - \
   && chmod +x /usr/local/bin/zot
 
-# debian:12-slim provides glibc required by Zot's pre-built binaries.
-FROM debian:12-slim AS runner
+# debian:13-slim provides glibc required by Zot's pre-built binaries.
+FROM debian:13-slim AS runner
 WORKDIR /app
 
 # Install curl (healthcheck) and ca-certificates (OIDC TLS verification).
