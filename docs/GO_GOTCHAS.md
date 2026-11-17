@@ -74,10 +74,10 @@ macOS/OrbStack: Docker daemon keychain credentials not accessible when pulls are
 
 ## Zot Registry
 
-### Alpine runner fails silently — use `debian:12-slim`
+### Alpine runner fails silently — use `debian:13-slim`
 Zot pre-built binaries are dynamically linked against glibc. Alpine uses musl libc.
 Symptom: `zot: not found` even though the file exists — the ELF interpreter `/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2` is absent on musl.
-**Fix:** runner stage must be `debian:12-slim`. The `tool-downloader` stage can remain Alpine (downloads static binaries only).
+**Fix:** runner stage must be `debian:13-slim`. The `tool-downloader` stage can remain Alpine (downloads static binaries only).
 
 ### `docker2s2` compat mode required — `distSpecVersion` alone is not sufficient
 Without `http.compat: ["docker2s2"]` in Zot config, Zot rejects Docker v2 manifests (`application/vnd.docker.distribution.manifest.v2+json`) with 415.
@@ -224,7 +224,7 @@ Two knobs change the failure shape; neither makes a dependency-driven healthchec
 
 ### Multi-stage: tool-downloader can stay Alpine, runner must be Debian
 `tool-downloader` stage only downloads static binaries (docker CLI, docker-compose) — Alpine is fine.
-`runner` stage executes Zot (glibc-linked) — must be `debian:12-slim`.
+`runner` stage executes Zot (glibc-linked) — must be `debian:13-slim`.
 
 ### `.env` file conflict with docker compose scale-up
 `docker compose` auto-reads `.env` from the project directory, potentially overriding `IMAGE_TAG` set by the rollout step.
