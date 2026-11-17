@@ -85,7 +85,7 @@ jobs:
           key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lock') }}
           restore-keys: ${{ runner.os }}-bun-
       - run: bun install --frozen-lockfile
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
       # Build the server image once here; e2e/setup/global.ts skips its own
       # build when rollhook-e2e-server:latest already exists. Shares the gha
       # cache scope with release.yml.
