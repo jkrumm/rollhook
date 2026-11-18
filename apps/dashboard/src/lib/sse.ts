@@ -1,4 +1,4 @@
-export const SSE_DONE = '[DONE]'
+const SSE_DONE = '[DONE]'
 
 export interface SseChunkResult {
   lines: string[]
