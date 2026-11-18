@@ -1,3 +1,17 @@
+# [1.22.0](https://github.com/jkrumm/rollhook/compare/v1.21.1...v1.22.0) (2026-11-18)
+
+
+### Bug Fixes
+
+* **deps:** override fast-uri to 3.1.9 ([aeb7333](https://github.com/jkrumm/rollhook/commit/aeb7333611ebe15b676ce570e9a22ad83fc6c098))
+* **deps:** override transitive packages past their high advisories ([36f41b4](https://github.com/jkrumm/rollhook/commit/36f41b449a203a6724c09d8e6ebe8e964f36459c))
+* **factory:** settle project.yaml findings ([290df17](https://github.com/jkrumm/rollhook/commit/290df17e88003330c446c6785b82fc242a92bdc9))
+
+
+### Features
+
+* **otlp:** send service.namespace, service.version and deployment.environment.name ([52cb0ef](https://github.com/jkrumm/rollhook/commit/52cb0efeaa13c8dba30d5e789fceb5d9ec0ba480))
+
 ## [1.21.1](https://github.com/jkrumm/rollhook/compare/v1.21.0...v1.21.1) (2026-11-15)
 
 
