@@ -27,5 +27,3 @@ export async function customInstance<T>(url: string, options?: RequestInit): Pro
   const data = await res.json()
   return { data, status: res.status, headers: res.headers } as unknown as T
 }
-
-export default customInstance

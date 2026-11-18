@@ -1,0 +1,8 @@
+{
+  "entry": [
+    "apps/dashboard/orval.config.ts",
+    "e2e/hello-world/server.ts",
+    "e2e/mock-oidc/server.ts"
+  ],
+  "ignorePatterns": ["apps/dashboard/src/api/generated/**"]
+}
