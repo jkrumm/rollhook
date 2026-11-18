@@ -13,7 +13,7 @@ COPY apps/marketing ./apps/marketing
 
 RUN cd apps/marketing && bun run build
 
-FROM nginx:1.30-alpine
+FROM nginx:1.31-alpine
 COPY --from=builder /app/apps/marketing/dist /usr/share/nginx/html
 COPY apps/marketing/nginx.conf /etc/nginx/conf.d/default.conf
 COPY apps/marketing/security-headers.conf /etc/nginx/security-headers.conf
