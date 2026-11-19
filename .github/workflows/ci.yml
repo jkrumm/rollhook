@@ -24,7 +24,7 @@ jobs:
           node-version: 22
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.3.10
+          bun-version: 1.4.4
       - uses: actions/cache@v6
         with:
           path: ~/.bun/install/cache
@@ -78,7 +78,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.3.10
+          bun-version: 1.4.4
       - uses: actions/cache@v6
         with:
           path: ~/.bun/install/cache
@@ -102,7 +102,7 @@ jobs:
         run: |
           pulled=0
           for i in 1 2 3; do
-            if docker pull oven/bun:1.3.10-slim; then
+            if docker pull oven/bun:1.4.4-slim; then
               pulled=1
               break
             fi
@@ -112,7 +112,7 @@ jobs:
             fi
           done
           if [ "$pulled" -ne 1 ]; then
-            echo "Failed to pull oven/bun:1.3.10-slim after 3 attempts"
+            echo "Failed to pull oven/bun:1.4.4-slim after 3 attempts"
             exit 1
           fi
       - name: Run E2E tests
