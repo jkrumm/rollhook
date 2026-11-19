@@ -18,7 +18,7 @@ go run ./cmd/gendocs 2>/dev/null > apps/dashboard/openapi.json
 bun run --filter @rollhook/dashboard generate:api
 ```
 
-CI runs Go natively (`go build ./...`, `go vet ./...`, `go test ./...`, `govulncheck ./...`, `golangci-lint`). Go 1.27.3 and Bun 1.4.4 are pinned in the Dockerfile, go.mod (`toolchain`), Makefile, workflows and e2e fixtures — bump them together.
+CI runs Go natively (`go build ./...`, `go vet ./...`, `go test ./...`, `govulncheck ./...`, `golangci-lint`). Go 1.27.3 is pinned in the Dockerfile, go.mod (`toolchain`), Makefile, workflows and e2e fixtures; Bun 1.4.4 in `package.json` (`packageManager`), the Dockerfiles, workflows and e2e fixtures — bump them together.
 
 The dashboard builds into `apps/dashboard/dist` (gitignored); the Dockerfile copies it to `/app/public`, which the server serves. `make image` builds the server image and `make image-smoke` checks its user, `DATA_DIR` and volume persistence.
 
