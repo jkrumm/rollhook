@@ -67,9 +67,11 @@ runtime error in `waitHealthy` remains as the safety net.
 
 ### 9. ✅ `validate.go` image check uses `strings.Contains` — both too loose and too strict
 
-**Fix applied:** Image check removed entirely. Discovery does an exact container-image match;
-mismatches surface as "no container found" at runtime, which is more reliable than a
-compose-file string comparison that breaks on env-var interpolation.
+**Fix applied (partial):** The compose-vs-deployed image comparison was removed. Discovery does an
+exact container-image match; mismatches surface as "no container found" at runtime, which is more
+reliable than a compose-file string comparison that breaks on env-var interpolation. The IMAGE_TAG
+reference check remains in `Validate` (`internal/jobs/steps/validate.go`, raw-YAML block) and still
+uses `strings.Contains`; `TestValidate_HardcodedImageFails` covers it.
 
 ### 10. ✅ `parseTime` silently returns zero value on parse failure
 
